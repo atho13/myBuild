@@ -122,19 +122,19 @@ custom_packages() {
     cd packages
 
     # Download luci-app-amlogic
-    amlogic_api="https://api.github.com/repos/ophub/luci-app-amlogic/releases"
+    #amlogic_api="https://api.github.com/repos/ophub/luci-app-amlogic/releases"
     #
-    amlogic_plugin="luci-app-amlogic"
-    amlogic_plugin_down="$(curl -s ${amlogic_api} | grep "browser_download_url" | grep -oE "https.*${amlogic_plugin}.*.ipk" | head -n 1)"
-    curl -fsSOJL ${amlogic_plugin_down}
-    [[ "${?}" -eq "0" ]] || error_msg "[ ${amlogic_plugin} ] download failed!"
-    echo -e "${INFO} The [ ${amlogic_plugin} ] is downloaded successfully."
+    #amlogic_plugin="luci-app-amlogic"
+    #amlogic_plugin_down="$(curl -s ${amlogic_api} | grep "browser_download_url" | grep -oE "https.*${amlogic_plugin}.*.ipk" | head -n 1)"
+    #curl -fsSOJL ${amlogic_plugin_down}
+    #[[ "${?}" -eq "0" ]] || error_msg "[ ${amlogic_plugin} ] download failed!"
+    #echo -e "${INFO} The [ ${amlogic_plugin} ] is downloaded successfully."
     #
-    amlogic_i18n_cn="luci-i18n-amlogic-zh-cn"
-    amlogic_i18n_down="$(curl -s ${amlogic_api} | grep "browser_download_url" | grep -oE "https.*${amlogic_i18n_cn}.*.ipk" | head -n 1)"
-    curl -fsSOJL ${amlogic_i18n_down}
-    [[ "${?}" -eq "0" ]] || error_msg "[ ${amlogic_i18n_cn} ] download failed!"
-    echo -e "${INFO} The [ ${amlogic_i18n_cn} ] is downloaded successfully."
+    #amlogic_i18n_cn="luci-i18n-amlogic-zh-cn"
+    #amlogic_i18n_down="$(curl -s ${amlogic_api} | grep "browser_download_url" | grep -oE "https.*${amlogic_i18n_cn}.*.ipk" | head -n 1)"
+    #curl -fsSOJL ${amlogic_i18n_down}
+    #[[ "${?}" -eq "0" ]] || error_msg "[ ${amlogic_i18n_cn} ] download failed!"
+    #echo -e "${INFO} The [ ${amlogic_i18n_cn} ] is downloaded successfully."
 
     # Download other luci-app-xxx
     # ......
@@ -160,19 +160,47 @@ custom_config() {
 # Add custom files
 # The FILES variable allows custom configuration files to be included in images built with Image Builder.
 # The [ files ] directory should be placed in the Image Builder root directory where you issue the make command.
+#custom_files() {
+    #cd ${imagebuilder_path}
+    #echo -e "${STEPS} Start adding custom files..."
+
+    #if [[ -d "${custom_files_path}" ]]; then
+        # Copy custom files
+        #[[ -d "files" ]] || mkdir -p files
+        #cp -rf ${custom_files_path}/* files
+
+        #sync && sleep 3
+        #echo -e "${INFO} [ files ] directory status: \n$(ls -lh files/ 2>/dev/null)"
+    #else
+        #echo -e "${INFO} No customized files were added."
+    #fi
+#}
+# Add custom files
+# The FILES variable allows custom configuration files to be included in images built with Image Builder.
+# The [ files ] directory should be placed in the Image Builder root directory where you issue the make command.
 custom_files() {
-    cd ${imagebuilder_path}
-    echo -e "${STEPS} Start adding custom files..."
+    # Pindah ke folder imagebuilder
+    cd "${imagebuilder_path}" || { echo "Gagal masuk ke direktori build"; exit 1; }
 
     if [[ -d "${custom_files_path}" ]]; then
-        # Copy custom files
-        [[ -d "files" ]] || mkdir -p files
-        cp -rf ${custom_files_path}/* files
+        echo -e "Menyalin file kustom dari: ${custom_files_path}"
+        
+        # 1. Pastikan folder target bersih
+        mkdir -p files
+        
+        # 2. Salin semua file
+        cp -rf "${custom_files_path}/." files/
 
-        sync && sleep 3
-        echo -e "${INFO} [ files ] directory status: \n$(ls -lh files/ 2>/dev/null)"
-    else
-        echo -e "${INFO} No customized files were added."
+        # 3. Atur izin akses (Rooting files)
+        # Menggunakan sudo agar file di dalam firmware benar-benar milik root
+        sudo chown -R 0:0 files/
+        find files/ -type d -exec chmod 755 {} +
+        find files/ -type f -exec chmod 644 {} +
+        
+        # Berikan izin eksekusi untuk skrip init (jika ada)
+        [ -d "files/etc/init.d" ] && sudo chmod -R +x files/etc/init.d/*
+        
+        echo "File kustom berhasil diproses."
     fi
 }
 
@@ -183,23 +211,25 @@ rebuild_firmware() {
 
     # Selecting default packages, lib, theme, app and i18n, etc.
     my_packages="\
-        acpid attr base-files bash bc blkid block-mount blockd bsdtar btrfs-progs busybox bzip2 \
-        cgi-io chattr comgt comgt-ncm containerd coremark coreutils coreutils-base64 coreutils-nohup \
-        coreutils-truncate curl docker docker-compose dockerd dosfstools dumpe2fs e2freefrag e2fsprogs \
-        exfat-mkfs f2fs-tools f2fsck fdisk gawk getopt git gzip hostapd-common iconv iw iwinfo jq \
-        jshn kmod-brcmfmac kmod-brcmutil kmod-cfg80211 kmod-mac80211 libjson-script liblucihttp \
-        liblucihttp-lua losetup lsattr lsblk lscpu mkf2fs mount-utils openssl-util parted \
-        perl-http-date perlbase-file perlbase-getopt perlbase-time perlbase-unicode perlbase-utf8 \
-        pigz ppp ppp-mod-pppoe pv rename resize2fs runc tar tini ttyd tune2fs \
-        uclient-fetch uhttpd uhttpd-mod-ubus unzip uqmi usb-modeswitch uuidgen wget-ssl whereis \
-        which wpad-basic wwan xfs-fsck xfs-mkfs xz xz-utils ziptool zoneinfo-asia zoneinfo-core zstd \
+        attr base-files bash bc blkid block-mount btrfs-progs busybox bzip2 ip-full libc \
+        uhttpd uhttpd-mod-ubus luci-ssl openssh-sftp-server adb curl wget-ssl \
+        cgi-io comgt comgt-ncm coreutils coreutils-stat coreutils-base64 coreutils-nohup \
+        curl dosfstools e2fsprogs exfat-mkfs f2fs-tools f2fsck fdisk gawk wpa-supplicant \
+        iw iwinfo jq jshn kmod-brcmfmac kmod-brcmutil nano htop liblucihttp-lua ca-bundle \
+        losetup lsblk lscpu mkf2fs mount-utils openssl-util parted iconv gzip zram-swap \
+        perlbase-file perlbase-unicode perlbase-utf8 perlbase-essential perlbase-time \
+        perlbase-xsloader rpcd rpcd-mod-file rpcd-mod-iwinfo rpcd-mod-luci rpcd-mod-rrdns \
+        uhttpd uhttpd-mod-ubus openssh-sftp-server ppp ppp-mod-pppoe pv ntfs-3g tar ttyd \
+        kmod-usb2 kmod-usb-net-rndis wwan httping uclient-fetch unzip uqmi usb-modeswitch \
+        uuidgen xz xz-utils ziptool zoneinfo-asia zoneinfo-core UDPspeeder haproxy \
         \
-        luci luci-base luci-compat luci-i18n-base-zh-cn luci-lib-base luci-lib-docker \
+        luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm kmod-usb-net kmod-usb-net-rndis \
         luci-lib-ip luci-lib-ipkg luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network \
-        luci-mod-status luci-mod-system luci-proto-3g luci-proto-ipip luci-proto-ipv6 \
-        luci-proto-ncm luci-proto-openconnect luci-proto-ppp luci-proto-qmi luci-proto-relay \
-        \
-        luci-app-amlogic luci-i18n-amlogic-zh-cn \
+        luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils \
+        luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd \
+        kmod-usb-wdm kmod-usb-net-qmi-wwan luci-proto-qmi kmod-usb-net-cdc-ether dbus dbus-utils ppp chat \
+        kmod-usb-serial-option kmod-usb-serial kmod-usb-serial-wwan qmi-utils kmod-usb-serial-qualcomm \
+        kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim umbim luci-proto-modemmanager modemmanager modemmanager-rpcd libqmi libmbim glib2 \
         \
         ${config_list} \
         "
@@ -273,8 +303,8 @@ custom_settings() {
 # Show welcome message
 echo -e "${STEPS} Welcome to Rebuild OpenWrt Using the Image Builder."
 [[ -x "${0}" ]] || error_msg "Please give the script permission to run: [ chmod +x ${0} ]"
-[[ -z "${1}" ]] && error_msg "Please specify the OpenWrt Branch, such as [ ${0} openwrt:24.10.4 ]"
-[[ "${1}" =~ ^[a-z]{3,}:[0-9]+ ]] || error_msg "Incoming parameter format <source:branch>: openwrt:24.10.4"
+[[ -z "${1}" ]] && error_msg "Please specify the OpenWrt Branch, such as [ ${1} openwrt:25.12.0 ]"
+[[ "${1}" =~ ^[a-z]{3,}:[0-9]+ ]] || error_msg "Incoming parameter format <source:branch>: openwrt:25.12.0"
 op_sourse="${1%:*}"
 op_branch="${1#*:}"
 echo -e "${INFO} Rebuild path: [ ${PWD} ]"
