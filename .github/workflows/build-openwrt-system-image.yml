@@ -341,7 +341,7 @@ jobs:
           echo "build_tag=OpenWrt_imagebuilder_${RELEASES_BRANCH/:/_}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           # Add symbolic link
           sudo mkdir -p /builder/openwrt
-          sudo ln -sf /builder/openwrt /home/runner/work/_actions/ribel13/amlogic-s9xxx-openwrt/main/openwrt
+          sudo ln -sf /builder/openwrt /home/runner/work/_actions/ribel13/aml/main/openwrt
           df -hT ${PWD}
           echo "status=success" >> ${GITHUB_OUTPUT}
       #- name: Build OpenWrt Rootfs [ ${{ inputs.releases_branch }} ]
@@ -372,7 +372,7 @@ jobs:
 
       - name: Packaging OpenWrt
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
-        uses: ribel13/amlogic-s9xxx-openwrt@main
+        uses: ribel13/aml@main
         with:
           openwrt_path: output/*rootfs.tar.gz
           openwrt_ip: ${{ inputs.openwrt_ip }}
