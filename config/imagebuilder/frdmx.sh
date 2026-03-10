@@ -152,18 +152,28 @@ custom_config() {
 # The FILES variable allows custom configuration files to be included in images built with Image Builder.
 # The [ files ] directory should be placed in the Image Builder root directory where you issue the make command.
 custom_files() {
-    cd ${imagebuilder_path}
-    echo -e "${STEPS} Start adding custom files..."
+    # Pindah ke folder imagebuilder
+    cd "${imagebuilder_path}" || { echo "Gagal masuk ke direktori build"; exit 1; }
 
     if [[ -d "${custom_files_path}" ]]; then
-        # Copy custom files
-        [[ -d "files" ]] || mkdir -p files
-        cp -rf ${custom_files_path}/* files
+        echo -e "Menyalin file kustom dari: ${custom_files_path}"
+        
+        # 1. Pastikan folder target bersih
+        mkdir -p files
+        
+        # 2. Salin semua file
+        cp -rf "${custom_files_path}/." files/
 
-        sync && sleep 3
-        echo -e "${INFO} [ files ] directory status: $(ls files -al 2>/dev/null)"
-    else
-        echo -e "${INFO} No customized files were added."
+        # 3. Atur izin akses (Rooting files)
+        # Menggunakan sudo agar file di dalam firmware benar-benar milik root
+        sudo chown -R 0:0 files/
+        find files/ -type d -exec chmod 755 {} +
+        find files/ -type f -exec chmod 644 {} +
+        
+        # Berikan izin eksekusi untuk skrip init (jika ada)
+        [ -d "files/etc/init.d" ] && sudo chmod -R +x files/etc/init.d/*
+        
+        echo "File kustom berhasil diproses."
     fi
 }
 
