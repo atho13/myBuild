@@ -85,8 +85,6 @@ on:
 env:
   TZ: Etc/UTC
   IMAGEBUILDER_SH: config/imagebuilder/frdmx.sh
-  WORKING_DIR: imagebuilder
-  DEBIAN_FRONTEND: noninteractive
 
 jobs:
   build:
