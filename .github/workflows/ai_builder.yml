@@ -1,0 +1,21 @@
+
+
+      - name: Build OpenWrt Image
+        env:
+          IMAGEBUILDER_SH: ./imagebuilder.sh # Sesuaikan jalur file
+        run: |
+          RELEASES_BRANCH="${{ inputs.releases_branch }}"
+          chmod +x ${IMAGEBUILDER_SH}
+          
+          # Jalankan skrip builder
+          ./${IMAGEBUILDER_SH} ${RELEASES_BRANCH}
+          
+          echo "build_tag=FRDMX-Owrt_Amlogic_$(date +"%Y.%m.%d")" >> ${GITHUB_ENV}
+          
+          # Add symbolic link (Sangat penting untuk skrip kernel Ophub/Ribel)
+          [[ -d "/builder/openwrt" ]] || mkdir -p /builder/openwrt
+          mkdir -p /home/runner/work/_actions/ribel13/aml/main
+          ln -sfv /builder/openwrt /home/runner/work/_actions/ribel13/aml/main/openwrt
+          
+          df -hT ${PWD}
+          echo "status=success" >> ${GITHUB_OUTPUT}
