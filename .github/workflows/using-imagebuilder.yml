@@ -140,22 +140,48 @@ jobs:
           df -Th
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Build OpenWrt Rootfs [ ${{ inputs.releases_branch }} ]
-        id: imagebuilder
-        if: ${{ steps.init.outputs.status == 'success' && !cancelled() }}
-        run: |
-          RELEASES_BRANCH="${{ inputs.releases_branch }}"
-          chmod +x ${IMAGEBUILDER_SH}
-          ${IMAGEBUILDER_SH} ${RELEASES_BRANCH}
-          echo "build_tag=OpenWrt_imagebuilder_${RELEASES_BRANCH/:/_}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+      #- name: Build OpenWrt Rootfs [ ${{ inputs.releases_branch }} ]
+        #id: imagebuilder
+        #if: ${{ steps.init.outputs.status == 'success' && !cancelled() }}
+        #run: |
+          #RELEASES_BRANCH="${{ inputs.releases_branch }}"
+          #chmod +x ${IMAGEBUILDER_SH}
+          #${IMAGEBUILDER_SH} ${RELEASES_BRANCH}
+          #echo "build_tag=OpenWrt_imagebuilder_${RELEASES_BRANCH/:/_}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           # Add symbolic link
-          [[ -d "/builder/openwrt" ]] || mkdir -p /builder/openwrt
-          ln -sf /builder/openwrt /home/runner/work/_actions/ribel13/aml/main/openwrt
-          df -hT ${PWD}
-          echo "status=success" >> ${GITHUB_OUTPUT}
+          #[[ -d "/builder/openwrt" ]] || mkdir -p /builder/openwrt
+          #ln -sf /builder/openwrt /home/runner/work/_actions/ribel13/aml/main/openwrt
+          #df -hT ${PWD}
+          #echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Build Firmware Images
+        id: build
+        if: steps.customize.outputs.status == 'success'
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          mkdir -p compiled_images
+          chmod +x IMAGEBUILDER_SH
+
+          if [ "${{ env.CLEAN }}" == "true" ]; then
+            make clean
+          fi
+            
+          time ./IMAGEBUILDER_SH ${{ env.PROFILE }}
+            
+          for file in bin/targets/"${{ env.TARGET_SYSTEM }}"/*-rootfs.tar.gz; do
+            if [ -f "$file" ]; then
+              new_name="FRDMX_$(basename "$file" -rootfs.tar.gz)-rootfs.tar.gz"
+              mv "$file" compiled_images/$new_name
+            fi
+          done
+
+          echo "Images built successfully:"
+          ls -la compiled_images/
+          echo "status=success" >> "$GITHUB_OUTPUT"
 
       - name: Upload OpenWrt to Release
-        uses: ncipollo/release-action@main
+        #uses: ncipollo/release-action@main
+        uses: softprops/action-gh-release@master
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
         with:
           tag: ${{ env.build_tag }}
