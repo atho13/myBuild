@@ -138,7 +138,7 @@ jobs:
         run: |
           cd ${{ env.WORKING_DIR }}
           mkdir -p compiled_images
-          chmod +x 25.sh
+          chmod +x frdmx.sh
 
           if [ "${{ env.CLEAN }}" == "true" ]; then
             make clean
