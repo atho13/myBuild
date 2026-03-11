@@ -1,7 +1,5 @@
-# Copyright (C) 2024 Maizil41 https://github.com/maizil41
-# https://github.com/maizil41/amlogic-s9xxx-openwrt
-
 name: Making Love OpenWrt
+
 on:
   workflow_dispatch:
     inputs:
