@@ -141,16 +141,19 @@ jobs:
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Build OpenWrt Rootfs [ ${{ inputs.releases_branch }} ]
-        id: imagebuilder
+        #id: imagebuilder
+        id: build
         if: ${{ steps.init.outputs.status == 'success' && !cancelled() }}
         run: |
           RELEASES_BRANCH="${{ inputs.releases_branch }}"
+          cd ${{ env.WORKING_DIR }}
+          mkdir -p compiled_images
           chmod +x ${IMAGEBUILDER_SH}
           ${IMAGEBUILDER_SH} ${RELEASES_BRANCH}
-          echo "build_tag=OpenWrt_imagebuilder_${RELEASES_BRANCH/:/_}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          echo "build_tag=Openwrt_imagebuilder_${RELEASES_BRANCH/:/_}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
           # Add symbolic link
           [[ -d "/builder/openwrt" ]] || mkdir -p /builder/openwrt
-          ln -sf /builder/openwrt /home/runner/work/_actions/ribel13/amlogic-s9xxx-openwrt/main/openwrt
+          ln -sf /builder/openwrt /home/runner/work/_actions/ribel13/aml/main/openwrt
           df -hT ${PWD}
           echo "status=success" >> ${GITHUB_OUTPUT}
         
