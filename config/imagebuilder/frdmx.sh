@@ -186,21 +186,21 @@ rebuild_firmware() {
     # Selecting default packages, lib, theme, app and i18n, etc.
     my_packages="\
         attr base-files bash bc blkid block-mount btrfs-progs busybox bzip2 ip-full libc \
-        uhttpd uhttpd-mod-ubus luci-ssl openssh-sftp-server adb curl wget-ssl \
+        uhttpd uhttpd-mod-ubus luci-ssl openssh-sftp-server adb curl wget-ssl luci-app-tailscale-community \
         cgi-io comgt comgt-ncm coreutils coreutils-stat coreutils-base64 coreutils-nohup \
-        curl dosfstools e2fsprogs exfat-mkfs f2fs-tools f2fsck fdisk gawk tailscale luci-app-tailscale \
+        curl dosfstools e2fsprogs exfat-mkfs f2fs-tools f2fsck fdisk gawk \
         iw iwinfo jq jshn kmod-brcmfmac kmod-brcmutil nano htop liblucihttp-lua ca-bundle \
         losetup lsblk lscpu mkf2fs mount-utils openssl-util parted iconv gzip zram-swap \
         perlbase-file perlbase-unicode perlbase-utf8 perlbase-essential perlbase-time \
         perlbase-xsloader rpcd rpcd-mod-file rpcd-mod-iwinfo rpcd-mod-luci rpcd-mod-rrdns \
         uhttpd uhttpd-mod-ubus openssh-sftp-server ppp ppp-mod-pppoe pv ntfs-3g tar ttyd \
         kmod-usb2 kmod-usb-net-rndis wwan httping uclient-fetch unzip uqmi usb-modeswitch \
-        uuidgen xz xz-utils ziptool zoneinfo-asia zoneinfo-core UDPspeeder haproxy \
+        uuidgen xz xz-utils ziptool zoneinfo-asia zoneinfo-core UDPspeeder haproxy kmod-usb-storage \
         \
         luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm kmod-usb-net kmod-usb-net-rndis \
         luci-lib-ip luci-lib-ipkg luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network \
-        luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils \
-        luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd \
+        luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
+        luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
         kmod-usb-wdm kmod-usb-net-qmi-wwan luci-proto-qmi kmod-usb-net-cdc-ether dbus dbus-utils ppp chat \
         kmod-usb-serial-option kmod-usb-serial kmod-usb-serial-wwan qmi-utils kmod-usb-serial-qualcomm \
         kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim umbim luci-proto-modemmanager modemmanager modemmanager-rpcd libqmi libmbim glib2 \
