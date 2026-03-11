@@ -141,18 +141,40 @@ jobs:
           df -Th
           echo "status=success" >> ${GITHUB_OUTPUT}
 
+      #- name: Build OpenWrt Rootfs [ ${{ inputs.releases_branch }} ]
+        #id: imagebuilder
+        #if: ${{ steps.init.outputs.status == 'success' && !cancelled() }}
+        #run: |
+          #RELEASES_BRANCH="${{ inputs.releases_branch }}"
+          #chmod +x ${IMAGEBUILDER_SH}
+          #${IMAGEBUILDER_SH} ${RELEASES_BRANCH}
+          #echo "build_tag=Openwrt_imagebuilder_${RELEASES_BRANCH/:/_}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
+          # Add symbolic link
+          #[[ -d "/builder/openwrt" ]] || mkdir -p /builder/openwrt
+          #ln -sf /builder/openwrt /home/runner/work/_actions/ribel13/aml@main
+          #df -hT ${PWD}
+          #echo "status=success" >> ${GITHUB_OUTPUT}
+   
       - name: Build OpenWrt Rootfs [ ${{ inputs.releases_branch }} ]
         id: imagebuilder
-        #id: build
         if: ${{ steps.init.outputs.status == 'success' && !cancelled() }}
         run: |
           RELEASES_BRANCH="${{ inputs.releases_branch }}"
+          # Memastikan file skrip tersedia sebelum chmod
+          if [ ! -f "${IMAGEBUILDER_SH}" ]; then
+            echo "Error: File ${IMAGEBUILDER_SH} tidak ditemukan!"
+            exit 1
+          fi
+
           chmod +x ${IMAGEBUILDER_SH}
-          ${IMAGEBUILDER_SH} ${RELEASES_BRANCH}
+          ./${IMAGEBUILDER_SH} ${RELEASES_BRANCH}
+          
           echo "build_tag=Openwrt_imagebuilder_${RELEASES_BRANCH/:/_}_$(date +"%Y.%m")" >> ${GITHUB_ENV}
-          # Add symbolic link
-          [[ -d "/builder/openwrt" ]] || mkdir -p /builder/openwrt
-          ln -sf /builder/openwrt /home/runner/work/_actions/ribel13/aml@main
+          
+          # Membuat symbolic link untuk akses file builder
+          [[ -d "/builder/openwrt" ]] || sudo mkdir -p /builder/openwrt
+          sudo ln -sf /builder/openwrt ${{ github.workspace }}/openwrt_build
+          
           df -hT ${PWD}
           echo "status=success" >> ${GITHUB_OUTPUT}
         
