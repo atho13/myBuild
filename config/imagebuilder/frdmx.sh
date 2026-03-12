@@ -189,7 +189,7 @@ rebuild_firmware() {
         uhttpd uhttpd-mod-ubus luci-ssl openssh-sftp-server adb curl wget-ssl luci-app-tailscale-community \
         cgi-io comgt comgt-ncm coreutils coreutils-stat coreutils-base64 coreutils-nohup \
         curl dosfstools e2fsprogs exfat-mkfs f2fs-tools f2fsck fdisk gawk \
-        iw iwinfo jq jshn kmod-brcmfmac kmod-brcmutil nano htop liblucihttp-lua ca-bundle \
+        jq jshn kmod-brcmfmac kmod-brcmutil nano htop liblucihttp-lua ca-bundle \
         losetup lsblk lscpu mkf2fs mount-utils openssl-util parted iconv gzip zram-swap \
         perlbase-file perlbase-unicode perlbase-utf8 perlbase-essential perlbase-time \
         perlbase-xsloader rpcd rpcd-mod-file rpcd-mod-iwinfo rpcd-mod-luci rpcd-mod-rrdns \
@@ -199,6 +199,7 @@ rebuild_firmware() {
         \
         luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm kmod-usb-net kmod-usb-net-rndis \
         luci-lib-ip luci-lib-ipkg luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network \
+        kmod-usb-net-rtl8150 kmod-usb-net-rtl8152 kmod-usb-net-asix kmod-usb-net-asix-ax88179 kmod-mii \
         luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
         luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
         kmod-usb-wdm kmod-usb-net-qmi-wwan luci-proto-qmi kmod-usb-net-cdc-ether dbus dbus-utils ppp chat \
