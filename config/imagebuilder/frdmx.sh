@@ -39,7 +39,6 @@ custom_files() {
         mkdir -p files
         cp -rf "${custom_files_path}/." files/
         
-        # Di sini kita biarkan runner memiliki file agar 'make' bisa membacanya tanpa fakeroot
         # Kepemilikan root akan diatur otomatis oleh build system OpenWrt
         chmod -R 755 files/
     fi
@@ -48,7 +47,24 @@ custom_files() {
 # 4. Rebuild Firmware
 rebuild_firmware() {
     cd "${imagebuilder_path}"
-    echo -e "${STEPS} Membangun Rootfs ARMSR..."
+    echo -e "${STEPS} Membangun Rootfs ARMSR (Size: 700MB)..."
+
+    # Jalankan make dengan alokasi partisi 700MB
+    make image PROFILE="generic" \
+               PACKAGES="${my_packages}" \
+               FILES="files" \
+               V=s \
+               FORCE_UNSAFE_CONFIGURE=1 \
+               CONFIG_TARGET_ROOTFS_PARTSIZE=700
+
+    if [ $? -eq 0 ]; then
+        echo -e "${SUCCESS} Build Berhasil!"
+        mkdir -p "${output_path}"
+        cp bin/targets/armsr/armv8/*.tar.* "${output_path}/"
+    else
+        echo -e "${ERROR} Build Gagal!"; exit 1
+    fi
+}
 
     # Paket pilihan Anda
     my_packages="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
