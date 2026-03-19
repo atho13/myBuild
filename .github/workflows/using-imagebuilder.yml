@@ -44,7 +44,7 @@ on:
 
 env:
   TZ: Asia/Jakarta
-  IMAGEBUILDER_SH: config/imagebuilder/frdmx.sh
+  IMAGEBUILDER_SH: config/imagebuilder/25.sh
 
 jobs:
   build:
