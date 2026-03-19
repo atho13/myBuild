@@ -39,22 +39,18 @@ custom_files() {
         mkdir -p files
         cp -rf "${custom_files_path}/." files/
         
-        # Set Izin Root & Executable
-        sudo chown -R 0:0 files/
-        find files/ -type d -exec chmod 755 {} +
-        find files/ -type f -exec chmod 644 {} +
-        for dir in "bin" "sbin" "usr/bin" "usr/sbin" "etc/init.d" "etc/uci-defaults"; do
-            [ -d "files/$dir" ] && find "files/$dir" -type f -exec chmod 755 {} +
-        done
+        # Di sini kita biarkan runner memiliki file agar 'make' bisa membacanya tanpa fakeroot
+        # Kepemilikan root akan diatur otomatis oleh build system OpenWrt
+        chmod -R 755 files/
     fi
 }
 
-# 4. Rebuild Firmware (Target ARMSR)
+# 4. Rebuild Firmware
 rebuild_firmware() {
     cd "${imagebuilder_path}"
     echo -e "${STEPS} Membangun Rootfs ARMSR..."
 
-    # Daftar paket (sesuai daftar Anda)
+    # Paket pilihan Anda
     my_packages="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
         kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
         mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
@@ -74,19 +70,24 @@ rebuild_firmware() {
         php8-cli php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
         php8-mod-mbstring wpad-basic-mbedtls hostapd-common luci-app-cpufreq"
 
-    fakeroot make image PROFILE="generic" PACKAGES="${my_packages}" FILES="files" V=s
+    # Jalankan make tanpa fakeroot eksternal untuk menghindari 'nested' error
+    # Menggunakan FORCE_UNSAFE_CONFIGURE=1 karena lingkungan GitHub Actions sering terdeteksi sebagai root
+    make image PROFILE="generic" \
+               PACKAGES="${my_packages}" \
+               FILES="files" \
+               V=s \
+               FORCE_UNSAFE_CONFIGURE=1
 
     if [ $? -eq 0 ]; then
         echo -e "${SUCCESS} Build Berhasil!"
         mkdir -p "${output_path}"
-        # COPY DARI ARMSYSTEM (ARMSR/ARMV8)
         cp bin/targets/armsr/armv8/*.tar.* "${output_path}/"
     else
         echo -e "${ERROR} Build Gagal!"; exit 1
     fi
 }
 
-# Eksekusi
+# Eksekusi urutan fungsi
 download_imagebuilder
 custom_files
 rebuild_firmware
