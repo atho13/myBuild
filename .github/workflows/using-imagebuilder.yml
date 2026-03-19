@@ -15,10 +15,10 @@ on:
       releases_branch:
         description: "Select the releases branch"
         required: false
-        default: "openwrt:25.12.0"
+        default: "openwrt:25.12.1"
         type: choice
         options:
-          - openwrt:25.12.0
+          - openwrt:25.12.1
           - openwrt:24.10.5
           - immortalwrt:25.12.0
           - immortalwrt:24.10.4
@@ -39,7 +39,7 @@ on:
       openwrt_kernel:
         description: "Select kernel version"
         required: false
-        default: "6.6.y"
+        default: "6.8.y"
         type: choice
         options:
           - 5.10.y
@@ -79,7 +79,6 @@ on:
         type: choice
         options:
           - ophub
-          - angel
           - FRDMX
 
 env:
@@ -170,7 +169,7 @@ jobs:
 
       - name: Packaging OpenWrt
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
-        uses: ribel13/aml@main
+        uses: ribel13/amlogic-s9xxx-openwrt@main
         with:
           openwrt_path: output/*rootfs.tar.*
           openwrt_ip: ${{ inputs.openwrt_ip }}
