@@ -13,49 +13,37 @@ STEPS="[\033[95m STEPS \033[0m]"
 SUCCESS="[\033[92m SUCCESS \033[0m]"
 ERROR="[\033[91m ERROR \033[0m]"
 
-# FIX PERMISSION: Memberikan izin tulis agar wget tidak error
+# FIX PERMISSION: Memberikan izin tulis agar runner tidak "Permission Denied"
 sudo chown -R runner:runner "${make_path}"
 
-# 2. Download ImageBuilder (URL ABSOLUT & LENGKAP)
+# 2. Download ImageBuilder (URL ARMSr/ARMv8)
 download_imagebuilder() {
     cd "${make_path}"
-    echo -e "${STEPS} Downloading ImageBuilder 25.12.1 ARMSR..."
+    echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.1 (ARMSR/ARMV8)..."
     
-    # URL Wajib Lengkap ke file .tar.zst (Jangan hanya domain)
-    URL="https://downloads.openwrt.org"
+    URL="https://downloads.openwrt.org/releases/25.12.1/targets/armsr/armv8/openwrt-imagebuilder-25.12.1-armsr-armv8.Linux-x86_64.tar.zst"
     
-    # Download dengan opsi retry dan output yang jelas
-    wget -t 3 -qO ib.tar.zst "$URL" || { echo -e "${ERROR} Gagal download! URL salah atau server down."; exit 1; }
+    curl -fL -o ib.tar.zst "$URL" || { echo -e "${ERROR} Gagal download!"; exit 1; }
     
-    # Cek apakah file yang terunduh benar-benar file zst (bukan HTML)
+    # Verifikasi format file
     if ! file ib.tar.zst | grep -q "Zstandard"; then
-        echo -e "${ERROR} File terunduh bukan format Zstandard! Periksa kembali URL."
+        echo -e "${ERROR} File terunduh bukan format Zstandard! Periksa URL."
         exit 1
     fi
 
-    # Ekstrak langsung ke folder 'openwrt'
     mkdir -p "${openwrt_dir}"
     zstd -d ib.tar.zst -c | tar -x -C "${openwrt_dir}" --strip-components=1
     rm -f ib.tar.zst
+    echo -e "${SUCCESS} ImageBuilder berhasil diekstrak."
 }
 
-# 3. Add Custom Files
-custom_files() {
-    cd "${imagebuilder_path}"
-    if [[ -d "${custom_files_path}" ]]; then
-        echo -e "${STEPS} Memproses File Kustom..."
-        mkdir -p files
-        cp -rf "${custom_files_path}/." files/
-        chmod -R 755 files/
-    fi
-}
-
-# 4. Rebuild Firmware
+# 3. Build Firmware
 rebuild_firmware() {
     cd "${imagebuilder_path}"
-    echo -e "${STEPS} Membangun Rootfs ARMSR (Size: 700MB)..."
+    echo -e "${STEPS} Membangun Rootfs ARMSR (700MB)..."
 
-    # Paket (Sudah dibersihkan dari konflik wpad)
+    # Daftar paket gabungan & dibersihkan dari konflik
+    # Menambahkan '-' pada wpad-basic agar tidak bentrok dengan versi mbedtls/openssl
     my_packages="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
         kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
         mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
@@ -74,8 +62,8 @@ rebuild_firmware() {
         luci-app-ttyd luci-theme-material iw netdata vnstat2 vnstati2 nano \
         php8-cli php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
         php8-mod-mbstring"
-        
-    # Perintah Build
+
+    # Proses Image Building
     make image PROFILE="generic" \
                PACKAGES="${my_packages}" \
                FILES="files" \
@@ -92,7 +80,6 @@ rebuild_firmware() {
     fi
 }
 
-# Jalankan fungsi
+# Jalankan Fungsi Utama
 download_imagebuilder
-custom_files
 rebuild_firmware
