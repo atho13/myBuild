@@ -1,18 +1,8 @@
 #!/bin/bash
-
-# =================================================================
-# OpenWrt 25.12.1 Build Script for Amlogic (STB)
-# Path: config/imagebuilder/frdmx.sh
-# =================================================================
-
 set -e
 
-# Menangkap input dari Workflow (default ke 25.12.1 jika kosong)
+# 1. Variabel Lingkungan
 RELEASES_BRANCH="${1:-openwrt:25.12.1}"
-BASE=$(echo $RELEASES_BRANCH | cut -d':' -f1)
-BRANCH=$(echo $RELEASES_BRANCH | cut -d':' -f2)
-
-# Gunakan direktori /builder sesuai LVM di Workflow
 make_path="/builder"
 openwrt_dir="openwrt"
 imagebuilder_path="${make_path}/${openwrt_dir}"
@@ -21,56 +11,50 @@ custom_files_path="${GITHUB_WORKSPACE}/files"
 
 # Status Colors
 STEPS="[\033[95m STEPS \033[0m]"
-INFO="[\033[94m INFO \033[0m]"
 SUCCESS="[\033[92m SUCCESS \033[0m]"
 ERROR="[\033[91m ERROR \033[0m]"
 
-error_msg() { echo -e "${ERROR} ${1}"; exit 1; }
+# FIX PERMISSION: Memberikan izin tulis pada folder LVM ke user runner
+sudo chown -R runner:runner "${make_path}"
 
-# 1. Downloading ImageBuilder (PERBAIKAN URL)
+# 2. Download ImageBuilder (Target ARMSR/ARMV8)
 download_imagebuilder() {
     cd "${make_path}"
-    echo -e "${STEPS} Downloading ${BASE} ${BRANCH} ImageBuilder..."
+    echo -e "${STEPS} Downloading OpenWrt 25.12.1 ARMSR..."
     
-    # URL LENGKAP (Wajib diarahkan ke file .tar.zst)
-    URL="https://downloads.${BASE}.org/releases/${BRANCH}/targets/armvirt/64/${BASE}-imagebuilder-${BRANCH}-armvirt-64.Linux-x86_64.tar.zst"
+    URL="https://downloads.openwrt.org/releases/25.12.1/targets/armsr/armv8/openwrt-imagebuilder-25.12.1-armsr-armv8.Linux-x86_64.tar.zst"
     
-    wget -qO ib_file.tar.zst "${URL}" || error_msg "Gagal download ImageBuilder! Periksa URL: ${URL}"
+    wget -qO ib_file.tar.zst "${URL}" || { echo -e "${ERROR} Gagal download!"; exit 1; }
     
-    # Ekstrak menggunakan zstd
     zstd -d ib_file.tar.zst -c | tar -x -C . --strip-components=0
-    mv -f *-imagebuilder-* "${openwrt_dir}"
+    mv -f openwrt-imagebuilder-* "${openwrt_dir}"
     rm -f ib_file.tar.zst
-    echo -e "${SUCCESS} ImageBuilder siap di [ ${imagebuilder_path} ]"
 }
 
-# 2. Add Custom Files & Fix Permissions
+# 3. Add Custom Files & Permissions
 custom_files() {
     cd "${imagebuilder_path}"
     if [[ -d "${custom_files_path}" ]]; then
-        echo -e "${STEPS} Memproses File Kustom dari ${custom_files_path}..."
+        echo -e "${STEPS} Memproses File Kustom..."
         mkdir -p files
         cp -rf "${custom_files_path}/." files/
-
-        # PAKSA IZIN AKSES ROOT (0:0)
+        
+        # Set Izin Root & Executable
         sudo chown -R 0:0 files/
         find files/ -type d -exec chmod 755 {} +
         find files/ -type f -exec chmod 644 {} +
-        # Binary & Skrip Init wajib 755
         for dir in "bin" "sbin" "usr/bin" "usr/sbin" "etc/init.d" "etc/uci-defaults"; do
             [ -d "files/$dir" ] && find "files/$dir" -type f -exec chmod 755 {} +
         done
-        echo -e "${SUCCESS} Izin file disetel ke Root:0755"
     fi
 }
 
-# 3. Rebuild Firmware (Daftar Paket S905X Optimal)
+# 4. Rebuild Firmware (Target ARMSR)
 rebuild_firmware() {
     cd "${imagebuilder_path}"
-    echo -e "${STEPS} Membangun Rootfs untuk SoC Amlogic..."
+    echo -e "${STEPS} Membangun Rootfs ARMSR..."
 
-    # Paket Driver S905X + PHP8 + Netdata + System Tools
-    # Catatan: 'apk' ditambahkan karena standar baru 25.12
+    # Daftar paket (sesuai daftar Anda)
     my_packages="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
         kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
         mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
@@ -88,17 +72,17 @@ rebuild_firmware() {
         coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
         luci-app-ttyd luci-theme-material wpad-openssl iw iwinfo wireless-regdb netdata vnstat2 vnstati2 \
         php8-cli php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
-        php8-mod-mbstring wpad-basic-mbedtls hostapd-common"
+        php8-mod-mbstring wpad-basic-mbedtls hostapd-common luci-app-cpufreq"
 
-    # BUILD DENGAN FAKEROOT
     fakeroot make image PROFILE="generic" PACKAGES="${my_packages}" FILES="files" V=s
 
     if [ $? -eq 0 ]; then
-        echo -e "${SUCCESS} Rootfs sukses dibuat!"
+        echo -e "${SUCCESS} Build Berhasil!"
         mkdir -p "${output_path}"
-        cp bin/targets/armvirt/64/*.tar.* "${output_path}/"
+        # COPY DARI ARMSYSTEM (ARMSR/ARMV8)
+        cp bin/targets/armsr/armv8/*.tar.* "${output_path}/"
     else
-        error_msg "Build Gagal!"
+        echo -e "${ERROR} Build Gagal!"; exit 1
     fi
 }
 
