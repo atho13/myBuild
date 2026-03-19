@@ -2,15 +2,22 @@
 
 # =================================================================
 # OpenWrt 25.12.1 Build Script for Amlogic (STB)
-# Optimized for: APK Manager, Kernel 6.12, Zstandard Support
+# Path: config/imagebuilder/frdmx.sh
 # =================================================================
 
-# Set default parameters
-make_path="${PWD}"
-openwrt_dir="imagebuilder"
+set -e
+
+# Menangkap input dari Workflow (default ke 25.12.1 jika kosong)
+RELEASES_BRANCH="${1:-openwrt:25.12.1}"
+BASE=$(echo $RELEASES_BRANCH | cut -d':' -f1)
+BRANCH=$(echo $RELEASES_BRANCH | cut -d':' -f2)
+
+# Gunakan direktori /builder sesuai LVM di Workflow
+make_path="/builder"
+openwrt_dir="openwrt"
 imagebuilder_path="${make_path}/${openwrt_dir}"
-custom_files_path="${make_path}/files"
-output_path="${make_path}/output"
+output_path="${GITHUB_WORKSPACE}/output"
+custom_files_path="${GITHUB_WORKSPACE}/files"
 
 # Status Colors
 STEPS="[\033[95m STEPS \033[0m]"
@@ -20,54 +27,51 @@ ERROR="[\033[91m ERROR \033[0m]"
 
 error_msg() { echo -e "${ERROR} ${1}"; exit 1; }
 
-# 1. Downloading OpenWrt ImageBuilder (Zstandard Support)
+# 1. Downloading ImageBuilder (PERBAIKAN URL)
 download_imagebuilder() {
     cd "${make_path}"
-    echo -e "${STEPS} Downloading OpenWrt 25.12.1 ImageBuilder..."
+    echo -e "${STEPS} Downloading ${BASE} ${BRANCH} ImageBuilder..."
     
-    # URL Resmi OpenWrt 25.12.1 ArmVirt (Bahan Rootfs Amlogic)
-    download_url="https://downloads.openwrt.org"
+    # URL LENGKAP (Wajib diarahkan ke file .tar.zst)
+    URL="https://downloads.${BASE}.org/releases/${BRANCH}/targets/armvirt/64/${BASE}-imagebuilder-${BRANCH}-armvirt-64.Linux-x86_64.tar.zst"
     
-    wget -qO ib_file.tar.zst "${download_url}" || error_msg "Gagal download ImageBuilder!"
+    wget -qO ib_file.tar.zst "${URL}" || error_msg "Gagal download ImageBuilder! Periksa URL: ${URL}"
     
     # Ekstrak menggunakan zstd
     zstd -d ib_file.tar.zst -c | tar -x -C . --strip-components=0
-    mv -f openwrt-imagebuilder-* "${openwrt_dir}"
+    mv -f *-imagebuilder-* "${openwrt_dir}"
     rm -f ib_file.tar.zst
-    echo -e "${SUCCESS} ImageBuilder siap di folder [ ${openwrt_dir} ]"
+    echo -e "${SUCCESS} ImageBuilder siap di [ ${imagebuilder_path} ]"
 }
 
-# 2. Add Custom Files & Fix Permissions (IMPORTANT)
+# 2. Add Custom Files & Fix Permissions
 custom_files() {
     cd "${imagebuilder_path}"
     if [[ -d "${custom_files_path}" ]]; then
-        echo -e "${STEPS} Memproses File Kustom & Memperbaiki Izin (Permissions)..."
+        echo -e "${STEPS} Memproses File Kustom dari ${custom_files_path}..."
         mkdir -p files
         cp -rf "${custom_files_path}/." files/
 
-        # PAKSA IZIN AKSES (ROOT 0:0 dan 0755/0644)
-        # 1. Semua folder jadi 755
+        # PAKSA IZIN AKSES ROOT (0:0)
+        sudo chown -R 0:0 files/
         find files/ -type d -exec chmod 755 {} +
-        # 2. Semua file sistem inti jadi 755 (Executable)
+        find files/ -type f -exec chmod 644 {} +
+        # Binary & Skrip Init wajib 755
         for dir in "bin" "sbin" "usr/bin" "usr/sbin" "etc/init.d" "etc/uci-defaults"; do
             [ -d "files/$dir" ] && find "files/$dir" -type f -exec chmod 755 {} +
         done
-        # 3. Semua file config jadi 644 (Read Only)
-        [ -d "files/etc/config" ] && find "files/etc/config" -type f -exec chmod 644 {} +
-        
-        # NOTE: Kepemilikan root disimulasikan oleh fakeroot saat 'make'
-        echo -e "${SUCCESS} Izin file berhasil disetel."
+        echo -e "${SUCCESS} Izin file disetel ke Root:0755"
     fi
 }
 
-# 3. Rebuild OpenWrt Firmware (Daftar Paket Lengkap)
+# 3. Rebuild Firmware (Daftar Paket S905X Optimal)
 rebuild_firmware() {
     cd "${imagebuilder_path}"
-    echo -e "${STEPS} Membangun Rootfs dengan APK Manager & Driver WiFi..."
+    echo -e "${STEPS} Membangun Rootfs untuk SoC Amlogic..."
 
-    # Paket Driver WiFi, USB LAN, Modem, dan Tool Sistem
-    my_packages="\
-        base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
+    # Paket Driver S905X + PHP8 + Netdata + System Tools
+    # Catatan: 'apk' ditambahkan karena standar baru 25.12
+    my_packages="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
         kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
         mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
         uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm \
@@ -78,28 +82,27 @@ rebuild_firmware() {
         kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim luci-proto-modemmanager modemmanager modemmanager-rpcd \
         libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
         ip-full php8 haproxy tcpdump UDPspeeder irqbalance kmod-dummy bc uhttpd uhttpd-mod-ubus unzip \
-        uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash \
+        uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash apk \
         openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat \
         kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
         coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
         luci-app-ttyd luci-theme-material wpad-openssl iw iwinfo wireless-regdb netdata vnstat2 vnstati2 \
         php8-cli php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
-        php8-mod-mbstring luci-theme-material wpad-basic-mbedtls iw iwinfo hostapd-common"
+        php8-mod-mbstring wpad-basic-mbedtls hostapd-common"
 
-    # EKSEKUSI DENGAN FAKEROOT (Untuk Izin Root 0:0)
+    # BUILD DENGAN FAKEROOT
     fakeroot make image PROFILE="generic" PACKAGES="${my_packages}" FILES="files" V=s
 
     if [ $? -eq 0 ]; then
-        echo -e "${SUCCESS} Build Selesai!"
+        echo -e "${SUCCESS} Rootfs sukses dibuat!"
         mkdir -p "${output_path}"
         cp bin/targets/armvirt/64/*.tar.* "${output_path}/"
-        echo -e "${INFO} Hasil Rootfs ada di folder: ${output_path}"
     else
         error_msg "Build Gagal!"
     fi
 }
 
-# Jalankan Fungsi Utama
+# Eksekusi
 download_imagebuilder
 custom_files
 rebuild_firmware
