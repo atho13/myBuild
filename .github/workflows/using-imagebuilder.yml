@@ -226,3 +226,18 @@ jobs:
             - **Format**: `.tar.zst` (Zstandard)
             
             *Gunakan file ini sebagai rootfs pada tool repack Amlogic.*
+            
+      - name: Cleanup Older Releases
+        uses: dev-drprasad/delete-older-releases@v0.3.3
+        with:
+          keep_latest: 3
+          delete_tags: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cleanup Workspace
+        run: |
+          # Menghapus folder build besar untuk membebaskan ruang disk runner
+          sudo rm -rf /builder/openwrt
+          sudo rm -rf output/*
+
