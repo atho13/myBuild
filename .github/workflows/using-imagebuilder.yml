@@ -172,7 +172,7 @@ jobs:
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
         uses: ribel13/aml@main
         with:
-          openwrt_path: output/*rootfs.tar.gz
+          openwrt_path: output/*rootfs.tar.*
           openwrt_ip: ${{ inputs.openwrt_ip }}
           openwrt_board: ${{ inputs.openwrt_board }}
           openwrt_kernel: ${{ inputs.openwrt_kernel }}
