@@ -93,15 +93,28 @@ custom_files() {
 # 4. Fungsi Rebuild Firmware (Optimal untuk STB & APK Manager)
 rebuild_firmware() {
     cd "${imagebuilder_path}"
-    echo -e "${STEPS} Membangun Rootfs (Size: 700MB)..."
+    echo -e "${STEPS} Membangun Rootfs (Size: 1024MB)..."
 
     # Daftar Paket Terpadu (Menghindari konflik WPAD pada APK System)
     my_packages="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
-        kmod-nft-offload libc libgcc libustream-mbedtls logd mkf2fs mtd netifd nftables \
-        ppp ppp-mod-pppoe luci luci-compat luci-mod-admin-full bash apk zstd \
-        htop jq tar luci-app-ttyd ttyd luci-theme-material php8 netdata vnstat2 \
-        -wpad-basic -wpad-mini wpad-basic-mbedtls hostapd-common luci-app-cpufreq"
-
+        kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
+        mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
+        uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm \
+        kmod-usb-net kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
+        luci-mod-network kmod-usb-net-rtl8150 kmod-usb-net-rtl8152 kmod-usb-net-asix kmod-usb-net-asix-ax88179 \
+        kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
+        luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
+        kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim luci-proto-modemmanager modemmanager modemmanager-rpcd \
+        libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
+        ip-full php8 haproxy tcpdump UDPspeeder irqbalance kmod-dummy bc uhttpd uhttpd-mod-ubus unzip \
+        uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash apk \
+        openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat \
+        kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
+        coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
+        luci-app-ttyd luci-theme-material iw netdata vnstat2 vnstati2 nano \
+        php8-cli php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
+        php8-mod-mbstring"
+        
     # Jalankan make dengan FORCE_UNSAFE_CONFIGURE=1 karena berjalan di LVM/Sudo
     # CONFIG_TARGET_ROOTFS_PARTSIZE diset 700MB agar muat paket berat
     make image PROFILE="generic" \
@@ -109,7 +122,7 @@ rebuild_firmware() {
                FILES="files" \
                V=s \
                FORCE_UNSAFE_CONFIGURE=1 \
-               CONFIG_TARGET_ROOTFS_PARTSIZE=700
+               CONFIG_TARGET_ROOTFS_PARTSIZE=1024
 
     if [ $? -eq 0 ]; then
         echo -e "${SUCCESS} Build Berhasil!"
