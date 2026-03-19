@@ -196,3 +196,33 @@ jobs:
             - Default IP: `192.168.1.1`
             - Default username: `root`
             - Default password: `root`
+
+      - name: Generate Release Tag
+        id: tag
+        run: |
+          # Membuat tag unik berdasarkan tanggal dan model
+          echo "release_tag=OpenWrt_S905X_$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+          echo "status=success" >> $GITHUB_OUTPUT
+
+      - name: Upload Rootfs to GitHub Release
+        uses: ncipollo/release-action@v1
+        if: steps.tag.outputs.status == 'success' && !cancelled()
+        with:
+          tag: ${{ steps.tag.outputs.release_tag }}
+          artifacts: "output/*.tar.*"
+          allowUpdates: true
+          removeArtifacts: false
+          replacesArtifacts: true
+          makeLatest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## OpenWrt 25.12.1 Amlogic S905X
+            Build Date: ${{ github.event.repository.updated_at }}
+            
+            ### Informasi Image:
+            - **Versi**: OpenWrt 25.12.1 (Maret 2026)
+            - **Kernel**: 6.12.y / 6.18.y (Ophub Repack)
+            - **Default IP**: `192.168.1.1`
+            - **Format**: `.tar.zst` (Zstandard)
+            
+            *Gunakan file ini sebagai rootfs pada tool repack Amlogic.*
