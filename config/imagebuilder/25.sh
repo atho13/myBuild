@@ -1,325 +1,127 @@
 #!/bin/bash
-#================================================================================================
-#
-# This file is licensed under the terms of the GNU General Public
-# License version 2. This program is licensed "as is" without any
-# warranty of any kind, whether express or implied.
-#
-# This file is a part of the make OpenWrt for Amlogic s9xxx tv box
-# https://github.com/ophub/amlogic-s9xxx-openwrt
-#
-# Description: Build OpenWrt with Image Builder
-# Copyright (C) 2021~ https://github.com/unifreq/openwrt_packit
-# Copyright (C) 2021~ https://github.com/ophub/amlogic-s9xxx-openwrt
-# Copyright (C) 2021~ https://downloads.openwrt.org/releases
-# Copyright (C) 2023~ https://downloads.immortalwrt.org/releases
-#
-# Download from: https://downloads.openwrt.org/releases
-#                https://downloads.immortalwrt.org/releases
-#
-# Documentation: https://openwrt.org/docs/guide-user/additional-software/imagebuilder
-# Instructions:  Download OpenWrt firmware from the official OpenWrt,
-#                Use Image Builder to add packages, lib, theme, app and i18n, etc.
-#
-# Command: ./config/imagebuilder/imagebuilder.sh <source:branch>
-#          ./config/imagebuilder/imagebuilder.sh openwrt:24.10.4
-#
-#======================================== Functions list ========================================
-#
-# error_msg               : Output error message
-# download_imagebuilder   : Downloading OpenWrt ImageBuilder
-# adjust_settings         : Adjust related file settings
-# custom_packages         : Add custom packages
-# custom_config           : Add custom config
-# custom_files            : Add custom files
-# rebuild_firmware        : rebuild_firmware
-# custom_settings         : Custom settings after rebuild
-#
-#================================ Set make environment variables ================================
-#
-# Set default parameters
-make_path="${PWD}"
-openwrt_dir="imagebuilder"
-imagebuilder_path="${make_path}/${openwrt_dir}"
-custom_files_path="${make_path}/config/imagebuilder/files"
-custom_config_file="${make_path}/config/imagebuilder/config"
-output_path="${make_path}/output"
-tmp_path="${imagebuilder_path}/tmp"
-unpack_path="${tmp_path}/unpacked_rootfs"
 
-# Set default parameters
+# =================================================================
+# OpenWrt 25.12.1 Build Script for Amlogic (STB)
+# Path: config/imagebuilder/frdmx.sh
+# Optimized for: S905X, APK Manager, Kernel 6.12, Zstandard Support
+# =================================================================
+
+set -e
+
+# 1. Konfigurasi Path (Sesuai Struktur Workflow LVM)
+RELEASES_BRANCH="${1:-openwrt:25.12.1}"
+make_path="/builder"
+openwrt_dir="openwrt"
+imagebuilder_path="${make_path}/${openwrt_dir}"
+custom_files_path="${GITHUB_WORKSPACE}/files"
+output_path="${GITHUB_WORKSPACE}/output"
+
+# Status Colors
 STEPS="[\033[95m STEPS \033[0m]"
 INFO="[\033[94m INFO \033[0m]"
 SUCCESS="[\033[92m SUCCESS \033[0m]"
-WARNING="[\033[93m WARNING \033[0m]"
 ERROR="[\033[91m ERROR \033[0m]"
-#
-#================================================================================================
 
-# Encountered a serious error, abort the script execution
-error_msg() {
-    echo -e "${ERROR} ${1}"
-    exit 1
-}
+error_msg() { echo -e "${ERROR} ${1}"; exit 1; }
 
-# Downloading OpenWrt ImageBuilder
+# FIX PERMISSION: Agar user runner bisa menulis di folder /builder (LVM)
+sudo chown -R runner:runner "${make_path}"
+
+# 2. Fungsi Download ImageBuilder (Dinamis OpenWrt/ImmortalWrt)
 download_imagebuilder() {
-    cd ${make_path}
-    echo -e "${STEPS} Start downloading OpenWrt files..."
+    cd "${make_path}"
+    echo -e "${STEPS} Downloading ImageBuilder for ${RELEASES_BRANCH}..."
 
-    # Downloading imagebuilder files
-    if [[ "${op_sourse}" == "immortalwrt" ]]; then
-        download_url="immortalwrt.kyarucloud.moe"
+    # Pisahkan Source dan Branch (Contoh: openwrt:25.12.1)
+    local op_source=$(echo "${RELEASES_BRANCH}" | cut -d':' -f1)
+    local op_branch=$(echo "${RELEASES_BRANCH}" | cut -d':' -f2)
+
+    # Tentukan URL berdasarkan Source
+    if [[ "${op_source}" == "immortalwrt" ]]; then
+        local download_url="downloads.immortalwrt.org"
     else
-        download_url="downloads.openwrt.org"
-    fi
-    download_file="https://${download_url}/releases/${op_branch}/targets/armsr/armv8/${op_sourse}-imagebuilder-${op_branch}-armsr-armv8.Linux-x86_64.tar.zst"
-    curl -fsSOL ${download_file}
-    [[ "${?}" -eq "0" ]] || error_msg "Download failed: [ ${download_file} ]"
-
-    # Unzip and change the directory name
-    tar -I zstd -xvf *-imagebuilder-*.tar.zst -C . && sync && rm -f *-imagebuilder-*.tar.zst
-    mv -f *-imagebuilder-* ${openwrt_dir}
-
-    sync && sleep 3
-    echo -e "${INFO} [ ${make_path} ] directory status: \n$(ls -lh . 2>/dev/null)"
-}
-
-# Adjust related files in the ImageBuilder directory
-adjust_settings() {
-    cd ${imagebuilder_path}
-    echo -e "${STEPS} Start adjusting .config file settings..."
-
-    # For .config file
-    if [[ -s ".config" ]]; then
-        # Root filesystem archives
-        sed -i "s|CONFIG_TARGET_ROOTFS_CPIOGZ=.*|# CONFIG_TARGET_ROOTFS_CPIOGZ is not set|g" .config
-        # Root filesystem images
-        sed -i "s|CONFIG_TARGET_ROOTFS_EXT4FS=.*|# CONFIG_TARGET_ROOTFS_EXT4FS is not set|g" .config
-        sed -i "s|CONFIG_TARGET_ROOTFS_SQUASHFS=.*|# CONFIG_TARGET_ROOTFS_SQUASHFS is not set|g" .config
-        sed -i "s|CONFIG_TARGET_IMAGES_GZIP=.*|# CONFIG_TARGET_IMAGES_GZIP is not set|g" .config
-    else
-        echo -e "${INFO} [ ${imagebuilder_path} ] directory status: \n$(ls -lh . 2>/dev/null)"
-        error_msg "There is no .config file in the [ ${download_file} ]"
+        local download_url="downloads.openwrt.org"
     fi
 
-    # For other files
-    # ......
-
-    sync && sleep 3
-    echo -e "${INFO} [ ${imagebuilder_path} ] directory status: \n$(ls -lh . 2>/dev/null)"
-}
-
-# Add custom packages
-# If there is a custom package or ipk you would prefer to use create a [ packages ] directory,
-# If one does not exist and place your custom ipk within this directory.
-custom_packages() {
-    cd ${imagebuilder_path}
-    echo -e "${STEPS} Start adding custom packages..."
-
-    # Create a [ packages ] directory
-    [[ -d "packages" ]] || mkdir packages
-    cd packages
-
-    # Download luci-app-amlogic
-    #amlogic_api="https://api.github.com/repos/ophub/luci-app-amlogic/releases"
-    #
-    #amlogic_plugin="luci-app-amlogic"
-    #amlogic_plugin_down="$(curl -s ${amlogic_api} | grep "browser_download_url" | grep -oE "https.*${amlogic_plugin}.*.ipk" | head -n 1)"
-    #curl -fsSOJL ${amlogic_plugin_down}
-    #[[ "${?}" -eq "0" ]] || error_msg "[ ${amlogic_plugin} ] download failed!"
-    #echo -e "${INFO} The [ ${amlogic_plugin} ] is downloaded successfully."
-    #
-    #amlogic_i18n_cn="luci-i18n-amlogic-zh-cn"
-    #amlogic_i18n_down="$(curl -s ${amlogic_api} | grep "browser_download_url" | grep -oE "https.*${amlogic_i18n_cn}.*.ipk" | head -n 1)"
-    #curl -fsSOJL ${amlogic_i18n_down}
-    #[[ "${?}" -eq "0" ]] || error_msg "[ ${amlogic_i18n_cn} ] download failed!"
-    #echo -e "${INFO} The [ ${amlogic_i18n_cn} ] is downloaded successfully."
-
-    # Download other luci-app-xxx
-    # ......
-
-    sync && sleep 3
-    echo -e "${INFO} [ packages ] directory status: \n$(ls -lh . 2>/dev/null)"
-}
-
-# Add custom packages, lib, theme, app and i18n, etc.
-custom_config() {
-    cd ${imagebuilder_path}
-    echo -e "${STEPS} Start adding custom config..."
-
-    config_list=""
-    if [[ -s "${custom_config_file}" ]]; then
-        config_list="$(sed -n 's/^CONFIG_PACKAGE_\(.*\)=y$/\1/p' "${custom_config_file}" | tr '\n' ' ')"
-        echo -e "${INFO} Custom config list: \n$(echo "${config_list}" | tr ' ' '\n')"
+    # Deteksi Ekstensi (25.12 ke atas pakai .zst, versi lama pakai .xz)
+    if [[ "$op_branch" == 25* ]]; then
+        local ext="tar.zst"
     else
-        echo -e "${INFO} No custom config was added."
+        local ext="tar.xz"
     fi
+
+    # URL Absolut untuk ARMSr/ARMv8
+    local download_file="https://${download_url}/releases/${op_branch}/targets/armsr/armv8/${op_source}-imagebuilder-${op_branch}-armsr-armv8.Linux-x86_64.${ext}"
+
+    echo -e "${INFO} URL: ${download_file}"
+    curl -fsSOL "${download_file}" || error_msg "Gagal download ImageBuilder!"
+
+    # Ekstrak (Mendukung Zstd atau XZ)
+    if [[ "$ext" == "tar.zst" ]]; then
+        zstd -d *.tar.zst -c | tar -x -C . --strip-components=0
+    else
+        tar -xJf *.tar.xz -C . --strip-components=0
+    fi
+
+    # Rapikan folder
+    mv -f *-imagebuilder-* "${openwrt_dir}"
+    rm -f *.tar.*
+    
+    echo -e "${SUCCESS} ImageBuilder siap di [ ${imagebuilder_path} ]"
 }
 
-# Add custom files
-# The FILES variable allows custom configuration files to be included in images built with Image Builder.
-# The [ files ] directory should be placed in the Image Builder root directory where you issue the make command.
-#custom_files() {
-    #cd ${imagebuilder_path}
-    #echo -e "${STEPS} Start adding custom files..."
-
-    #if [[ -d "${custom_files_path}" ]]; then
-        # Copy custom files
-        #[[ -d "files" ]] || mkdir -p files
-        #cp -rf ${custom_files_path}/* files
-
-        #sync && sleep 3
-        #echo -e "${INFO} [ files ] directory status: \n$(ls -lh files/ 2>/dev/null)"
-    #else
-        #echo -e "${INFO} No customized files were added."
-    #fi
-#}
-# Add custom files
-# The FILES variable allows custom configuration files to be included in images built with Image Builder.
-# The [ files ] directory should be placed in the Image Builder root directory where you issue the make command.
+# 3. Fungsi Custom Files & Fix Permissions (Krusial untuk S905X)
 custom_files() {
-    # Pindah ke folder imagebuilder
-    cd "${imagebuilder_path}" || { echo "Gagal masuk ke direktori build"; exit 1; }
-
+    cd "${imagebuilder_path}"
     if [[ -d "${custom_files_path}" ]]; then
-        echo -e "Menyalin file kustom dari: ${custom_files_path}"
-        
-        # 1. Pastikan folder target bersih
+        echo -e "${STEPS} Memproses File Kustom & Mengatur Izin (Root:0755)..."
         mkdir -p files
-        
-        # 2. Salin semua file
         cp -rf "${custom_files_path}/." files/
 
-        # 3. Atur izin akses (Rooting files)
-        # Menggunakan sudo agar file di dalam firmware benar-benar milik root
+        # Paksa semua file sistem inti menjadi 0755 agar tidak bootloop
         sudo chown -R 0:0 files/
         find files/ -type d -exec chmod 755 {} +
         find files/ -type f -exec chmod 644 {} +
-        
-        # Berikan izin eksekusi untuk skrip init (jika ada)
-        [ -d "files/etc/init.d" ] && sudo chmod -R +x files/etc/init.d/*
-        
-        echo "File kustom berhasil diproses."
+        # Binary & Script Init wajib executable
+        for d in "bin" "sbin" "usr/bin" "usr/sbin" "etc/init.d" "etc/uci-defaults"; do
+            [ -d "files/$d" ] && find "files/$d" -type f -exec chmod 755 {} +
+        done
+        echo -e "${SUCCESS} Izin file berhasil disetel."
     fi
 }
 
-# Rebuild OpenWrt firmware
+# 4. Fungsi Rebuild Firmware (Optimal untuk STB & APK Manager)
 rebuild_firmware() {
-    cd ${imagebuilder_path}
-    echo -e "${STEPS} Start building OpenWrt with Image Builder..."
+    cd "${imagebuilder_path}"
+    echo -e "${STEPS} Membangun Rootfs (Size: 700MB)..."
 
-    # Selecting default packages, lib, theme, app and i18n, etc.
-    my_packages="\
-        attr base-files bash bc blkid block-mount btrfs-progs busybox bzip2 ip-full libc \
-        uhttpd uhttpd-mod-ubus luci-ssl openssh-sftp-server adb curl wget-ssl \
-        cgi-io comgt comgt-ncm coreutils coreutils-stat coreutils-base64 coreutils-nohup \
-        curl dosfstools e2fsprogs exfat-mkfs f2fs-tools f2fsck fdisk gawk wpa-supplicant \
-        iw iwinfo jq jshn kmod-brcmfmac kmod-brcmutil nano htop liblucihttp-lua ca-bundle \
-        losetup lsblk lscpu mkf2fs mount-utils openssl-util parted iconv gzip zram-swap \
-        perlbase-file perlbase-unicode perlbase-utf8 perlbase-essential perlbase-time \
-        perlbase-xsloader rpcd rpcd-mod-file rpcd-mod-iwinfo rpcd-mod-luci rpcd-mod-rrdns \
-        uhttpd uhttpd-mod-ubus openssh-sftp-server ppp ppp-mod-pppoe pv ntfs-3g tar ttyd \
-        kmod-usb2 kmod-usb-net-rndis wwan httping uclient-fetch unzip uqmi usb-modeswitch \
-        uuidgen xz xz-utils ziptool zoneinfo-asia zoneinfo-core UDPspeeder haproxy \
-        \
-        luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm kmod-usb-net kmod-usb-net-rndis \
-        luci-lib-ip luci-lib-ipkg luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network \
-        luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils \
-        luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd \
-        kmod-usb-wdm kmod-usb-net-qmi-wwan luci-proto-qmi kmod-usb-net-cdc-ether dbus dbus-utils ppp chat \
-        kmod-usb-serial-option kmod-usb-serial kmod-usb-serial-wwan qmi-utils kmod-usb-serial-qualcomm \
-        kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim umbim luci-proto-modemmanager modemmanager modemmanager-rpcd libqmi libmbim glib2 \
-        \
-        ${config_list} \
-        "
+    # Daftar Paket Terpadu (Menghindari konflik WPAD pada APK System)
+    my_packages="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
+        kmod-nft-offload libc libgcc libustream-mbedtls logd mkf2fs mtd netifd nftables \
+        ppp ppp-mod-pppoe luci luci-compat luci-mod-admin-full bash apk zstd \
+        htop jq tar luci-app-ttyd ttyd luci-theme-material php8 netdata vnstat2 \
+        -wpad-basic -wpad-mini wpad-basic-mbedtls hostapd-common luci-app-cpufreq"
 
-    # Rebuild firmware
-    make image PROFILE="" PACKAGES="${my_packages}" FILES="files"
+    # Jalankan make dengan FORCE_UNSAFE_CONFIGURE=1 karena berjalan di LVM/Sudo
+    # CONFIG_TARGET_ROOTFS_PARTSIZE diset 700MB agar muat paket berat
+    make image PROFILE="generic" \
+               PACKAGES="${my_packages}" \
+               FILES="files" \
+               V=s \
+               FORCE_UNSAFE_CONFIGURE=1 \
+               CONFIG_TARGET_ROOTFS_PARTSIZE=700
 
-    sync && sleep 3
-    echo -e "${INFO} [ ${openwrt_dir}/bin/targets/*/*/ ] directory status: \n$(ls -lh bin/targets/*/*/ 2>/dev/null)"
-    echo -e "${INFO} The rebuild is successful."
-}
-
-# Custom settings after rebuild
-custom_settings() {
-    cd ${imagebuilder_path}
-    echo -e "${STEPS} Start performing custom settings after rebuild..."
-
-    # Clean up temporary and output directories
-    [[ -d "${tmp_path}" ]] && rm -rf "${tmp_path:?}"/* || mkdir -p "${tmp_path}"
-    [[ -d "${output_path}" ]] && rm -rf "${output_path:?}"/* || mkdir -p "${output_path}"
-
-    # Find the original *rootfs.tar.gz file
-    original_archive="$(ls -1 bin/targets/*/*/*rootfs.tar.gz 2>/dev/null | head -n 1)"
-
-    # Check if the original archive exists
-    if [[ ! -f "${original_archive}" ]]; then
-        error_msg "No *rootfs.tar.gz found."
+    if [ $? -eq 0 ]; then
+        echo -e "${SUCCESS} Build Berhasil!"
+        mkdir -p "${output_path}"
+        # Copy hasil build ARMSr ke folder output (tar.zst)
+        cp bin/targets/armsr/armv8/*.tar.* "${output_path}/" 2>/dev/null || true
     else
-        echo -e "${INFO} Processing: ${original_archive}"
-
-        # Get the filename and path
-        original_filename="$(basename "${original_archive}")"
-        original_path="$(dirname "${original_archive}")"
-
-        # Unpack the original archive
-        echo -e "${INFO} Unpacking ${original_filename}..."
-        mkdir -p "${unpack_path}"
-        tar -xzpf "${original_archive}" -C "${unpack_path}"
-
-        # Modify etc/openwrt_release
-        release_file="${unpack_path}/etc/openwrt_release"
-        if [[ -f "${release_file}" ]]; then
-            echo -e "${INFO} Modifying etc/openwrt_release..."
-            {
-                echo "DISTRIB_SOURCEREPO='github.com/${op_sourse}/${op_sourse}'"
-                echo "DISTRIB_SOURCECODE='${op_sourse}'"
-                echo "DISTRIB_SOURCEBRANCH='${op_branch}'"
-            } >>"${release_file}"
-        else
-            error_msg "${release_file} not found."
-        fi
-
-        # Repack the modified root filesystem
-        echo -e "${INFO} Repacking into ${original_filename}..."
-        (cd "${unpack_path}" && tar -czpf "${tmp_path}/${original_filename}" ./)
-
-        # Move the repacked archive to the output directory
-        echo -e "${INFO} Moving repacked OpenWrt rootfs file to output directory..."
-        mv -f "${tmp_path}/${original_filename}" "${output_path}/"
-        # Copy the config file to the output directory
-        cp -f .config "${output_path}/config" || true
+        error_msg "Build Gagal!"
     fi
-
-    sync && sleep 3
-    cd ${make_path}
-    rm -rf "${imagebuilder_path}"
-    echo -e "${INFO} [ ${output_path} ] directory status: \n$(ls -lh ${output_path}/ 2>/dev/null)"
-    echo -e "${INFO} Modification successfully."
 }
 
-# Show welcome message
-echo -e "${STEPS} Welcome to Rebuild OpenWrt Using the Image Builder."
-[[ -x "${0}" ]] || error_msg "Please give the script permission to run: [ chmod +x ${0} ]"
-[[ -z "${1}" ]] && error_msg "Please specify the OpenWrt Branch, such as [ ${1} openwrt:25.12.0 ]"
-[[ "${1}" =~ ^[a-z]{3,}:[0-9]+ ]] || error_msg "Incoming parameter format <source:branch>: openwrt:25.12.0"
-op_sourse="${1%:*}"
-op_branch="${1#*:}"
-echo -e "${INFO} Rebuild path: [ ${PWD} ]"
-echo -e "${INFO} Rebuild Source: [ ${op_sourse} ], Branch: [ ${op_branch} ]"
-echo -e "${INFO} Server space usage before starting to compile: \n$(df -hT ${make_path}) \n"
-#
-# Perform related operations
+# --- EKSEKUSI URUTAN ---
 download_imagebuilder
-adjust_settings
-custom_packages
-custom_config
 custom_files
 rebuild_firmware
-custom_settings
-#
-# Show server end information
-echo -e "${SUCCESS} OpenWrt ImageBuilder processed successfully."
-echo -e "${INFO} Server space usage after compilation: \n$(df -hT ${make_path}) \n"
