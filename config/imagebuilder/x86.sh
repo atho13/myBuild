@@ -1,56 +1,62 @@
 #!/bin/bash
+set -e
 
-log() {
-    echo -e "[ $(date +%H:%M:%S) ] $*"
+# 1. Variabel Jalur
+make_path="/builder"
+openwrt_dir="openwrt_x86"
+imagebuilder_path="${make_path}/${openwrt_dir}"
+output_path="${GITHUB_WORKSPACE}/output"
+
+# 2. Download ImageBuilder x86/64
+download_ib_x86() {
+    sudo mkdir -p "${make_path}"
+    sudo chown runner:runner "${make_path}"
+    cd "${make_path}"
+    
+    URL="https://downloads.openwrt.org"
+    
+    wget -qO- "$URL" | zstd -d | tar -x -C .
+    mv openwrt-imagebuilder-* "${openwrt_dir}"
 }
 
-# Ambil input target dari workflow (Amlogic atau X86-64)
-TARGET_TYPE=$1 
+# 3. Build Process
+build_x86() {
+    cd "${imagebuilder_path}"
+    
+    # Kustomisasi Partisi untuk x86 (Penting: x86 butuh space lebih untuk Docker/PHP)
+    echo "CONFIG_TARGET_ROOTFS_PARTSIZE=750" >> .config
+    echo "CONFIG_TARGET_KERNEL_PARTSIZE=64" >> .config
 
-# 1. DAFTAR PAKET LENGKAP
-PACKAGES="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
-kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
-mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
-uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base \
-luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
-luci-mod-network kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim \
-mbim-utils picocom minicom luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd \
-libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
-ip-full php8 haproxy tcpdump UDPspeeder irqbalance kmod-dummy bc uhttpd uhttpd-mod-ubus unzip \
-uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash \
-openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat \
-kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
-coreutils-nohup luci-app-ttyd luci-theme-material wpad-openssl iw iwinfo wireless-regdb \
-fstrim"
+    # Paket spesifik x86 (tambahkan kmod-igc, kmod-e1000e untuk LAN modern)
+    # Gunakan list paket Anda yang sebelumnya, tambahkan paket hardware x86
+    my_packages="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
+    kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
+    mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
+    uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base \
+    luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
+    luci-mod-network kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim \
+    mbim-utils picocom minicom luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd \
+    libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
+    ip-full php8 haproxy tcpdump UDPspeeder irqbalance kmod-dummy bc uhttpd uhttpd-mod-ubus unzip \
+    uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash \
+    openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat \
+    kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
+    coreutils-nohup luci-app-ttyd luci-theme-material wpad-openssl iw iwinfo wireless-regdb \
+    fstrim"
 
-# 2. LOGIKA PAKET BERDASARKAN TARGET
-if [ "$TARGET_TYPE" == "generic" ]; then
-    log "INFO: Menambahkan Driver & Optimasi x86_64..."
-    DRIVERS_X86="kmod-e1000 kmod-e1000e kmod-igb kmod-ixgbe kmod-r8169 kmod-r8168 kmod-r8125"
-    PACKAGES="$PACKAGES $DRIVERS_X86"
-fi
+    # Jalankan Build (x86 menggunakan PROFILE="generic")
+    make image PROFILE="generic" \
+               PACKAGES="${my_packages}" \
+               FILES="${GITHUB_WORKSPACE}/files" \
+               V=s
 
-# 3. KONFIGURASI OTOMATIS (IP STATIS & BBR)
-#!/bin/sh
-# 1. Aktifkan Google BBR
-echo "net.core.default_qdisc=fq" >> /etc/sysctl.conf
-echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
-sysctl -p
+    # Pindahkan hasil (.img.gz dan .vmdk untuk Proxmox/VMware)
+    mkdir -p "${output_path}"
+    cp bin/targets/x86/64/*-generic-ext4-combined-efi.img.gz "${output_path}/"
+    cp bin/targets/x86/64/*-combined-efi.vmdk "${output_path}/" 2>/dev/null || true
+}
 
-# 4. EKSEKUSI BUILD (PROFILE generic)
-log "INFO: Memulai proses Build Firmware..."
-[ -d "${GITHUB_WORKSP 5gACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
-make image PROFILE="generic" \
-           PACKAGES="$PACKAGES" \
-           FILES="files" \
-           V=s \
-           CONFIG_TARGET_ROOTFS_TARGZ=y \
-           CONFIG_TARGET_KERNEL_PARTSIZE=256 \
-           CONFIG_TARGET_ROOTFS_PARTSIZE=750
+download_ib_x86
+build_x86
 
-if [ $? -eq 0 ]; then
-    log "SUCCESS: Build Selesai!"
-else
-    log "ERROR: Build Gagal!"
-    exit 1
-fi
+
