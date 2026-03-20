@@ -63,10 +63,7 @@ rebuild_firmware() {
         uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash apk \
         openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat \
         kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
-        coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
-        luci-app-ttyd luci-theme-material iw netdata vnstat2 vnstati2 nano \
-        php8-cli php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
-        php8-mod-mbstring"
+        coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless"
 
     # Proses Image Building
     make image PROFILE="generic" \
