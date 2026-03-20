@@ -1,0 +1,96 @@
+name: x86 Builder
+
+on:
+  workflow_dispatch:
+    inputs:
+      custom_url:
+        description: "URL Image Builder x86_64 (.tar.zst)"
+        required: true
+        default: ""
+      openwrt_ip:
+        description: "Set OpenWrt default IP address"
+        required: false
+        default: "192.168.1.1"
+
+env:
+  TZ: Asia/Jakarta
+  WORKING_DIR: /builder/x86_ib
+  OUTPUT_DIR: ${{ github.workspace }}/output
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialization Environment
+        run: |
+          sudo timedatectl set-timezone "${{ env.TZ }}"
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison g++ gawk gettext \
+          git libncurses5-dev libssl-dev rsync unzip zlib1g-dev \
+          curl tar qemu-utils wget python3-setuptools python3-dev python-is-python3 zstd
+          sudo mkdir -p /builder
+          sudo chown runner:runner /builder
+          mkdir -p ${{ env.OUTPUT_DIR }}
+
+      - name: Download Image Builder
+        run: |
+          mkdir -p ${{ env.WORKING_DIR }}
+          wget -qO- "${{ github.event.inputs.custom_url }}" | zstd -d | tar -xf - -C ${{ env.WORKING_DIR }} --strip-components=1
+
+      - name: Build Firmware
+        run: |
+          cd ${{ env.WORKING_DIR }}
+          
+          # Inject Partisi 1GB (Penting untuk x86 agar muat Docker/PHP)
+          sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=750/' .config || echo "CONFIG_TARGET_ROOTFS_PARTSIZE=750" >> .config
+          
+          # Paket x86 Lengkap (Driver LAN + PHP8 + Modem)
+          PACKAGES="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
+          kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
+          mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
+          uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base \
+          luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
+          luci-mod-network kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim \
+          mbim-utils picocom minicom luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd \
+          libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
+          ip-full php8 haproxy tcpdump UDPspeeder irqbalance kmod-dummy bc uhttpd uhttpd-mod-ubus unzip \
+          uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash \
+          openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat \
+          kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
+          coreutils-nohup luci-app-ttyd luci-theme-material wpad-openssl iw iwinfo wireless-regdb \
+          fstrim kmod-igc kmod-e1000e kmod-r8169 kmod-r8125 kmod-r8101 kmod-forcedeth \
+          kmod-usb-net-rtl8152 kmod-usb-net-asix-ax88179 kmod-usb-net-asix \
+          kmod-mii"
+
+          # Eksekusi Build
+          make image PROFILE="generic" \
+                     PACKAGES="${PACKAGES}" \
+                     FILES="${{ github.workspace }}/files" \
+                     V=s
+          
+          # Kumpulkan Hasil (.img.gz dan .vmdk)
+          cp bin/targets/x86/64/*-generic-ext4-combined-efi.img.gz ${{ env.OUTPUT_DIR }}/
+          cp bin/targets/x86/64/*-combined-efi.vmdk ${{ env.OUTPUT_DIR }}/ 2>/dev/null || true
+          
+          # Buat Tag untuk Release
+          echo "build_tag=x86_64_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+
+      - name: Upload to GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: "${{ env.OUTPUT_DIR }}/*"
+          allowUpdates: true
+          makeLatest: true
+          token: ${{ secrets.AKSI_TOKEN }}
+          body: |
+            ## OpenWrt 25.12.1 x86_64
+            - **URL IB**: ${{ github.event.inputs.custom_url }}
+            - **IP**: ${{ github.event.inputs.openwrt_ip }}
+            - **Files**: .img.gz (EFI Flashable) & .vmdk (VMware/Proxmox)
