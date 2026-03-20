@@ -64,9 +64,8 @@ rebuild_firmware() {
         openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat nano fping \
         kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
         coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
-        luci-app-ttyd luci-theme-material wpad-openssl iw iwinfo wireless-regdb netdata vnstat2 vnstati2 \
-        php8-cli php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
-        php8-mod-mbstring luci-theme-material iw iwinfo hostapd-common"
+        luci-app-ttyd luci-theme-material iw iwinfo netdata vnstat2 vnstati2 php8-mod-mbstring php8-cli \
+        php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv"
         
     # Proses Image Building
     [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
