@@ -66,7 +66,7 @@ rebuild_firmware() {
         coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
         luci-app-ttyd luci-theme-material wpad-openssl iw iwinfo wireless-regdb netdata vnstat2 vnstati2 \
         php8-cli php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
-        php8-mod-mbstring luci-theme-material wpad-basic-wolfssl iw iwinfo hostapd-common"
+        php8-mod-mbstring luci-theme-material iw iwinfo hostapd-common"
         
     # Proses Image Building
     [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
