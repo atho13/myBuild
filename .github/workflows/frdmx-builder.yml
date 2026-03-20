@@ -2,7 +2,7 @@
 # Build OpenWrt 25.12.1 Amlogic - Final Edition (Maret 2026)
 # =====================================================================================
 
-name: Using FRDMX
+name: Rootfs To Img
 
 on:
   repository_dispatch:
@@ -62,7 +62,7 @@ jobs:
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
           sudo -E apt-get -y update
-          sudo -E apt-get -y install $(curl -fsSL https://ophub.org)
+          sudo -E apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2404-make-openwrt-depends)
           sudo -E apt-get -y install zstd fakeroot
           echo "status=success" >> ${GITHUB_OUTPUT}
 
