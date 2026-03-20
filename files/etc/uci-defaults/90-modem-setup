@@ -5,17 +5,17 @@
 uci delete network.wan
 uci delete network.wan6
 
-# Membuat interface WAN menggunakan ModemManager (Protocol: mbim/qmi/at)
-uci set network.wan=interface
-uci set network.wan.proto='modemmanager'
-uci set network.wan.device='/sys/devices/platform/soc/...'
-uci set network.wan.apn='internet'
-uci set network.wan.auth='none'
-uci set network.wan.peerdns='1'
-uci set network.wan.metric='10'
+# Membuat interface MM menggunakan ModemManager (Protocol: mbim/qmi/at)
+uci set network.mm=interface
+uci set network.mm.proto='modemmanager'
+uci set network.mm.device='/sys/devices/platform/soc/...'
+uci set network.mm.apn='internet'
+uci set network.mm.auth='none'
+uci set network.mm.peerdns='1'
+uci set network.mm.metric='10'
 
 # 2. Konfigurasi Firewall (Memasukkan wan ke zone wan)
-uci add_list firewall.@zone[1].network='wan'
+uci add_list firewall.@zone[1].network='mm'
 
 # 3. Optimasi USB (Mencegah modem 'tidur' / Autosuspend)
 echo "on" > /sys/bus/usb/devices/usb1/power/control 2>/dev/null
