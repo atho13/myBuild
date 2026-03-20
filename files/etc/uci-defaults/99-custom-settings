@@ -1,66 +1,51 @@
 #!/bin/sh
 
-# 1. Password root: root
-echo "Setting root password..."
+# 1. Password root & Izin File
 (echo "root"; sleep 1; echo "root") | passwd > /dev/null
+[ -f "/usr/sbin/free.sh" ] && chmod 0755 /usr/sbin/free.sh
+[ -f "/etc/rc.local" ] && chmod +x /etc/rc.local
 
-# 2. System, Timezone, dan NTP (Asia/Jakarta)
-echo "Configuring hostname and timezone..."
+# 2. Gabungan Semua Konfigurasi UCI
 uci batch <<EOF
-set system.@system[0].hostname='FRDM-X'
-set system.@system[0].timezone='WIB-7'
-set system.@system[0].zonename='Asia/Jakarta'
-delete system.ntp.server
-add_list system.ntp.server='0.id.pool.ntp.org'
-add_list system.ntp.server='1.id.pool.ntp.org'
-add_list system.ntp.server='2.id.pool.ntp.org'
-add_list system.ntp.server='3.id.pool.ntp.org'
-add_list system.ntp.server='time.google.com'
-commit system
+    # System & Timezone
+    set system.@system[0].hostname='FRDM-X'
+    set system.@system[0].timezone='WIB-7'
+    set system.@system[0].zonename='Asia/Jakarta'
+    delete system.ntp.server
+    add_list system.ntp.server='0.id.pool.ntp.org'
+    add_list system.ntp.server='time.google.com'
+    
+    # ModemManager WAN (Interface MM)
+    delete network.wan
+    delete network.wan6
+    set network.mm=interface
+    set network.mm.proto='modemmanager'
+    set network.mm.device='auto'
+    set network.mm.apn='internet'
+    set network.mm.peerdns='1'
+    set network.mm.metric='10'
+    
+    # Firewall, DHCP DNS, & TTYD
+    add_list firewall.@zone[1].network='mm'
+    add_list dhcp.lan.dns='8.8.8.8'
+    add_list dhcp.lan.dns='1.1.1.1'
+    set ttyd.@ttyd[0].enabled='1'
+    set ttyd.@ttyd[0].command='/bin/login -f root'
+    
+    # ZRAM
+    set zram.@zram[0].enabled='1'
+    set zram.@zram[0].size='128'
+    
+    commit
 EOF
 
-# 3. ZRAM Setup (Alokasi 128MB)
-if [ -f "/etc/config/zram" ]; then
-    echo "Configuring ZRAM..."
-    uci set zram.@zram[0].enabled='1'
-    uci set zram.@zram[0].size='128'
-    uci commit zram
-    /etc/init.d/zram restart
-fi
-
-# 4. DNS & DHCP Optimization (Google & Cloudflare)
-echo "Configuring DNS..."
-uci add_list dhcp.lan.dns='8.8.8.8'
-uci add_list dhcp.lan.dns='1.1.1.1'
-uci commit dhcp
-
-# 5. Disable APK/OPKG Signature Check (Untuk Repo Custom)
+# 3. Optimasi Eksternal (Non-UCI)
 [ -f "/etc/opkg.conf" ] && sed -i 's/option check_signature/# option check_signature/g' /etc/opkg.conf
-
-# 6. Modem & Terminal (TTYD Auto-login)
-echo "Configuring Modem and TTYD..."
-uci batch <<EOF
-set xmm-modem.@xmm-modem[0].enable='0'
-set ttyd.@ttyd[0].command='/bin/login -f root'
-commit xmm-modem
-commit ttyd
-EOF
-
-# 7. File Permissions (PENTING)
-echo "Setting file permissions..."
-
-# Memberi izin 0755 pada free.sh di folder sbin
-if [ -f "/usr/sbin/free.sh" ]; then
-    chmod 0755 /usr/sbin/free.sh
-    # Jalankan sekali saat startup pertama
-    /usr/sbin/free.sh &
-fi
-
-# Pastikan rc.local bisa dieksekusi
-[ -f "/etc/rc.local" ] && chmod +x /etc/etc/rc.local
-
-# 8. Apply Kernel Optimization (sysctl)
-echo "Applying sysctl settings..."
+for dev in /sys/bus/usb/devices/usb*/power/control; do echo "on" > "$dev" 2>/dev/null; done
 sysctl -p /etc/sysctl.conf
+
+# 4. Jalankan Service & Script
+/usr/sbin/free.sh &
+/etc/init.d/modemmanager restart
 
 exit 0
