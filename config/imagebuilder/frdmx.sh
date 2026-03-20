@@ -61,15 +61,16 @@ rebuild_firmware() {
         libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
         ip-full php8 haproxy tcpdump UDPspeeder irqbalance kmod-dummy bc uhttpd uhttpd-mod-ubus unzip \
         uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash apk \
-        openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat \
+        openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat php8-fpm php8-cgi \
         kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
         coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless"
 
     # Proses Image Building
+    [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
     make image PROFILE="generic" \
                PACKAGES="${my_packages}" \
-               FILES="files" \
-               V=s \
+               FILES="${GITHUB_WORKSPACE}/files" \
+               V=s
                
     if [ $? -eq 0 ]; then
         echo -e "${SUCCESS} Build Berhasil!"
@@ -83,3 +84,6 @@ rebuild_firmware() {
 # Jalankan Fungsi Utama
 download_imagebuilder
 rebuild_firmware
+
+# Melihat Log
+ls -R ${GITHUB_WORKSPACE}/output
