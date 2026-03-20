@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# Set Password
+(echo "root"; sleep 1; echo "root") | passwd > /dev/null
+
+# Set Hostname
+uci set system.@system[0].hostname='FRDM-X'
+
+# Aktifkan ZRAM Swap (karena Anda memasukkan paket zram-swap)
+uci set zramstats.@zramstats[0].enabled='1'
+
+# Optimasi DNS Google & Cloudflare
+uci add_list dhcp.lan.dns='8.8.8.8'
+uci add_list dhcp.lan.dns='1.1.1.1'
+
+# Commit perubahan
+uci commit system
+uci commit dhcp
+uci commit network
+
+# Restart service yang diperlukan
+/etc/init.d/network restart
+
+exit 0
