@@ -1,0 +1,36 @@
+#!/bin/sh
+
+# 1. Konfigurasi Modem Manager (Interface WAN)
+# Menghapus WAN lama jika ada agar tidak bentrok
+uci delete network.wan
+uci delete network.wan6
+
+# Membuat interface WAN menggunakan ModemManager (Protocol: mbim/qmi/at)
+uci set network.wan=interface
+uci set network.wan.proto='modemmanager'
+uci set network.wan.device='/sys/devices/platform/soc/...' # Akan dideteksi otomatis oleh mm
+uci set network.wan.apn='internet'
+uci set network.wan.auth='none'
+uci set network.wan.peerdns='1'
+uci set network.wan.metric='10'
+
+# 2. Konfigurasi Firewall (Memasukkan wan ke zone wan)
+uci add_list firewall.@zone[1].network='wan'
+
+# 3. Optimasi USB (Mencegah modem 'tidur' / Autosuspend)
+echo "on" > /sys/bus/usb/devices/usb1/power/control 2>/dev/null
+echo "on" > /sys/bus/usb/devices/usb2/power/control 2>/dev/null
+
+# 4. Aktifkan TTYD (Terminal via Web) agar langsung jalan
+uci set ttyd.@ttyd[0].enabled='1'
+uci set ttyd.@ttyd[0].interface='lan'
+
+# Simpan dan Terapkan
+uci commit network
+uci commit firewall
+uci commit ttyd
+
+# Restart ModemManager agar mendeteksi hardware
+/etc/init.d/modemmanager restart
+
+exit 0
