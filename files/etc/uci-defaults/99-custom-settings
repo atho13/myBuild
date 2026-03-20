@@ -4,7 +4,7 @@
 echo "Setting root password..."
 (echo "root"; sleep 1; echo "root") | passwd > /dev/null
 
-# 2. System, Timezone, dan NTP
+# 2. System, Timezone, dan NTP (Asia/Jakarta)
 echo "Configuring hostname and timezone..."
 uci batch <<EOF
 set system.@system[0].hostname='FRDM-X'
@@ -19,36 +19,48 @@ add_list system.ntp.server='time.google.com'
 commit system
 EOF
 
-# 3. ZRAM Setup (Versi OpenWrt 25.x menggunakan zram-swap)
+# 3. ZRAM Setup (Alokasi 128MB)
 if [ -f "/etc/config/zram" ]; then
+    echo "Configuring ZRAM..."
     uci set zram.@zram[0].enabled='1'
     uci set zram.@zram[0].size='128'
     uci commit zram
     /etc/init.d/zram restart
 fi
 
-# 4. DNS & DHCP Optimization
+# 4. DNS & DHCP Optimization (Google & Cloudflare)
+echo "Configuring DNS..."
 uci add_list dhcp.lan.dns='8.8.8.8'
 uci add_list dhcp.lan.dns='1.1.1.1'
 uci commit dhcp
 
-# 5. Disable APK/OPKG Signature Check (Penting untuk Repo Custom)
+# 5. Disable APK/OPKG Signature Check (Untuk Repo Custom)
 [ -f "/etc/opkg.conf" ] && sed -i 's/option check_signature/# option check_signature/g' /etc/opkg.conf
-[ -f "/etc/apk/repositories" ] && echo "untrusted" >> /etc/apk/repositories
 
-# 6. Apply Network
-/etc/init.d/network restart
-
-# 7. XMM-Modem and TTYD
-echo "Disabling XMM-Modem and configuring TTYD..."
-uci batch &>/dev/null <<EOF
+# 6. Modem & Terminal (TTYD Auto-login)
+echo "Configuring Modem and TTYD..."
+uci batch <<EOF
 set xmm-modem.@xmm-modem[0].enable='0'
-set ttyd.@ttyd[0].command='/bin/bash --login'
+set ttyd.@ttyd[0].command='/bin/login -f root'
 commit xmm-modem
 commit ttyd
+EOF
 
-echo "Sett file permissions..."
-EXEC_FILES="$FREE_SH"
-chmod +x $EXEC_FILES
+# 7. File Permissions (PENTING)
+echo "Setting file permissions..."
+
+# Memberi izin 0755 pada free.sh di folder sbin
+if [ -f "/usr/sbin/free.sh" ]; then
+    chmod 0755 /usr/sbin/free.sh
+    # Jalankan sekali saat startup pertama
+    /usr/sbin/free.sh &
+fi
+
+# Pastikan rc.local bisa dieksekusi
+[ -f "/etc/rc.local" ] && chmod +x /etc/etc/rc.local
+
+# 8. Apply Kernel Optimization (sysctl)
+echo "Applying sysctl settings..."
+sysctl -p /etc/sysctl.conf
 
 exit 0
