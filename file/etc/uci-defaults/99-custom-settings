@@ -47,4 +47,8 @@ set ttyd.@ttyd[0].command='/bin/bash --login'
 commit xmm-modem
 commit ttyd
 
+echo "Sett file permissions..."
+EXEC_FILE="$FREE_SH"
+chmod +x $EXEC_FILE
+
 exit 0
