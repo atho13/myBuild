@@ -1,5 +1,5 @@
 # =====================================================================================
-# Build OpenWrt 25.12.1 Amlogic - Final Edition (Maret 2026)
+# Build OpenWrt 25.12.1 Amlogic
 # =====================================================================================
 
 name: Using ImageBuilder
@@ -83,7 +83,7 @@ jobs:
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Packaging Amlogic (.img)
-        id: packaging # Tambahkan ID ini
+        id: packaging
         if: steps.imagebuilder.outputs.status == 'success'
         uses: ribel13/amlogic-s9xxx-openwrt@main
         with:
