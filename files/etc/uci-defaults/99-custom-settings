@@ -34,11 +34,7 @@ uci commit dhcp
 [ -f "/etc/opkg.conf" ] && sed -i 's/option check_signature/# option check_signature/g' /etc/opkg.conf
 [ -f "/etc/apk/repositories" ] && echo "untrusted" >> /etc/apk/repositories
 
-# 6.System customizations
-echo "Applying system.."
-sed -i -e 's/\[ -f \/etc\/banner \] && cat \/etc\/banner/#&/' -e 's/\[ -n \"\$FAILSAFE\" \] && cat \/etc\/banner.failsafe/& || \/usr\/bin\/chnrot/' /etc/profile
-
-# 7. Apply Network
+# 6. Apply Network
 /etc/init.d/network restart
 
 exit 0
