@@ -69,6 +69,7 @@ jobs:
           kmod-mii"
 
           # Eksekusi Build
+          [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
           make image PROFILE="generic" \
                      PACKAGES="${PACKAGES}" \
                      FILES="${{ github.workspace }}/files" \
