@@ -37,10 +37,15 @@ download_imagebuilder() {
     echo -e "${SUCCESS} ImageBuilder berhasil diekstrak."
 }
 
-# 3. Build Firmware
 rebuild_firmware() {
     cd "${imagebuilder_path}"
-    echo -e "${STEPS} Membangun Rootfs ARMSR (1024MB)..."
+    echo -e "${STEPS} Mengatur konfigurasi ukuran partisi (1024MB)..."
+
+    # INJECT KONFIGURASI DISINI
+    echo "CONFIG_TARGET_ROOTFS_PARTSIZE=1024" >> .config
+    echo "CONFIG_TARGET_KERNEL_PARTSIZE=64" >> .config
+
+    echo -e "${STEPS} Membangun Rootfs ARMSR..."
 
     # Daftar paket gabungan & dibersihkan dari konflik
     # Menambahkan '-' pada wpad-basic agar tidak bentrok dengan versi mbedtls/openssl
@@ -68,9 +73,7 @@ rebuild_firmware() {
                PACKAGES="${my_packages}" \
                FILES="files" \
                V=s \
-               FORCE_UNSAFE_CONFIGURE=1 \
-               CONFIG_TARGET_ROOTFS_PARTSIZE=1024
-
+               
     if [ $? -eq 0 ]; then
         echo -e "${SUCCESS} Build Berhasil!"
         mkdir -p "${output_path}"
