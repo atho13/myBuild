@@ -37,6 +37,25 @@ on:
           - 6.6.y
           - 6.12.y
           - 6.18.y
+      auto_kernel:
+        description: "Auto use the latest kernel"
+        required: false
+        default: true
+        type: boolean
+      kernel_repo:
+        description: "Set the kernel repository"
+        required: false
+        default: "ribel13/kernel"
+        type: choice
+        options:
+          - ophub/kernel
+          - ribel13/kernel
+      kernel_usage:
+        description: "Set the tags of the stable kernel."
+        required: false
+        default: "stable"
+        type: choice
+        options: stable
       openwrt_ip:
         description: "Set OpenWrt default IP address."
         required: false
@@ -93,7 +112,8 @@ jobs:
           openwrt_ip: ${{ github.event.inputs.openwrt_ip }}
           openwrt_board: ${{ github.event.inputs.openwrt_board }}
           openwrt_kernel: ${{ github.event.inputs.openwrt_kernel }}
-          auto_kernel: true
+          kernel_repo: ${{ github.event.inputs.kernel_repo }}
+          kernel_usage: ${{ github.event.inputs.kernel_usage }}
 
       - name: Move Repack Result to Output
         if: steps.packaging.outcome == 'success'
