@@ -83,6 +83,7 @@ jobs:
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Packaging Amlogic (.img)
+        id: packaging # Tambahkan ID ini
         if: steps.imagebuilder.outputs.status == 'success'
         uses: ribel13/amlogic-s9xxx-openwrt@main
         with:
@@ -96,15 +97,16 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.build_tag }}
-          artifacts: "output/*.tar.*,${{ env.PACKAGED_OUTPUTPATH }}/*.img"
+          artifacts: "output/*.tar.*,**/*.img*"
           allowUpdates: true
           makeLatest: true
           token: ${{ secrets.AKSI_TOKEN }}
           body: |
-            ## OpenWrt 25.12.1 Amlogic
+            ## OpenWrt 25.12.1 Amlogic - Final Edition
             - **Board**: ${{ github.event.inputs.openwrt_board }}
             - **Kernel**: ${{ github.event.inputs.openwrt_kernel }}
             - **IP**: ${{ github.event.inputs.openwrt_ip }}
+            - **Firmware Format**: .tar.gz (Rootfs) & .img (STB Image)
 
       - name: Cleanup Older Releases
         uses: dev-drprasad/delete-older-releases@v0.3.3
