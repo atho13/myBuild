@@ -1,24 +1,44 @@
 #!/bin/sh
 
-# Set Password
+# 1. Password root: root
+echo "Setting root password..."
 (echo "root"; sleep 1; echo "root") | passwd > /dev/null
 
-# Set Hostname
-uci set system.@system[0].hostname='FRDM-X'
+# 2. System, Timezone, dan NTP
+echo "Configuring hostname and timezone..."
+uci batch <<EOF
+set system.@system[0].hostname='FRDM-X'
+set system.@system[0].timezone='WIB-7'
+set system.@system[0].zonename='Asia/Jakarta'
+delete system.ntp.server
+add_list system.ntp.server='0.id.pool.ntp.org'
+add_list system.ntp.server='1.id.pool.ntp.org'
+add_list system.ntp.server='time.google.com'
+commit system
+EOF
 
-# Aktifkan ZRAM Swap (karena Anda memasukkan paket zram-swap)
-uci set zramstats.@zramstats[0].enabled='1'
+# 3. ZRAM Setup (Versi OpenWrt 25.x menggunakan zram-swap)
+if [ -f "/etc/config/zram" ]; then
+    uci set zram.@zram[0].enabled='1'
+    uci set zram.@zram[0].size='128'
+    uci commit zram
+    /etc/init.d/zram restart
+fi
 
-# Optimasi DNS Google & Cloudflare
+# 4. DNS & DHCP Optimization
 uci add_list dhcp.lan.dns='8.8.8.8'
 uci add_list dhcp.lan.dns='1.1.1.1'
-
-# Commit perubahan
-uci commit system
 uci commit dhcp
-uci commit network
 
-# Restart service yang diperlukan
+# 5. Disable APK/OPKG Signature Check (Penting untuk Repo Custom)
+[ -f "/etc/opkg.conf" ] && sed -i 's/option check_signature/# option check_signature/g' /etc/opkg.conf
+[ -f "/etc/apk/repositories" ] && echo "untrusted" >> /etc/apk/repositories
+
+# 6.System customizations
+echo "Applying system.."
+sed -i -e 's/\[ -f \/etc\/banner \] && cat \/etc\/banner/#&/' -e 's/\[ -n \"\$FAILSAFE\" \] && cat \/etc\/banner.failsafe/& || \/usr\/bin\/chnrot/' /etc/profile
+
+# 7. Apply Network
 /etc/init.d/network restart
 
 exit 0
