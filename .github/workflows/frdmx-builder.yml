@@ -55,7 +55,8 @@ on:
         required: false
         default: "stable"
         type: choice
-        options: stable
+        options: # PERBAIKAN: Format list yang benar
+          - stable
       openwrt_ip:
         description: "Set OpenWrt default IP address."
         required: false
@@ -114,11 +115,11 @@ jobs:
           openwrt_kernel: ${{ github.event.inputs.openwrt_kernel }}
           kernel_repo: ${{ github.event.inputs.kernel_repo }}
           kernel_usage: ${{ github.event.inputs.kernel_usage }}
+          auto_kernel: ${{ github.event.inputs.auto_kernel }}
 
       - name: Move Repack Result to Output
         if: steps.packaging.outcome == 'success'
         run: |
-          # Mengambil file .img.gz dari folder kerja ribel13 ke folder output utama
           sudo cp -v ${{ env.PACKAGED_OUTPUTPATH }}/*.img* output/ 2>/dev/null || true
           echo "Final check folder output:"
           ls -lh output/
@@ -127,27 +128,12 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.build_tag }}
-          # Sekarang mengunggah semua yang ada di folder output
           artifacts: "output/*"
           allowUpdates: true
           makeLatest: true
           token: ${{ secrets.AKSI_TOKEN }}
           body: |
-            ## OpenWrt 25.12.1 Amlogic - Final Edition
+            ## OpenWrt 25.12.1 Amlogic
             - **Board**: ${{ github.event.inputs.openwrt_board }}
-            - **Kernel**: ${{ github.event.inputs.openwrt_kernel }}
+            - **Kernel**: ${{ github.event.inputs.openwrt_kernel }} (${{ github.event.inputs.kernel_repo }})
             - **IP**: ${{ github.event.inputs.openwrt_ip }}
-            - **Files**: .tar.gz (Rootfs) & .img.gz (Flashable Image)
-
-      - name: Cleanup Older Releases
-        uses: dev-drprasad/delete-older-releases@v0.3.3
-        with:
-          keep_latest: 3
-          delete_tags: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.AKSI_TOKEN }}
-
-      - name: Final Workspace Cleanup
-        run: |
-          sudo umount /builder || true
-          rm -rf output/*
