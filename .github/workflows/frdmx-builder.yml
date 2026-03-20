@@ -2,7 +2,7 @@
 # Build OpenWrt 25.12.1 Amlogic - Final Edition (Maret 2026)
 # =====================================================================================
 
-name: Rootfs To Img
+name: Amlogic FRDMX
 
 on:
   repository_dispatch:
