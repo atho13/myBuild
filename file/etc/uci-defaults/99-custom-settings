@@ -39,4 +39,12 @@ uci commit dhcp
 # 6. Apply Network
 /etc/init.d/network restart
 
+# 7. XMM-Modem and TTYD
+echo "Disabling XMM-Modem and configuring TTYD..."
+uci batch &>/dev/null <<EOF
+set xmm-modem.@xmm-modem[0].enable='0'
+set ttyd.@ttyd[0].command='/bin/bash --login'
+commit xmm-modem
+commit ttyd
+
 exit 0
