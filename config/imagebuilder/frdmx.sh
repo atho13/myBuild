@@ -39,7 +39,7 @@ download_imagebuilder() {
 
 rebuild_firmware() {
     cd "${imagebuilder_path}"
-    echo -e "${STEPS} Mengatur konfigurasi ukuran partisi (1024MB)..."
+    echo -e "${STEPS} Mengatur konfigurasi ukuran partisi (750MB)..."
 
     # INJECT KONFIGURASI DISINI
     echo "CONFIG_TARGET_ROOTFS_PARTSIZE=750" >> .config
