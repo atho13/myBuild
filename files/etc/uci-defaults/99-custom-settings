@@ -1,6 +1,7 @@
 #!/bin/sh
 
 # 1. Password root & Izin File
+echo "Setting root password..."
 (echo "root"; sleep 1; echo "root") | passwd > /dev/null
 [ -f "/usr/sbin/free.sh" ] && chmod 0755 /usr/sbin/free.sh
 [ -f "/etc/rc.local" ] && chmod +x /etc/rc.local
@@ -11,13 +12,14 @@ uci batch <<EOF
     set system.@system[0].hostname='FRDM-X'
     set system.@system[0].timezone='WIB-7'
     set system.@system[0].zonename='Asia/Jakarta'
-    delete system.ntp.server
+    del system.ntp.server
     add_list system.ntp.server='0.id.pool.ntp.org'
+    add_list system.ntp.server='1.id.pool.ntp.org'
+    add_list system.ntp.server='2.id.pool.ntp.org'
+    add_list system.ntp.server='3.id.pool.ntp.org'
     add_list system.ntp.server='time.google.com'
     
-    # ModemManager WAN (Interface MM)
-    delete network.wan
-    delete network.wan6
+    # Network Interface (Pastikan 'network.mm' didefinisikan dulu)
     set network.mm=interface
     set network.mm.proto='modemmanager'
     set network.mm.device='auto'
@@ -25,27 +27,50 @@ uci batch <<EOF
     set network.mm.peerdns='1'
     set network.mm.metric='10'
     
-    # Firewall, DHCP DNS, & TTYD
+    set network.wan=interface
+    set network.wan.proto='dhcp'
+    set network.wan.device='eth1'
+    
+    set network.tethering=interface
+    set network.tethering.proto='dhcp'
+    set network.tethering.device='usb0'
+    
+    delete network.wan6
+    
+    # Firewall Zona (Pastikan index [1] biasanya adalah zona WAN)
+    del_list firewall.@zone[1].network='wan6'
+    add_list firewall.@zone[1].network='tethering'
+    add_list firewall.@zone[1].network='wan'
     add_list firewall.@zone[1].network='mm'
-    add_list dhcp.lan.dns='8.8.8.8'
-    add_list dhcp.lan.dns='1.1.1.1'
-    set ttyd.@ttyd[0].enabled='1'
-    set ttyd.@ttyd[0].command='/bin/login -f root'
     
-    # ZRAM
-    set zram.@zram[0].enabled='1'
-    set zram.@zram[0].size='128'
+    # ZRAM (Pastikan paket zram-swap sudah terinstall)
+    set zram-swap.@zram-swap[0].enabled='1'
+    set zram-swap.@zram-swap[0].zram_size='128'
     
-    commit
+    commit network
+    commit system
+    commit firewall
+    commit dhcp
+    commit zram-swap
 EOF
 
 # 3. Optimasi Eksternal (Non-UCI)
-[ -f "/etc/opkg.conf" ] && sed -i 's/option check_signature/# option check_signature/g' /etc/opkg.conf
-for dev in /sys/bus/usb/devices/usb*/power/control; do echo "on" > "$dev" 2>/dev/null; done
-sysctl -p /etc/sysctl.conf
+# Matikan signature check opkg
+sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf
 
-# 4. Jalankan Service & Script
-/usr/sbin/free.sh &
+# USB Power Management (Gunakan loop yang lebih aman)
+for dev in /sys/bus/usb/devices/*/power/control; do 
+    [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
+done
+
+# Reload sysctl
+sysctl -p /etc/sysctl.conf >/dev/null 2>&1
+
+# 4. Jalankan Service
+# Restart network agar interface baru (mm, tethering) terbaca
+/etc/init.d/network restart
+sleep 2
 /etc/init.d/modemmanager restart
+[ -f "/usr/sbin/free.sh" ] && /usr/sbin/free.sh &
 
 exit 0
