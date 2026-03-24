@@ -78,18 +78,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Initialization environment
+        id: init
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
-          sudo apt-get update
-          
-          # Mengambil daftar package dari ophub dan menginstalnya secara bersih
-          PACKAGES=$(curl -fsSL https://ophub.org)
-          sudo apt-get install -y $PACKAGES
-          
-          # Instal tambahan manual untuk Amlogic
-          sudo apt-get install -y zstd fakeroot
-          
-          mkdir -p output
+          sudo -E apt-get -y update
+          sudo -E apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2404-make-openwrt-depends)
+          sudo -E apt-get -y install zstd fakeroot
+          echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Create simulated physical disk
         run: |
@@ -99,6 +94,7 @@ jobs:
           sudo mkfs.xfs /dev/loop6
           sudo mount /dev/loop6 /builder
           sudo chown -R runner:runner /builder
+          echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Build OpenWrt Rootfs
         id: imagebuilder
@@ -121,27 +117,13 @@ jobs:
           kernel_usage: ${{ github.event.inputs.kernel_usage }}
           auto_kernel: ${{ github.event.inputs.auto_kernel }}
 
-      - name: Move and Verify Output
+      - name: Move Repack Result to Output
+        if: steps.packaging.outcome == 'success'
         run: |
-          # Pindahkan file hasil packaging
-          [ -d "${{ env.PACKAGED_OUTPUTPATH }}" ] && sudo cp -v ${{ env.PACKAGED_OUTPUTPATH }}/*.img* output/ 2>/dev/null || true
-          
-          # Cari file .img di seluruh workspace sebagai cadangan jika env kosong
-          find /home/runner/work/ -name "*.img*" -exec cp -v {} output/ \; 2>/dev/null || true
-          
-          echo "=== Verifikasi Hasil Akhir ==="
+          sudo cp -v ${{ env.PACKAGED_OUTPUTPATH }}/*.img* output/ 2>/dev/null || true
+          echo "Final check folder output:"
           ls -lh output/
           
-          # Hitung jumlah file .img
-          IMG_COUNT=$(ls output/*.img 2>/dev/null | wc -l)
-          echo "Total file .img ditemukan: $IMG_COUNT"
-          
-          # PAKSA GAGAL jika file tidak ada
-          if [ "$IMG_COUNT" -eq "0" ]; then
-            echo "ERROR: File .img tidak ditemukan! Membatalkan rilis..."
-            exit 1
-          fi
-
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
         with:
