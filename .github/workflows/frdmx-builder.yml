@@ -3,6 +3,7 @@
 # =====================================================================================
 
 name: Amlogic FRDMX
+permissions: write
 
 on:
   repository_dispatch:
@@ -131,7 +132,7 @@ jobs:
           artifacts: "output/*"
           allowUpdates: true
           makeLatest: true
-          token: ${{ secrets.AKSI_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             ## OpenWrt 25.12.1 Amlogic
             - **Board**: ${{ github.event.inputs.openwrt_board }}
