@@ -107,8 +107,7 @@ jobs:
       - name: Packaging Amlogic (.img)
         id: packaging
         if: steps.imagebuilder.outputs.status == 'success'
-        #uses: ribel13/amlogic-s9xxx-openwrt@main
-        uses: atho13/myBuild@main
+        uses: ribel13/amlogic-s9xxx-openwrt@main
         with:
           openwrt_path: output/*rootfs.tar.*
           openwrt_ip: ${{ github.event.inputs.openwrt_ip }}
