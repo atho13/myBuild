@@ -71,7 +71,7 @@ rebuild_firmware() {
     [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
     make image PROFILE="generic" \
                PACKAGES="${my_packages}" \
-               #FILES="${GITHUB_WORKSPACE}/files" \
+               FILES="${GITHUB_WORKSPACE}/files" \
                FILES="${GITHUB_WORKSPACE}/make-openwrt" \
                V=s
                
