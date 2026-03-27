@@ -92,7 +92,7 @@ jobs:
           artifacts: "${{ env.OUTPUT_DIR }}/*"
           allowUpdates: true
           makeLatest: true
-          token: ${{ secrets.AKSI_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             ## OpenWrt 25.12.1 x86_64
             - **URL IB**: ${{ github.event.inputs.custom_url }}
