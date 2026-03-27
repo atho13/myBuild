@@ -93,7 +93,7 @@ jobs:
           kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless luci-app-ttyd luci-theme-material"
 
           # Jalankan build
-          make image PROFILE="generic" \
+          make image PROFILE="Default" \
                      PACKAGES="${PACKAGES}" \
                      FILES="${{ github.workspace }}/files" \
                      V=s
