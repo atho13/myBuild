@@ -41,7 +41,9 @@ jobs:
       - name: Download Image Builder
         run: |
           mkdir -p ${{ env.WORKING_DIR }}
-          wget -qO- "${{ github.event.inputs.custom_url }}" | (zstd -d 2>/dev/null || xz -d) | tar -xf - -C ${{ env.WORKING_DIR }} --strip-components=1
+          curl -L "${{ github.event.inputs.custom_url }}" -o ib.tar.xz
+          tar -xJf ib.tar.xz -C ${{ env.WORKING_DIR }} --strip-components=1
+          rm ib.tar.xz
 
       - name: Build Firmware
         run: |
