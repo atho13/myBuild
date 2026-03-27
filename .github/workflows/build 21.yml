@@ -1,4 +1,4 @@
-name: FW 21 Builder S905X
+name: FW 21 Builder S905X RootFS
 
 on:
   workflow_dispatch:
@@ -41,16 +41,19 @@ jobs:
       - name: Download Image Builder
         run: |
           mkdir -p ${{ env.WORKING_DIR }}
-          wget -qO- "${{ github.event.inputs.custom_url }}" | zstd -d | tar -xf - -C ${{ env.WORKING_DIR }} --strip-components=1
+          wget -qO- "${{ github.event.inputs.custom_url }}" | (zstd -d 2>/dev/null || xz -d) | tar -xf - -C ${{ env.WORKING_DIR }} --strip-components=1
 
       - name: Build Firmware
         run: |
           cd ${{ env.WORKING_DIR }}
           
+          # Inject IP Address dari Input
           sed -i "s/192.168.1.1/${{ github.event.inputs.openwrt_ip }}/g" package/base-files/files/bin/config_generate
 
-          sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=700/' .config || echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
+          # Resize RootFS (1024MB)
+          sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=512/' .config || echo "CONFIG_TARGET_ROOTFS_PARTSIZE=512" >> .config
           
+          # List Paket S905X Fix 21.02 (Tanpa Firewall4)
           PACKAGES="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall fstools \
           kmod-button-hotplug libc libgcc libustream-mbedtls logd mkf2fs mtd netifd odhcp6c odhcpd-ipv6only \
           partx-utils ppp ppp-mod-pppoe procd-ujail uci uclient-fetch urandom-seed urngd luci luci-compat \
@@ -69,7 +72,8 @@ jobs:
           comgt comgt-ncm coremark coreutils coreutils-base64 coreutils-nohup \
           kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless luci-app-ttyd luci-theme-material"
 
-          # Eksekusi Build (Gunakan Profile generic karena armvirt biasanya tunggal)
+          # Eksekusi Build RootFS
+          [ -d "${{ github.workspace }}/files" ] && chmod -R +x "${{ github.workspace }}/files/etc/uci-defaults"
           make image PROFILE="generic" \
                      PACKAGES="${PACKAGES}" \
                      FILES="${{ github.workspace }}/files" \
@@ -78,28 +82,25 @@ jobs:
       - name: Kumpulkan Hasil
         run: |
           RESULT_DIR="${{ env.WORKING_DIR }}/bin/targets/armvirt/64"
-          
           if [ -d "$RESULT_DIR" ]; then
+            # Hanya ambil file .tar.gz (RootFS)
             cp $RESULT_DIR/*.tar.gz ${{ env.OUTPUT_DIR }}/ 2>/dev/null || true
-            cp $RESULT_DIR/*.img.gz ${{ env.OUTPUT_DIR }}/ 2>/dev/null || true        
-            echo "Berhasil menyalin hasil build."
           else
-            echo "Error: Direktori $RESULT_DIR tidak ditemukan!"
-            ls -R ${{ env.WORKING_DIR }}/bin/targets/ || echo "Target folder empty"
+            echo "Error: RootFS tidak ditemukan!"
             exit 1
           fi       
-          echo "build_tag=OpenWrt_21.02_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          echo "build_tag=S905X_RootFS_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
 
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.build_tag }}
-          artifacts: "${{ env.OUTPUT_DIR }}/*"
+          artifacts: "${{ env.OUTPUT_DIR }}/*.tar.gz"
           allowUpdates: true
           makeLatest: true
           token: ${{ secrets.AKSI_TOKEN }}
           body: |
-            ## OpenWrt 21.02 ARMvirt (S905X)
-            - **URL Image Builder**: ${{ github.event.inputs.custom_url }}
-            - **Default IP**: ${{ github.event.inputs.openwrt_ip }}
-            - **Catatan**: Gunakan script instalasi Amlogic untuk memproses file .tar.gz ke STB.
+            ## OpenWrt 21.02 RootFS S905X
+            - **Target**: Amlogic armvirt/64
+            - **IP**: ${{ github.event.inputs.openwrt_ip }}
+            - **Info**: Gunakan file .tar.gz ini untuk update via script install-to-emmc.
