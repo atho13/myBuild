@@ -33,7 +33,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential clang flex bison g++ gawk gettext \
           git libncurses5-dev libssl-dev rsync unzip zlib1g-dev \
-          curl tar qemu-utils wget python3-setuptools python3-dev python-is-python3 zstd
+          curl tar qemu-utils wget python3-setuptools python3-dev python-is-python3 zstd xz-utils
           sudo mkdir -p /builder
           sudo chown runner:runner /builder
           mkdir -p ${{ env.OUTPUT_DIR }}
@@ -41,6 +41,7 @@ jobs:
       - name: Download Image Builder
         run: |
           mkdir -p ${{ env.WORKING_DIR }}
+          # Download dulu baru extract untuk menghindari "File format not recognized"
           curl -L "${{ github.event.inputs.custom_url }}" -o ib.tar.xz
           tar -xJf ib.tar.xz -C ${{ env.WORKING_DIR }} --strip-components=1
           rm ib.tar.xz
@@ -49,13 +50,30 @@ jobs:
         run: |
           cd ${{ env.WORKING_DIR }}
           
-          # Inject IP Address dari Input
-          sed -i "s/192.168.1.1/${{ github.event.inputs.openwrt_ip }}/g" package/base-files/files/bin/config_generate
-
-          # Resize RootFS (1024MB)
-          sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=512/' .config || echo "CONFIG_TARGET_ROOTFS_PARTSIZE=512" >> .config
+          # 1. Buat folder files untuk kustomisasi IP
+          mkdir -p ${{ github.workspace }}/files/etc/config
           
-          # List Paket S905X Fix 21.02 (Tanpa Firewall4)
+          # 2. Buat file network kustom (Cara paling ampuh di Image Builder)
+          cat <<EOF > ${{ github.workspace }}/files/etc/config/network
+          config interface 'loopback'
+              option ifname 'lo'
+              option proto 'static'
+              option ipaddr '127.0.0.1'
+              option netmask '255.0.0.0'
+
+          config globals 'globals'
+              option ula_prefix 'fd00:db8:0:1::/64'
+
+          config interface 'lan'
+              option type 'bridge'
+              option ifname 'eth0'
+              option proto 'static'
+              option ipaddr '${{ github.event.inputs.openwrt_ip }}'
+              option netmask '255.255.255.0'
+              option ip6assign '60'
+          EOF
+
+          # List Paket S905X Fix 21.02
           PACKAGES="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall fstools \
           kmod-button-hotplug libc libgcc libustream-mbedtls logd mkf2fs mtd netifd odhcp6c odhcpd-ipv6only \
           partx-utils ppp ppp-mod-pppoe procd-ujail uci uclient-fetch urandom-seed urngd luci luci-compat \
@@ -74,8 +92,7 @@ jobs:
           comgt comgt-ncm coremark coreutils coreutils-base64 coreutils-nohup \
           kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless luci-app-ttyd luci-theme-material"
 
-          # Eksekusi Build RootFS
-          [ -d "${{ github.workspace }}/files" ] && chmod -R +x "${{ github.workspace }}/files/etc/uci-defaults"
+          # Jalankan build
           make image PROFILE="generic" \
                      PACKAGES="${PACKAGES}" \
                      FILES="${{ github.workspace }}/files" \
@@ -85,8 +102,8 @@ jobs:
         run: |
           RESULT_DIR="${{ env.WORKING_DIR }}/bin/targets/armvirt/64"
           if [ -d "$RESULT_DIR" ]; then
-            # Hanya ambil file .tar.gz (RootFS)
-            cp $RESULT_DIR/*.tar.gz ${{ env.OUTPUT_DIR }}/ 2>/dev/null || true
+            # Ambil file rootfs (.tar.gz)
+            cp $RESULT_DIR/*-rootfs.tar.gz ${{ env.OUTPUT_DIR }}/ 2>/dev/null || cp $RESULT_DIR/*.tar.gz ${{ env.OUTPUT_DIR }}/ 2>/dev/null
           else
             echo "Error: RootFS tidak ditemukan!"
             exit 1
@@ -100,9 +117,8 @@ jobs:
           artifacts: "${{ env.OUTPUT_DIR }}/*.tar.gz"
           allowUpdates: true
           makeLatest: true
-          token: ${{ secrets.AKSI_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             ## OpenWrt 21.02 RootFS S905X
             - **Target**: Amlogic armvirt/64
-            - **IP**: ${{ github.event.inputs.openwrt_ip }}
-            - **Info**: Gunakan file .tar.gz ini untuk update via script install-to-emmc.
+            - **Default IP**: ${{ github.event.inputs.openwrt_ip }}
