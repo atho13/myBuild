@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       custom_url:
-        description: "URL Image Builder Fw.21.02 ARM64 (.tar.zst)"
+        description: "URL Image Builder Fw.21.02 ARM64 (.tar.xz)"
         required: true
         default: ""
       openwrt_ip:
