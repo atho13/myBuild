@@ -67,7 +67,6 @@ done
 sysctl -p /etc/sysctl.conf >/dev/null 2>&1
 
 # 4. Jalankan Service
-# Restart network agar interface baru (mm, tethering) terbaca
 /etc/init.d/network restart
 sleep 2
 /etc/init.d/modemmanager restart
@@ -76,7 +75,10 @@ sleep 2
 # 5. Ttyd Fix
 if [ -f /bin/bash ]; then
     uci set ttyd.@ttyd[0].command='/bin/bash --login'
+    [ $? -ne 0 ] && sed -i "option command '/bin/bash --login'" /etc/config/ttyd
+    
     uci commit ttyd
+    /etc/init.d/ttyd enable
     /etc/init.d/ttyd restart
 fi
 
