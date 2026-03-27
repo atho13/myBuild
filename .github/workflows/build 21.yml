@@ -1,10 +1,10 @@
-name: FW 21 Builder
+name: FW 21 Builder S905X
 
 on:
   workflow_dispatch:
     inputs:
       custom_url:
-        description: "URL Image Builder Fw.21.02 (.tar.zst)"
+        description: "URL Image Builder Fw.21.02 ARM64 (.tar.zst)"
         required: true
         default: ""
       openwrt_ip:
@@ -14,7 +14,7 @@ on:
 
 env:
   TZ: Asia/Jakarta
-  WORKING_DIR: /builder/x86_ib
+  WORKING_DIR: /builder/armvirt_ib
   OUTPUT_DIR: ${{ github.workspace }}/output
 
 jobs:
@@ -47,11 +47,11 @@ jobs:
         run: |
           cd ${{ env.WORKING_DIR }}
           
-          # Inject Partisi 1GB (Penting untuk x86 agar muat Docker/PHP)
-          sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=512/' .config || echo "CONFIG_TARGET_ROOTFS_PARTSIZE=512" >> .config
+          sed -i "s/192.168.1.1/${{ github.event.inputs.openwrt_ip }}/g" package/base-files/files/bin/config_generate
+
+          sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=700/' .config || echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
           
-          # Paket x86 Lengkap (Driver LAN + PHP8 + Modem)
-          PACKAGES="PACKAGES="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall fstools \
+          PACKAGES="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall fstools \
           kmod-button-hotplug libc libgcc libustream-mbedtls logd mkf2fs mtd netifd odhcp6c odhcpd-ipv6only \
           partx-utils ppp ppp-mod-pppoe procd-ujail uci uclient-fetch urandom-seed urngd luci luci-compat \
           luci-lib-base kmod-usb-net kmod-usb-net-asix kmod-usb-net-asix-ax88179 kmod-usb-net-rtl8150 \
@@ -59,7 +59,7 @@ jobs:
           kmod-usb-net-cdc-ncm netdata vnstat2 vnstati2 php8-cli php8-fastcgi php8-fpm \
           php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv php8-mod-mbstring \
           luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full luci-mod-network \
-          lluci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
+          luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
           luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
           luci-proto-modemmanager modemmanager modemmanager-rpcd libqmi libmbim glib2 ipset libcap libcap-bin \
           ruby ruby-yaml kmod-inet-diag ip-full php8 haproxy tcpdump UDPspeeder irqbalance bc \
@@ -69,26 +69,26 @@ jobs:
           comgt comgt-ncm coremark coreutils coreutils-base64 coreutils-nohup \
           kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless luci-app-ttyd luci-theme-material"
 
-          # Eksekusi Build
-          [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
+          # Eksekusi Build (Gunakan Profile generic karena armvirt biasanya tunggal)
           make image PROFILE="generic" \
                      PACKAGES="${PACKAGES}" \
-                     FILES="${{ github.workspace }}/file" \
+                     FILES="${{ github.workspace }}/files" \
                      V=s
           
       - name: Kumpulkan Hasil
         run: |
-          RESULT_DIR="bin/targets/armvirt/64"
+          RESULT_DIR="${{ env.WORKING_DIR }}/bin/targets/armvirt/64"
           
           if [ -d "$RESULT_DIR" ]; then
             cp $RESULT_DIR/*.tar.gz ${{ env.OUTPUT_DIR }}/ 2>/dev/null || true
             cp $RESULT_DIR/*.img.gz ${{ env.OUTPUT_DIR }}/ 2>/dev/null || true        
-            echo "Berhasil menyalin hasil build ke output directory."
+            echo "Berhasil menyalin hasil build."
           else
-            echo "Error: Direktori hasil build tidak ditemukan!"
+            echo "Error: Direktori $RESULT_DIR tidak ditemukan!"
+            ls -R ${{ env.WORKING_DIR }}/bin/targets/ || echo "Target folder empty"
             exit 1
           fi       
-          echo "build_tag=S905X_OpenWrt_21.02_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          echo "build_tag=OpenWrt_21.02_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
 
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
@@ -99,6 +99,7 @@ jobs:
           makeLatest: true
           token: ${{ secrets.AKSI_TOKEN }}
           body: |
-            ## OpenWrt 21.02
-            - **URL IB**: ${{ github.event.inputs.custom_url }}
-            - **IP**: ${{ github.event.inputs.openwrt_ip }}
+            ## OpenWrt 21.02 ARMvirt (S905X)
+            - **URL Image Builder**: ${{ github.event.inputs.custom_url }}
+            - **Default IP**: ${{ github.event.inputs.openwrt_ip }}
+            - **Catatan**: Gunakan script instalasi Amlogic untuk memproses file .tar.gz ke STB.
