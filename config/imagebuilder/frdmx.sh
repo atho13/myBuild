@@ -72,7 +72,7 @@ rebuild_firmware() {
     make image PROFILE="generic" \
                PACKAGES="${my_packages}" \
                FILES="${GITHUB_WORKSPACE}/files" \
-               FILES="${GITHUB_WORKSPACE}/make-openwrt" \
+               #FILES="${GITHUB_WORKSPACE}/make-openwrt" \
                V=s
                
     if [ $? -eq 0 ]; then
