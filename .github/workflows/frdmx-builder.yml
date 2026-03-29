@@ -133,7 +133,7 @@ jobs:
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            ## OpenWrt 25.12.1 Amlogic
+            ## OpenWrt 25.12.2 Amlogic
             - **Board**: ${{ github.event.inputs.openwrt_board }}
             - **Kernel**: ${{ github.event.inputs.openwrt_kernel }} (${{ github.event.inputs.kernel_repo }})
             - **IP**: ${{ github.event.inputs.openwrt_ip }}
