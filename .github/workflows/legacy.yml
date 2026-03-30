@@ -1,4 +1,4 @@
-name: x86 Builder (Custom Folder)
+name: Legacy x86 Builder (Custom Folder)
 
 on:
   workflow_dispatch:
@@ -48,7 +48,7 @@ jobs:
           cd ${{ env.WORKING_DIR }}
           
           # Inject Partisi 1GB (Penting untuk x86 agar muat Docker/PHP)
-          sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=1024/' .config || echo "CONFIG_TARGET_ROOTFS_PARTSIZE=1024" >> .config
+          sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=800/' .config || echo "CONFIG_TARGET_ROOTFS_PARTSIZE=800" >> .config
           
           # Paket x86 Lengkap
           PACKAGES="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall4 fstools \
