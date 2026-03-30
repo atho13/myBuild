@@ -14,6 +14,9 @@ uci batch <<EOF
     del system.ntp.server
     add_list system.ntp.server='0.id.pool.ntp.org'
     add_list system.ntp.server='1.id.pool.ntp.org'
+    add_list system.ntp.server='2.id.pool.ntp.org'
+    add_list system.ntp.server='3.id.pool.ntp.org'
+    add_list system.ntp.server='time.google.com'
     
     # Set Port Tunggal (eth0) sebagai LAN
     delete network.lan
@@ -70,7 +73,7 @@ if [ -e /etc/config/wireless ]; then
         uci set wireless.default_radio$i.mode='ap'
         uci set wireless.default_radio$i.ssid="FRDM-X_WiFi_$i"
         uci set wireless.default_radio$i.encryption='psk2'
-        uci set wireless.default_radio$i.key='12345678'
+        uci set wireless.default_radio$i.key='root'
         i=$((i+1))
     done
     uci commit wireless
