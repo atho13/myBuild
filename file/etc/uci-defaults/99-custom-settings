@@ -44,14 +44,14 @@ uci batch <<EOF
     add_list firewall.@zone[1].network='mm'
     
     # ZRAM (Pastikan paket zram-swap sudah terinstall)
-    set zram-swap.@zram-swap[0].enabled='1'
-    set zram-swap.@zram-swap[0].zram_size='128'
+    #set zram-swap.@zram-swap[0].enabled='1'
+    #set zram-swap.@zram-swap[0].zram_size='128'
     
     commit network
     commit system
     commit firewall
     commit dhcp
-    commit zram-swap
+    #commit zram-swap
 EOF
 
 # 3. Optimasi Eksternal (Non-UCI)
