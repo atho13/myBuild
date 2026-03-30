@@ -77,9 +77,11 @@ jobs:
           kmod-ath10k ath10k-firmware-qca9377 ath10k-firmware-qca988x \
           kmod-atkbd kmod-i915 kmod-drm-intel"
 
-          # Eksekusi Build menggunakan Profile Generic
+          # Eksekusi Build
+          [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
           make image PROFILE="generic" \
                      PACKAGES="${PACKAGES}" \
+                     FILES="${{ github.workspace }}/file" \
                      V=s
           
           # Ambil hasil file combined (ini adalah versi Legacy/MBR)
