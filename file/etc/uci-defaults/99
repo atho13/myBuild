@@ -1,0 +1,90 @@
+#!/bin/sh
+
+# 1. Password root & Izin File
+echo "Setting root password..."
+(echo "root"; sleep 1; echo "root") | passwd > /dev/null
+[ -f "/usr/sbin/free.sh" ] && chmod 0755 /usr/sbin/free.sh
+[ -f "/etc/rc.local" ] && chmod +x /etc/rc.local
+
+# 2. Gabungan Semua Konfigurasi UCI
+uci batch <<EOF
+    # System & Timezone
+    set system.@system[0].hostname='FRDM-X'
+    set system.@system[0].timezone='WIB-7'
+    set system.@system[0].zonename='Asia/Jakarta'
+    del system.ntp.server
+    add_list system.ntp.server='0.id.pool.ntp.org'
+    add_list system.ntp.server='1.id.pool.ntp.org'
+    add_list system.ntp.server='2.id.pool.ntp.org'
+    add_list system.ntp.server='3.id.pool.ntp.org'
+    add_list system.ntp.server='time.google.com'
+    
+    # Network Interface
+    set network.mm=interface
+    set network.mm.proto='modemmanager'
+    set network.mm.device='auto'
+    set network.mm.apn='internet'
+    set network.mm.peerdns='1'
+    set network.mm.metric='10'
+    
+    set network.wan=interface
+    set network.wan.proto='dhcp'
+    set network.wan.device='eth1'
+    
+    set network.tethering=interface
+    set network.tethering.proto='dhcp'
+    set network.tethering.device='usb0'
+    
+    delete network.wan6
+    
+    # Firewall Zona (Pastikan index [1] adalah zona WAN)
+    del_list firewall.@zone[1].network='wan6'
+    add_list firewall.@zone[1].network='tethering'
+    add_list firewall.@zone[1].network='wan'
+    add_list firewall.@zone[1].network='mm'
+    
+    commit network
+    commit system
+    commit firewall
+    commit dhcp
+EOF
+
+# 3. Inisialisasi Swap (Ditaruh di luar blok UCI)
+echo "Initializing swap file..."
+if [ ! -f /overlay/swapfile ]; then
+    # Menggunakan /overlay karena ini partisi yang bisa ditulis di x86
+    dd if=/dev/zero of=/overlay/swapfile bs=1M count=512
+    chmod 600 /overlay/swapfile
+    mkswap /overlay/swapfile
+fi
+swapon /overlay/swapfile
+
+# Pastikan swap aktif otomatis setiap reboot
+if ! grep -q "swapon /overlay/swapfile" /etc/rc.local; then
+    sed -i '/exit 0/i swapon /overlay/swapfile' /etc/rc.local
+fi
+
+# 4. Optimasi Eksternal (Non-UCI)
+sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf
+
+for dev in /sys/bus/usb/devices/*/power/control; do 
+    [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
+done
+
+sysctl -p /etc/sysctl.conf >/dev/null 2>&1
+
+# 5. Jalankan Service
+/etc/init.d/network restart
+sleep 2
+/etc/init.d/modemmanager restart
+[ -f "/usr/sbin/free.sh" ] && /usr/sbin/free.sh
+
+# 6. Ttyd Fix
+if [ -f /bin/bash ]; then
+    uci set ttyd.@ttyd[0].command='/bin/bash --login'
+    uci commit ttyd
+    /etc/init.d/ttyd enable
+    /etc/init.d/ttyd restart
+fi
+
+exit 0
