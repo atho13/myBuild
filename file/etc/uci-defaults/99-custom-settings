@@ -6,7 +6,7 @@ echo "Setting root password..."
 [ -f "/usr/sbin/free.sh" ] && chmod 0755 /usr/sbin/free.sh
 [ -f "/etc/rc.local" ] && chmod +x /etc/rc.local
 
-# 2. Gabungan Semua Konfigurasi UCI
+# 2. Konfigurasi UCI (Optimasi Network & Firewall)
 uci batch <<EOF
     # System & Timezone
     set system.@system[0].hostname='FRDM-X'
@@ -37,11 +37,11 @@ uci batch <<EOF
     
     delete network.wan6
     
-    # Firewall Zona (Pastikan index [1] adalah zona WAN)
-    del_list firewall.@zone[1].network='wan6'
-    add_list firewall.@zone[1].network='tethering'
-    add_list firewall.@zone[1].network='wan'
-    add_list firewall.@zone[1].network='mm'
+    # Firewall Zona (Menggunakan nama zona 'wan' agar lebih akurat)
+    del_list firewall.wan.network='wan6'
+    add_list firewall.wan.network='tethering'
+    add_list firewall.wan.network='wan'
+    add_list firewall.wan.network='mm'
     
     commit network
     commit system
@@ -49,22 +49,27 @@ uci batch <<EOF
     commit dhcp
 EOF
 
-# 4. Optimasi Eksternal (Non-UCI)
+# 3. Optimasi Eksternal (Non-UCI)
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf
 
+# USB Power Management
 for dev in /sys/bus/usb/devices/*/power/control; do 
     [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
 done
 
+# Reload sysctl
 sysctl -p /etc/sysctl.conf >/dev/null 2>&1
 
-# 5. Jalankan Service
-/etc/init.d/network restart
-sleep 2
-/etc/init.d/modemmanager restart
-[ -f "/usr/sbin/free.sh" ] && /usr/sbin/free.sh
+# 4. Jalankan Service Berat di Background
+# Menggunakan '&' agar booting tidak tertahan proses pencarian sinyal modem
+(
+    /etc/init.d/network restart
+    sleep 10
+    /etc/init.d/modemmanager restart
+    [ -f "/usr/sbin/free.sh" ] && /usr/sbin/free.sh
+) &
 
-# 6. Ttyd Fix
+# 5. Ttyd Fix (Agar Bash langsung jalan)
 if [ -f /bin/bash ]; then
     uci set ttyd.@ttyd[0].command='/bin/bash --login'
     uci commit ttyd
