@@ -49,21 +49,6 @@ uci batch <<EOF
     commit dhcp
 EOF
 
-# 3. Inisialisasi Swap (Ditaruh di luar blok UCI)
-echo "Initializing swap file..."
-if [ ! -f /overlay/swapfile ]; then
-    # Menggunakan /overlay karena ini partisi yang bisa ditulis di x86
-    dd if=/dev/zero of=/overlay/swapfile bs=1M count=512
-    chmod 600 /overlay/swapfile
-    mkswap /overlay/swapfile
-fi
-swapon /overlay/swapfile
-
-# Pastikan swap aktif otomatis setiap reboot
-if ! grep -q "swapon /overlay/swapfile" /etc/rc.local; then
-    sed -i '/exit 0/i swapon /overlay/swapfile' /etc/rc.local
-fi
-
 # 4. Optimasi Eksternal (Non-UCI)
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf
 
