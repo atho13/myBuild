@@ -6,7 +6,7 @@ echo "Setting root password..."
 [ -f "/usr/sbin/free.sh" ] && chmod 0755 /usr/sbin/free.sh
 [ -f "/etc/rc.local" ] && chmod +x /etc/rc.local
 
-# 2. Konfigurasi UCI (Optimasi Network & Firewall)
+# 2. Konfigurasi UCI (Optimasi PC 1-Port LAN)
 uci batch <<EOF
     # System & Timezone
     set system.@system[0].hostname='FRDM-X'
@@ -15,11 +15,17 @@ uci batch <<EOF
     del system.ntp.server
     add_list system.ntp.server='0.id.pool.ntp.org'
     add_list system.ntp.server='1.id.pool.ntp.org'
-    add_list system.ntp.server='2.id.pool.ntp.org'
-    add_list system.ntp.server='3.id.pool.ntp.org'
     add_list system.ntp.server='time.google.com'
     
-    # Network Interface
+    # KUNCI: Setel port tunggal (eth0) sebagai LAN
+    delete network.lan
+    set network.lan=interface
+    set network.lan.proto='static'
+    set network.lan.device='eth0'
+    set network.lan.ipaddr='192.168.1.1'
+    set network.lan.netmask='255.255.255.0'
+    
+    # Konfigurasi Modem USB (mm)
     set network.mm=interface
     set network.mm.proto='modemmanager'
     set network.mm.device='auto'
@@ -27,21 +33,22 @@ uci batch <<EOF
     set network.mm.peerdns='1'
     set network.mm.metric='10'
     
-    set network.wan=interface
-    set network.wan.proto='dhcp'
-    set network.wan.device='eth1'
-    
+    # Konfigurasi Tethering HP (usb0)
     set network.tethering=interface
     set network.tethering.proto='dhcp'
     set network.tethering.device='usb0'
+    set network.tethering.metric='20'
     
+    # Hapus WAN kabel (eth1) karena port fisik tidak ada
+    delete network.wan
     delete network.wan6
     
-    # Firewall Zona (Menggunakan nama zona 'wan' agar lebih akurat)
+    # Firewall: Arahkan zona WAN ke Modem & Tethering
+    # Karena eth1 tidak ada, mm & usb0 harus jadi 'pintu' internet
+    del_list firewall.wan.network='wan'
     del_list firewall.wan.network='wan6'
-    add_list firewall.wan.network='tethering'
-    add_list firewall.wan.network='wan'
     add_list firewall.wan.network='mm'
+    add_list firewall.wan.network='tethering'
     
     commit network
     commit system
@@ -49,27 +56,22 @@ uci batch <<EOF
     commit dhcp
 EOF
 
-# 3. Optimasi Eksternal (Non-UCI)
+# 3. Optimasi Eksternal
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf
-
-# USB Power Management
 for dev in /sys/bus/usb/devices/*/power/control; do 
     [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
 done
-
-# Reload sysctl
 sysctl -p /etc/sysctl.conf >/dev/null 2>&1
 
-# 4. Jalankan Service Berat di Background
-# Menggunakan '&' agar booting tidak tertahan proses pencarian sinyal modem
+# 4. Jalankan Service di Background (Agar LuCI Langsung Terbuka)
 (
     /etc/init.d/network restart
-    sleep 10
+    sleep 8
     /etc/init.d/modemmanager restart
     [ -f "/usr/sbin/free.sh" ] && /usr/sbin/free.sh
 ) &
 
-# 5. Ttyd Fix (Agar Bash langsung jalan)
+# 5. Ttyd & Bash Fix
 if [ -f /bin/bash ]; then
     uci set ttyd.@ttyd[0].command='/bin/bash --login'
     uci commit ttyd
