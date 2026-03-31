@@ -79,8 +79,9 @@ jobs:
                      V=s
           
           # Kumpulkan Hasil (.img.gz dan .vmdk)
-          cp bin/targets/x86/64/*-generic-ext4-combined-efi.img.gz ${{ env.OUTPUT_DIR }}/
-          cp bin/targets/x86/64/*-combined-efi.vmdk ${{ env.OUTPUT_DIR }}/ 2>/dev/null || true
+          # cp bin/targets/x86/64/*-generic-ext4-combined-efi.img.gz ${{ env.OUTPUT_DIR }}/
+          # cp bin/targets/x86/64/*-combined-efi.vmdk ${{ env.OUTPUT_DIR }}/ 2>/dev/null || true
+          find bin/targets/x86/64/* -type f \( -name "*-combined*.img.gz" -o -name "*-combined*.vmdk" \) -exec cp {} ${{ env.OUTPUT_DIR }}/ \;
           
           # Buat Tag untuk Release
           echo "build_tag=x86_64_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
