@@ -58,7 +58,7 @@ jobs:
           luci-lib-nixio luci-mod-admin-full luci-mod-network luci-mod-status luci-mod-system \
           luci-proto-3g luci-proto-mbim luci-proto-ncm luci-proto-ppp luci-proto-qmi luci-proto-modemmanager \
           modemmanager modemmanager-rpcd libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml \
-          kmod-inet-diag kmod-nft-tproxy ip-full php8 haproxy tcpdump UDPspeeder irqbalance kmod-dummy bc \
+          kmod-inet-diag kmod-nft-tproxy ip-full php8 haproxy tcpdump UDPspeeder irqbalance bc \
           uhttpd uhttpd-mod-ubus unzip uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core \
           bash kmod-r8169 kmod-r8101 openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep \
           coreutils-stat nano fping kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark \
