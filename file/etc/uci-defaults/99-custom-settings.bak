@@ -97,6 +97,7 @@ sleep 2
 
 # Jalankan script tambahan jika ada
 [ -f "/sbin/free.sh" ] && sh /sbin/free.sh
+[ -f "/etc/custom_service/free.sh" ] && sh /etc/custom_service/free.sh
 
 echo "Done! Router FRDM-X is ready."
 exit 0
