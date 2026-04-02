@@ -1,25 +1,30 @@
 #!/bin/sh
 
+# =========================================================
 # 1. Password root & Izin File
+# =========================================================
 echo "Setting root password..."
-(echo "root"; sleep 1; echo "root") | passwd > /dev/null
-[ -f "/usr/sbin/free.sh" ] && chmod 0755 /usr/sbin/free.sh
-[ -f "/etc/rc.local" ] && chmod +x /etc/rc.local
+echo -e "root\nroot" | passwd root > /dev/null 2>&1
 
-# 2. Gabungan Semua Konfigurasi UCI
+# Daftar semua file script yang harus diberi izin eksekusi
+for file in /sbin/free.sh /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
+    [ -f "$file" ] && chmod +x "$file"
+done
+
+# =========================================================
+# 2. Konfigurasi UCI (System, Network, Firewall, uHTTPd)
+# =========================================================
+echo "Configuring UCI settings..."
 uci batch <<EOF
-    # System & Timezone
     set system.@system[0].hostname='FRDM-X'
     set system.@system[0].timezone='WIB-7'
     set system.@system[0].zonename='Asia/Jakarta'
-    del system.ntp.server
+    
+    delete system.ntp.server
     add_list system.ntp.server='0.id.pool.ntp.org'
     add_list system.ntp.server='1.id.pool.ntp.org'
-    add_list system.ntp.server='2.id.pool.ntp.org'
-    add_list system.ntp.server='3.id.pool.ntp.org'
-    add_list system.ntp.server='time.google.com'
+    add_list system.ntp.server='://google.com'
     
-    # Network Interface (Pastikan 'network.mm' didefinisikan dulu)
     set network.mm=interface
     set network.mm.proto='modemmanager'
     set network.mm.device='auto'
@@ -37,50 +42,96 @@ uci batch <<EOF
     
     delete network.wan6
     
-    # Firewall Zona (Pastikan index [1] biasanya adalah zona WAN)
     del_list firewall.@zone[1].network='wan6'
     add_list firewall.@zone[1].network='tethering'
     add_list firewall.@zone[1].network='wan'
     add_list firewall.@zone[1].network='mm'
     
-    # ZRAM (Pastikan paket zram-swap sudah terinstall)
-    set zram-swap.@zram-swap[0].enabled='1'
-    set zram-swap.@zram-swap[0].zram_size='128'
+    set uhttpd.main.index_page='index.php'
+    set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
     
     commit network
     commit system
     commit firewall
+    commit uhttpd
     commit dhcp
-    commit zram-swap
 EOF
 
-# 3. Optimasi Eksternal (Non-UCI)
-# Matikan signature check opkg
-sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf
+# =========================================================
+# 3. Optimasi & Fixes (USB & PHP)
+# =========================================================
+echo "Applying optimizations..."
+sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 
-# USB Power Management (Gunakan loop yang lebih aman)
 for dev in /sys/bus/usb/devices/*/power/control; do 
     [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
 done
 
-# Reload sysctl
-sysctl -p /etc/sysctl.conf >/dev/null 2>&1
+[ -f /etc/php.ini ] && sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini
 
-# 4. Jalankan Service
-/etc/init.d/network restart
-sleep 2
-/etc/init.d/modemmanager restart
-[ -f "/usr/sbin/free.sh" ] && /usr/sbin/free.sh
-
-# 5. Ttyd Fix
-if [ -f /bin/bash ]; then
+if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
     uci set ttyd.@ttyd[0].command='/bin/bash --login'
-    [ $? -ne 0 ] && sed -i "option command '/bin/bash --login'" /etc/config/ttyd
-    
     uci commit ttyd
     /etc/init.d/ttyd enable
-    /etc/init.d/ttyd restart
 fi
 
-exit 0
+# =========================================================
+# 4. TinyFM, Nikki & OpenClash Symlinks
+# =========================================================
+mkdir -p /www/tinyfm
+ln -sf / /www/tinyfm/rootfs
+ln -sf /etc/openclash/ /www/tinyfm/openclash
+ln -sf /etc/openclash/ /www/tinyfm/nikki
 
+# =========================================================
+# 5. Konfigurasi Startup (rc.local)
+# =========================================================
+echo "Mendaftarkan start_service.sh ke Startup (dengan jeda 30 detik)..."
+if [ -f "/etc/custom_service/start_service.sh" ]; then
+    # Bersihkan entri lama agar tidak duplikat
+    sed -i '/start_service.sh/d' /etc/rc.local
+    # Sisipkan perintah startup sebelum 'exit 0'
+    # Menggunakan kurung () & agar berjalan di background tanpa mengganggu booting
+    sed -i '/exit 0/i (sleep 30 && /bin/bash /etc/custom_service/start_service.sh) &' /etc/rc.local
+fi
+
+# =========================================================
+# 6. Konfigurasi Jadwal (Cron Job / Schedule)
+# =========================================================
+echo "Updating System Schedules (Crontab)..."
+
+cat > /etc/crontabs/root <<EOF
+# Script by FRDMX
+
+# auto renew ip lease (Mon-Sat 03:30 AM) - Universal Port Detection
+#30 3 * * 1,2,3,4,5,6 for dev in /dev/ttyUSB*; do [ -e "\$dev" ] && echo AT+CFUN=4 | atinout - "\$dev" -; done && sleep 3 && ifdown wan && sleep 3 && for dev in /dev/ttyUSB*; do [ -e "\$dev" ] && echo AT+CFUN=1 | atinout - "\$dev" -; done && sleep 3 && ifup wan
+
+# auto restart modem (Sunday 03:30 AM)
+#30 3 * * 0 for dev in /dev/ttyUSB*; do [ -e "\$dev" ] && echo AT^RESET | atinout - "\$dev" -; done && sleep 20 && ifdown wan && ifup wan
+
+# JADWAL AKTIF
+0 * * * * /sbin/free.sh >/dev/null 2>&1
+*/5 * * * * /www/vnstati/vnstati.sh >/dev/null 2>&1
+EOF
+
+/etc/init.d/cron enable
+/etc/init.d/cron restart
+
+# =========================================================
+# 7. Restart Services & Finalisasi
+# =========================================================
+echo "Restarting services..."
+sysctl -p /etc/sysctl.conf >/dev/null 2>&1
+/etc/init.d/network restart
+/etc/init.d/uhttpd restart
+/etc/init.d/ttyd restart
+
+sleep 2
+/etc/init.d/modemmanager restart
+
+# Jalankan script maintenance manual saat ini
+[ -f "/sbin/free.sh" ] && sh /sbin/free.sh
+[ -f "/etc/custom_service/free.sh" ] && sh /etc/custom_service/free.sh
+
+echo "Done! Router FRDM-X configuration finished."
+exit 0
