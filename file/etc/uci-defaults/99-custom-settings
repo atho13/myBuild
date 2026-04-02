@@ -6,7 +6,7 @@
 echo "Setting root password..."
 echo -e "root\nroot" | passwd root > /dev/null 2>&1
 
-# Loop izin eksekusi untuk semua file .sh
+# Daftar semua file script yang harus diberi izin eksekusi
 for file in /sbin/free.sh /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
     [ -f "$file" ] && chmod +x "$file"
 done
@@ -58,7 +58,7 @@ uci batch <<EOF
 EOF
 
 # =========================================================
-# 3. Optimasi & Fixes
+# 3. Optimasi & Fixes (USB & PHP)
 # =========================================================
 echo "Applying optimizations..."
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
@@ -84,29 +84,41 @@ ln -sf /etc/openclash/ /www/tinyfm/openclash
 ln -sf /etc/openclash/ /www/tinyfm/nikki
 
 # =========================================================
-# 5. Konfigurasi Jadwal (Cron Job / Schedule) Universal Port
+# 5. Konfigurasi Startup (rc.local)
 # =========================================================
-echo "Updating System Schedules (Universal Port)..."
+echo "Mendaftarkan start_service.sh ke Startup (dengan jeda 30 detik)..."
+if [ -f "/etc/custom_service/start_service.sh" ]; then
+    # Bersihkan entri lama agar tidak duplikat
+    sed -i '/start_service.sh/d' /etc/rc.local
+    # Sisipkan perintah startup sebelum 'exit 0'
+    # Menggunakan kurung () & agar berjalan di background tanpa mengganggu booting
+    sed -i '/exit 0/i (sleep 30 && /bin/bash /etc/custom_service/start_service.sh) &' /etc/rc.local
+fi
+
+# =========================================================
+# 6. Konfigurasi Jadwal (Cron Job / Schedule)
+# =========================================================
+echo "Updating System Schedules (Crontab)..."
 
 cat > /etc/crontabs/root <<EOF
 # Script by FRDMX
 
-# auto renew ip lease (Mon-Sat 03:30 AM)
+# auto renew ip lease (Mon-Sat 03:30 AM) - Universal Port Detection
 #30 3 * * 1,2,3,4,5,6 for dev in /dev/ttyUSB*; do [ -e "\$dev" ] && echo AT+CFUN=4 | atinout - "\$dev" -; done && sleep 3 && ifdown wan && sleep 3 && for dev in /dev/ttyUSB*; do [ -e "\$dev" ] && echo AT+CFUN=1 | atinout - "\$dev" -; done && sleep 3 && ifup wan
 
 # auto restart modem (Sunday 03:30 AM)
 #30 3 * * 0 for dev in /dev/ttyUSB*; do [ -e "\$dev" ] && echo AT^RESET | atinout - "\$dev" -; done && sleep 20 && ifdown wan && ifup wan
 
+# JADWAL AKTIF
 0 * * * * /sbin/free.sh >/dev/null 2>&1
 */5 * * * * /www/vnstati/vnstati.sh >/dev/null 2>&1
-0 * * * * /bin/sh /etc/custom_service/start_service.sh
 EOF
 
 /etc/init.d/cron enable
 /etc/init.d/cron restart
 
 # =========================================================
-# 6. Restart Services & Eksekusi Akhir
+# 7. Restart Services & Finalisasi
 # =========================================================
 echo "Restarting services..."
 sysctl -p /etc/sysctl.conf >/dev/null 2>&1
@@ -117,8 +129,9 @@ sysctl -p /etc/sysctl.conf >/dev/null 2>&1
 sleep 2
 /etc/init.d/modemmanager restart
 
+# Jalankan script maintenance manual saat ini
 [ -f "/sbin/free.sh" ] && sh /sbin/free.sh
 [ -f "/etc/custom_service/free.sh" ] && sh /etc/custom_service/free.sh
 
-echo "Done! Router FRDM-X is ready."
+echo "Done! Router FRDM-X configuration finished."
 exit 0
