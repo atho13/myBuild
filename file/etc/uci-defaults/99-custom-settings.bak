@@ -6,7 +6,7 @@ echo "Setting root password..."
 echo -e "root\nroot" | passwd root > /dev/null 2>&1
 
 # Gunakan loop untuk chmod agar lebih rapi
-for file in /usr/sbin/free.sh /etc/rc.local; do
+for file in /sbin/free.sh /etc/rc.local; do
     [ -f "$file" ] && chmod +x "$file"
 done
 
@@ -96,7 +96,7 @@ sleep 2
 /etc/init.d/modemmanager restart
 
 # Jalankan script tambahan jika ada
-[ -f "/usr/sbin/free.sh" ] && sh /usr/sbin/free.sh
+[ -f "/sbin/free.sh" ] && sh /sbin/free.sh
 
 echo "Done! Router FRDM-X is ready."
 exit 0
