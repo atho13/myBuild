@@ -49,13 +49,13 @@ jobs:
         run: |
           cd ${{ env.WORKING_DIR }}
           
-          # 1. Gunakan uci-defaults untuk pengaturan IP (Lebih stabil di 24.10)
           mkdir -p ${{ github.workspace }}/files/etc/uci-defaults
           cat <<EOF > ${{ github.workspace }}/files/etc/uci-defaults/99-custom-settings
           uci set network.lan.ipaddr='${{ github.event.inputs.openwrt_ip }}'
           uci commit network
           exit 0
           EOF
+          
           chmod +x ${{ github.workspace }}/files/etc/uci-defaults/99-custom-settings
           PACKAGES="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall4 fstools \
           kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
@@ -84,8 +84,21 @@ jobs:
         run: |
           RESULT_DIR="${{ env.WORKING_DIR }}/bin/targets/armvirt/64"
           if [ -d "$RESULT_DIR" ]; then
-            # Mencari file rootfs baik itu .tar.gz maupun .tar.zst
-            find $RESULT_DIR -type f \( -name "*rootfs.tar.gz" -o -name "*rootfs.tar.zst" \) -exec cp {} ${{ env.OUTPUT_DIR }}/ \;
+            # 1. Cari file .tar.zst (standar 24.10) atau .tar.gz (jika ada)
+            ZST_FILE=$(find $RESULT_DIR -type f -name "*rootfs.tar.zst" | head -n 1)
+            GZ_FILE=$(find $RESULT_DIR -type f -name "*rootfs.tar.gz" | head -n 1)
+            
+            if [ -n "$ZST_FILE" ]; then
+              echo "Mengonversi $ZST_FILE ke .tar.gz untuk kompatibilitas..."
+              # Dekompresi zstd lalu kompres ulang ke gzip
+              zstd -d -c "$ZST_FILE" | gzip > "${{ env.OUTPUT_DIR }}/openwrt-armvirt-64-generic-rootfs.tar.gz"
+            elif [ -n "$GZ_FILE" ]; then
+              echo "File sudah berformat .tar.gz, langsung menyalin..."
+              cp "$GZ_FILE" "${{ env.OUTPUT_DIR }}/openwrt-armvirt-64-generic-rootfs.tar.gz"
+            else
+              echo "Error: RootFS tidak ditemukan!"
+              exit 1
+            fi
           else
             echo "Error: Direktori build tidak ditemukan!"
             exit 1
