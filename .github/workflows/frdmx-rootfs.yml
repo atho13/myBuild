@@ -78,30 +78,30 @@ jobs:
           make image PROFILE="generic" \
                PACKAGES="${PACKAGES}" \
                FILES="${{ github.workspace }}/files" \
-               CONFIG_TARGET_ROOTFS_PARTSIZE=700 \
+               #CONFIG_TARGET_ROOTFS_PARTSIZE=512 \
                V=s
           
       - name: Kumpulkan Hasil
         run: |
-          RESULT_DIR="${{ env.WORKING_DIR }}/bin/targets/armvirt/64"
+          RESULT_DIR="${{ env.WORKING_DIR }}/bin/targets/armsr/armv8"
+          
           if [ -d "$RESULT_DIR" ]; then
-            # 1. Cari file .tar.zst (standar 24.10) atau .tar.gz (jika ada)
+            # Mencari file .tar.zst atau .tar.gz
             ZST_FILE=$(find $RESULT_DIR -type f -name "*rootfs.tar.zst" | head -n 1)
             GZ_FILE=$(find $RESULT_DIR -type f -name "*rootfs.tar.gz" | head -n 1)
             
             if [ -n "$ZST_FILE" ]; then
-              echo "Mengonversi $ZST_FILE ke .tar.gz untuk kompatibilitas..."
-              # Dekompresi zstd lalu kompres ulang ke gzip
-              zstd -d -c "$ZST_FILE" | gzip > "${{ env.OUTPUT_DIR }}/openwrt-armvirt-64-generic-rootfs.tar.gz"
+              echo "Mengonversi $ZST_FILE ke .tar.gz..."
+              zstd -d -c "$ZST_FILE" | gzip > "${{ env.OUTPUT_DIR }}/openwrt-armsr-armv8-generic-rootfs.tar.gz"
             elif [ -n "$GZ_FILE" ]; then
-              echo "File sudah berformat .tar.gz, langsung menyalin..."
-              cp "$GZ_FILE" "${{ env.OUTPUT_DIR }}/openwrt-armvirt-64-generic-rootfs.tar.gz"
+              echo "Menyalin file .tar.gz..."
+              cp "$GZ_FILE" "${{ env.OUTPUT_DIR }}/openwrt-armsr-armv8-generic-rootfs.tar.gz"
             else
-              echo "Error: RootFS tidak ditemukan!"
+              echo "Error: RootFS tidak ditemukan di $RESULT_DIR"
               exit 1
             fi
           else
-            echo "Error: Direktori build tidak ditemukan!"
+            echo "Error: Direktori build $RESULT_DIR tidak ditemukan!"
             exit 1
           fi       
           echo "build_tag=S905X_RootFS_24.10.6_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
@@ -110,11 +110,12 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ env.build_tag }}
+          artifacts: "${{ env.OUTPUT_DIR }}/*.tar.gz"
           allowUpdates: true
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             ## OpenWrt 24.10.6 RootFS S905X
-            - **Target**: Amlogic armvirt/64
-            - **Format**: .tar.zst (Standar OpenWrt Terbaru)
+            - **Target**: Amlogic armsr-armv8
+            - **Format**: .tar.gz (Converted)
             - **Default IP**: ${{ github.event.inputs.openwrt_ip }}
