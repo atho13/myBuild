@@ -78,7 +78,7 @@ jobs:
           make image PROFILE="generic" \
                PACKAGES="${PACKAGES}" \
                FILES="${{ github.workspace }}/files" \
-               CONFIG_TARGET_ROOTFS_PARTSIZE=750 \
+               CONFIG_TARGET_ROOTFS_PARTSIZE=700 \
                V=s
           
       - name: Kumpulkan Hasil
