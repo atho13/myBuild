@@ -73,6 +73,9 @@ jobs:
               option ip6assign '60'
           EOF
 
+          echo "CONFIG_TARGET_ROOTFS_PARTSIZE=1024" >> .config
+          echo "CONFIG_TARGET_ROOTFS_EXT4FS=y" >> .config
+
           # List Paket S905X Fix 21.02
           PACKAGES="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall fstools \
           kmod-button-hotplug libc libgcc logd mkf2fs mtd netifd odhcp6c odhcpd-ipv6only \
@@ -93,7 +96,7 @@ jobs:
           kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless luci-app-ttyd luci-theme-material"
 
           # Jalankan build
-          sed -i 's/CONFIG_TARGET_ROOTFS_EXT4FS=y/# CONFIG_TARGET_ROOTFS_EXT4FS is not set/' .config
+          # sed -i 's/CONFIG_TARGET_ROOTFS_EXT4FS=y/# CONFIG_TARGET_ROOTFS_EXT4FS is not set/' .config
           make image PROFILE="Default" \
                      PACKAGES="${PACKAGES}" \
                      FILES="${{ github.workspace }}/files" \
