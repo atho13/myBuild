@@ -49,9 +49,9 @@ rebuild_firmware() {
 
     # Daftar paket gabungan & dibersihkan dari konflik
     # Menambahkan '-' pada wpad-basic agar tidak bentrok dengan versi mbedtls/openssl
-    my_packages="base-files ca-bundle dnsmasq-full dropbear e2fsprogs firewall4 fstools \
-        kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
-        mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
+    my_packages="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall4 fstools \
+        kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd mkf2fs mtd \
+        netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
         uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm \
         kmod-usb-net kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
         luci-mod-network kmod-usb-net-rtl8150 kmod-usb-net-rtl8152 kmod-usb-net-asix kmod-usb-net-asix-ax88179 \
@@ -59,7 +59,7 @@ rebuild_firmware() {
         luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
         kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim luci-proto-modemmanager modemmanager modemmanager-rpcd \
         libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
-        ip-full php8 haproxy tcpdump UDPspeeder irqbalance bc uhttpd uhttpd-mod-ubus unzip \
+        ip-full php8 haproxy tcpdump UDPspeeder irqbalance bc uhttpd uhttpd-mod-ubus unzip kmod-tcp-bbr \
         uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash \
         openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat nano fping \
         kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
