@@ -133,5 +133,12 @@ sleep 2
 [ -f "/sbin/free.sh" ] && sh /sbin/free.sh
 [ -f "/etc/custom_service/free.sh" ] && sh /etc/custom_service/free.sh
 
+# System customizations
+echo "Applying system.."
+chmod +x /bin/chnrot
+chmod +x /etc/profile
+sed -i -e 's/\[ -f \/etc\/banner \] && cat \/etc\/banner/#&/' \
+       -e 's/\[ -n \"\$FAILSAFE\" \] && cat \/etc\/banner.failsafe/& || \/bin\/chnrot/' /etc/profile
+
 echo "Done! Router FRDM-X configuration finished."
 exit 0
