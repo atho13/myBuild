@@ -1,4 +1,4 @@
-name: FW 24.10.6 S905X rootFS
+name: my rootFS
 
 on:
   workflow_dispatch:
