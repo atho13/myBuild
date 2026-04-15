@@ -1,4 +1,4 @@
-name: my rootFS
+name: my OWRT rootFS
 
 on:
   workflow_dispatch:
