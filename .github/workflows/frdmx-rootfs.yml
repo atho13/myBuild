@@ -41,9 +41,11 @@ jobs:
       - name: Download Image Builder
         run: |
           mkdir -p ${{ env.WORKING_DIR }}
-          curl -L "${{ github.event.inputs.custom_url }}" -o ib.tar.zst
-          tar -I zstd -xf ib.tar.zst -C ${{ env.WORKING_DIR }} --strip-components=1
-          rm ib.tar.zst
+          # Unduh dengan nama asli agar tar bisa mendeteksi formatnya secara otomatis
+          curl -L "${{ github.event.inputs.custom_url }}" -o ib_archive.tar.xz
+          # Gunakan tar -xf tanpa memaksa menggunakan zstd
+          tar -xf ib_archive.tar.xz -C ${{ env.WORKING_DIR }} --strip-components=1
+          rm ib_archive.tar.xz
 
       - name: Build Firmware
         run: |
