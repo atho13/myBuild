@@ -45,11 +45,11 @@ on:
       kernel_repo:
         description: "Set the kernel repository"
         required: false
-        default: "ribel13/kernel"
+        default: "atho13/kernel"
         type: choice
         options:
           - ophub/kernel
-          - ribel13/kernel
+          - atho13/kernel
       kernel_usage:
         description: "Set the tags of the stable kernel."
         required: false
@@ -107,7 +107,7 @@ jobs:
       - name: Packaging Amlogic (.img)
         id: packaging
         if: steps.imagebuilder.outputs.status == 'success'
-        uses: ribel13/amlogic-s9xxx-openwrt@main
+        uses: atho13/amlogic-s9xxx-openwrt@main
         with:
           openwrt_path: output/*rootfs.tar.*
           openwrt_ip: ${{ github.event.inputs.openwrt_ip }}
