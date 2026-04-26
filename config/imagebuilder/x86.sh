@@ -33,7 +33,7 @@ build_x86() {
     kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd \
     mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
     uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base \
-    luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
+    luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full kmod-tcp-bbr \
     luci-mod-network kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim \
     mbim-utils picocom minicom luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd \
     libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
