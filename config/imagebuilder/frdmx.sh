@@ -21,7 +21,8 @@ download_imagebuilder() {
     cd "${make_path}"
     echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.2 (ARMSR/ARMV8)..."
     
-    URL="https://downloads.openwrt.org/releases/25.12.2/targets/armsr/armv8/openwrt-imagebuilder-25.12.2-armsr-armv8.Linux-x86_64.tar.zst"
+    #URL="https://downloads.openwrt.org/releases/25.12.2/targets/armsr/armv8/openwrt-imagebuilder-25.12.2-armsr-armv8.Linux-x86_64.tar.zst"
+    URL="https://downloads-immortalwrt-org.translate.goog/releases/25.12.0-rc2/targets/armsr/armv8/immortalwrt-imagebuilder-25.12.0-rc2-armsr-armv8.Linux-x86_64.tar.zst?_x_tr_sl=en&_x_tr_tl=id&_x_tr_hl=id&_x_tr_pto=tc"
     
     curl -fL -o ib.tar.zst "$URL" || { echo -e "${ERROR} Gagal download!"; exit 1; }
     
