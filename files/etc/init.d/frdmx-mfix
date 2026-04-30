@@ -1,0 +1,45 @@
+#!/bin/sh /etc/rc.common
+
+START=99
+
+start() {
+    sleep 30
+
+    MODEM_PORT=$(ls /dev/cdc-wdm* /dev/ttyUSB* /dev/ttyACM* 2>/dev/null | head -n 1)
+
+    if [ -n "$MODEM_PORT" ]; then
+        echo "Modem terdeteksi pada $MODEM_PORT. Memulai refresh interface..."
+        
+        for iface in wan wan6 tethering modem wwan0; do
+            if uci get network.$iface >/dev/null 2>&1; then
+                echo "Merefresh interface: $iface"
+                ifdown "$iface"
+                sleep 2
+                ifup "$iface"
+            fi
+        done
+        
+        /sbin/udhcpc -n -p /var/run/udhcpc-usb0.pid -i usb0 >/dev/null 2>&1
+        
+    else
+        echo "Modem TIDAK ditemukan. Mencoba reset usb..."
+        
+        for hub in /sys/bus/usb/devices/usb*; do
+            if [ -e "$hub/authorized" ]; then
+                echo 0 > "$hub/authorized"
+                sleep 1
+                echo 1 > "$hub/authorized"
+            fi
+        done
+        
+        if [ -e "/sys/bus/pci/rescan" ]; then
+            echo 1 > /sys/bus/pci/rescan
+        fi
+        
+        echo "Reset selesai. Menunggu deteksi ulang perangkat..."
+    fi
+}
+
+stop() {
+    echo "Menghentikan layanan frdmx-mfix."
+}
