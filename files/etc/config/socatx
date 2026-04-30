@@ -1,0 +1,11 @@
+# forward port 8000 on IPv6 to IPv4 host port 80
+# change enable to '1' to use this example
+config socat 'haproxy_to_speederv2_game'
+	option enable '1'
+	option SocatOptions 'TCP4-LISTEN:5095,fork,reuseaddr UDP4:127.0.0.1:4095'
+	option user 'root'
+
+config socat 'haproxy_to_speederv2_stream'
+	option enable '1'
+	option SocatOptions 'TCP4-LISTEN:5096,fork,reuseaddr UDP4:127.0.0.1:4096'
+	option user 'root'

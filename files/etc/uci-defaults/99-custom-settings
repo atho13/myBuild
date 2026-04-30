@@ -1,13 +1,13 @@
 #!/bin/sh
 
 # =========================================================
-# 1. Password root & Izin File
+# 1. Kosongkan Password root
 # =========================================================
-echo "Setting root password..."
-echo -e "root\nroot" | passwd root > /dev/null 2>&1
+echo "Clearing root password..."
+passwd -d root > /dev/null 2>&1
 
 # Daftar semua file script yang harus diberi izin eksekusi
-for file in /sbin/free.sh /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
+for file in /usr/bin/jam.sh /usr/bin/huawei.py /usr/sbin/frdmx-net /bin/frdmx /sbin/free.sh /etc/init.d/frdmx-led /etc/init.d/frdmx-mfix /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
     [ -f "$file" ] && chmod +x "$file"
 done
 
@@ -16,14 +16,15 @@ done
 # =========================================================
 echo "Configuring UCI settings..."
 uci batch <<EOF
-    set system.@system[0].hostname='FRDM-X'
+    set system.@system[0].hostname='FRDMX'
     set system.@system[0].timezone='WIB-7'
     set system.@system[0].zonename='Asia/Jakarta'
     
     delete system.ntp.server
     add_list system.ntp.server='0.id.pool.ntp.org'
     add_list system.ntp.server='1.id.pool.ntp.org'
-    add_list system.ntp.server='://google.com'
+    add_list system.ntp.server='ntp.bmkg.go.id'
+    add_list system.ntp.server='time.google.com'
     
     set network.mm=interface
     set network.mm.proto='modemmanager'
@@ -88,10 +89,7 @@ ln -sf /etc/openclash/ /www/tinyfm/nikki
 # =========================================================
 echo "Mendaftarkan start_service.sh ke Startup (dengan jeda 30 detik)..."
 if [ -f "/etc/custom_service/start_service.sh" ]; then
-    # Bersihkan entri lama agar tidak duplikat
     sed -i '/start_service.sh/d' /etc/rc.local
-    # Sisipkan perintah startup sebelum 'exit 0'
-    # Menggunakan kurung () & agar berjalan di background tanpa mengganggu booting
     sed -i '/exit 0/i (sleep 30 && /bin/bash /etc/custom_service/start_service.sh) &' /etc/rc.local
 fi
 
@@ -110,6 +108,7 @@ cat > /etc/crontabs/root <<EOF
 #30 3 * * 0 for dev in /dev/ttyUSB*; do [ -e "\$dev" ] && echo AT^RESET | atinout - "\$dev" -; done && sleep 20 && ifdown wan && ifup wan
 
 # JADWAL AKTIF
+* * * * * /usr/bin/jam.sh >/dev/null 2>&1
 0 * * * * /sbin/free.sh >/dev/null 2>&1
 */5 * * * * /www/vnstati/vnstati.sh >/dev/null 2>&1
 EOF

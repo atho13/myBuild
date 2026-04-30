@@ -1,4 +1,5 @@
 # Put your custom commands here that should be executed once
+/usr/bin/jam.sh &
 bash /etc/custom_service/start_service.sh &
 # /usr/sbin/frdmx-net &
 exit 0

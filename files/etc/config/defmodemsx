@@ -1,0 +1,10 @@
+
+config general
+
+config defmodems
+	option modemdata 'ecm'
+	option comm_port '192.168.8.1'
+	option comm_ecm '192.168.8.1'
+	option network 'wan'
+	option modem 'Hilink'
+
