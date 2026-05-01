@@ -16,7 +16,7 @@ on:
         options:
           - openwrt:25.12.2
           - openwrt:24.10.6
-          - immortalwrt:25.12.1
+          - immortalwrt:25.12.0-rc2
       openwrt_board:
         description: "Select device board"
         required: false
@@ -28,6 +28,7 @@ on:
           - s905x-b860h
           - s905x2-hg680fj
           - s905x3
+          - s905x3-x96max
       openwrt_kernel:
         description: "Select kernel version"
         required: false
@@ -107,7 +108,7 @@ jobs:
       - name: Packaging Amlogic (.img)
         id: packaging
         if: steps.imagebuilder.outputs.status == 'success'
-        uses: atho13/amlogic-s9xxx-openwrt@main
+        uses: ophub/amlogic-s9xxx-openwrt@main
         with:
           openwrt_path: output/*rootfs.tar.*
           openwrt_ip: ${{ github.event.inputs.openwrt_ip }}
