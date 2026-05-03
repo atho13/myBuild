@@ -54,8 +54,8 @@ rebuild_firmware() {
     my_packages="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall4 fstools \
         kmod-button-hotplug kmod-nft-offload libc libgcc logd mkf2fs mtd netifd nftables odhcp6c \
         odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail uci uclient-fetch urandom-seed \
-        urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm kmod-usb-net \
-        kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
+        urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm kmod-usb-net usbutils kmod-usb-net-qmi-wwan \
+        kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full qmi-utils \
         luci-mod-network kmod-usb-net-rtl8150 kmod-usb-net-rtl8152 kmod-usb-net-asix kmod-usb-net-asix-ax88179 \
         kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
         luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
