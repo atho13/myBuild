@@ -19,10 +19,11 @@ sudo chown -R runner:runner "${make_path}"
 # 2. Download ImageBuilder (URL ARMSr/ARMv8)
 download_imagebuilder() {
     cd "${make_path}"
-    echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.2 (ARMSR/ARMV8)..."
+    #echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.2 (ARMSR/ARMV8)..."
+    echo -e "${STEPS} Mengunduh ImageBuilder ImmortalWrt 24.10.6 (ARMSR/ARMV8)..."
     
     #URL="https://downloads.openwrt.org/releases/25.12.2/targets/armsr/armv8/openwrt-imagebuilder-25.12.2-armsr-armv8.Linux-x86_64.tar.zst"
-    URL="https://downloads-immortalwrt-org.translate.goog/releases/25.12.0-rc2/targets/armsr/armv8/immortalwrt-imagebuilder-25.12.0-rc2-armsr-armv8.Linux-x86_64.tar.zst?_x_tr_sl=en&_x_tr_tl=id&_x_tr_hl=id&_x_tr_pto=tc"
+    URL="https://downloads.immortalwrt.org/releases/24.10.6/targets/armsr/armv8/immortalwrt-imagebuilder-24.10.6-armsr-armv8.Linux-x86_64.tar.zst"
     
     curl -fL -o ib.tar.zst "$URL" || { echo -e "${ERROR} Gagal download!"; exit 1; }
     
@@ -51,10 +52,10 @@ rebuild_firmware() {
     # Daftar paket gabungan & dibersihkan dari konflik
     # Menambahkan '-' pada wpad-basic agar tidak bentrok dengan versi mbedtls/openssl
     my_packages="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall4 fstools \
-        kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd mkf2fs mtd \
-        netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
-        uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm \
-        kmod-usb-net kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
+        kmod-button-hotplug kmod-nft-offload libc libgcc logd mkf2fs mtd netifd nftables odhcp6c \
+        odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail uci uclient-fetch urandom-seed \
+        urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm kmod-usb-net usbutils kmod-usb-net-qmi-wwan \
+        kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full qmi-utils \
         luci-mod-network kmod-usb-net-rtl8150 kmod-usb-net-rtl8152 kmod-usb-net-asix kmod-usb-net-asix-ax88179 \
         kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
         luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
