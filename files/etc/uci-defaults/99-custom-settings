@@ -7,7 +7,7 @@ echo "Clearing root password..."
 passwd -d root > /dev/null 2>&1
 
 # Daftar semua file script yang harus diberi izin eksekusi
-for file in /usr/bin/jam.sh /usr/bin/huawei.py /usr/sbin/frdmx-net /bin/frdmx /sbin/free.sh /etc/init.d/frdmx-led /etc/init.d/frdmx-mfix /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
+for file in /usr/bin/huawei.py /usr/sbin/frdmx-net /usr/sbin/led /usr/sbin/ledon /bin/frdmx /sbin/free.sh /etc/init.d/frdmx-led /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
     [ -f "$file" ] && chmod +x "$file"
 done
 
@@ -108,7 +108,6 @@ cat > /etc/crontabs/root <<EOF
 #30 3 * * 0 for dev in /dev/ttyUSB*; do [ -e "\$dev" ] && echo AT^RESET | atinout - "\$dev" -; done && sleep 20 && ifdown wan && ifup wan
 
 # JADWAL AKTIF
-* * * * * /usr/bin/jam.sh >/dev/null 2>&1
 0 * * * * /sbin/free.sh >/dev/null 2>&1
 */5 * * * * /www/vnstati/vnstati.sh >/dev/null 2>&1
 EOF
@@ -133,11 +132,11 @@ sleep 2
 [ -f "/etc/custom_service/free.sh" ] && sh /etc/custom_service/free.sh
 
 # System customizations
-echo "Applying system.."
-chmod +x /bin/chnrot
-chmod +x /etc/profile
-sed -i -e 's/\[ -f \/etc\/banner \] && cat \/etc\/banner/#&/' \
-       -e 's/\[ -n \"\$FAILSAFE\" \] && cat \/etc\/banner.failsafe/& || \/bin\/chnrot/' /etc/profile
+# echo "Applying system.."
+# chmod +x /bin/chnrot
+# chmod +x /etc/profile
+# sed -i -e 's/\[ -f \/etc\/banner \] && cat \/etc\/banner/#&/' \
+#       -e 's/\[ -n \"\$FAILSAFE\" \] && cat \/etc\/banner.failsafe/& || \/bin\/chnrot/' /etc/profile
 
 echo "Done! Router FRDM-X configuration finished."
 exit 0
