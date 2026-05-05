@@ -1,80 +1,62 @@
 #!/bin/bash
-# Script by Lutfa Ilham - FRDMX LED Control
+
+# ==========================================
+# FRDMX-Wrt Internet LED
+# Lokasi: /bin/frdmx
+# ==========================================
 
 if [ "$(id -u)" != "0" ]; then
-  echo "Error: Script ini harus dijalankan sebagai root" 1>&2
+  echo "Harus dijalankan sebagai root" 1>&2
   exit 1
 fi
 
 GPIO="/sys/class/gpio"
-KERNEL_VERSION=$(uname -r | cut -d. -f1,2)
+TARGET="http://bing.com"
 
-export_gpio() {
-  local pin=$1
-  if [ ! -z "$pin" ] && [ ! -d "${GPIO}/gpio${pin}" ]; then
-    echo "${pin}" > "${GPIO}/export" 2>/dev/null
-  fi
-  echo out > "${GPIO}/gpio${pin}/direction" 2>/dev/null
+P_ON="521"; P_OFF="517"  # Power LED (Kiri)
+L_ON="547"; L_OFF="548"  # LAN LED (Kanan)
+M_PIN="518"              # Mid LED (Tengah)
+
+init_gpio() {
+  for pin in $P_ON $P_OFF $L_ON $L_OFF $M_PIN; do
+    [ ! -d "${GPIO}/gpio$pin" ] && echo "$pin" > "${GPIO}/export" 2>/dev/null
+    echo out > "${GPIO}/gpio$pin/direction" 2>/dev/null
+  done
 }
 
-function dual_general() {
-  local status="${1}"
-  local pin_on="${2}"
-  local pin_off="${3}"
-
-  if [[ -z "$pin_on" || -z "$pin_off" ]]; then return 1; fi
-
-  export_gpio "${pin_on}"
-  export_gpio "${pin_off}"
-
-  case "${status}" in
-    "on")   echo 0 > "${GPIO}/gpio${pin_off}/value"; echo 1 > "${GPIO}/gpio${pin_on}/value" ;;
-    "off")  echo 0 > "${GPIO}/gpio${pin_on}/value";  echo 1 > "${GPIO}/gpio${pin_off}/value" ;;
-    "warn") echo 1 > "${GPIO}/gpio${pin_on}/value";  echo 1 > "${GPIO}/gpio${pin_off}/value" ;;
-    "dis")  echo 0 > "${GPIO}/gpio${pin_on}/value";  echo 0 > "${GPIO}/gpio${pin_off}/value" ;;
-  esac
+led_internet_ok() {
+  echo 0 > "${GPIO}/gpio${P_OFF}/value"; echo 1 > "${GPIO}/gpio${P_ON}/value"
+  echo 0 > "${GPIO}/gpio${L_OFF}/value"; echo 1 > "${GPIO}/gpio${L_ON}/value"
+  echo 0 > "${GPIO}/gpio${M_PIN}/value"
+  sleep 0.5
+  echo 0 > "${GPIO}/gpio${P_ON}/value"; echo 0 > "${GPIO}/gpio${P_OFF}/value"
+  echo 0 > "${GPIO}/gpio${L_ON}/value"; echo 0 > "${GPIO}/gpio${L_OFF}/value"
+  echo 1 > "${GPIO}/gpio${M_PIN}/value"
+  sleep 0.5
 }
 
-function power() {
-  local pin_on="" pin_off=""
-  case "$KERNEL_VERSION" in
-    6.6|6.12|6.18) pin_on="521"; pin_off="517" ;;
-    5.15|6.1)      pin_on="510"; pin_off="506" ;;
-  esac
-  dual_general "${1}" "${pin_on}" "${pin_off}"
+led_internet_dc() {
+  echo 1 > "${GPIO}/gpio${P_OFF}/value"; echo 0 > "${GPIO}/gpio${P_ON}/value"
+  echo 1 > "${GPIO}/gpio${L_OFF}/value"; echo 0 > "${GPIO}/gpio${L_ON}/value"
+  echo 1 > "${GPIO}/gpio${M_PIN}/value"
 }
 
-function lan() {
-  local pin_on="" pin_off=""
-  case "$KERNEL_VERSION" in
-    6.6|6.12|6.18) pin_on="547"; pin_off="548" ;;
-    5.15|6.1)      pin_on="425"; pin_off="426" ;;
-  esac
-  dual_general "${1}" "${pin_on}" "${pin_off}"
-}
-
-function internet() {
-  local pin_on="" pin_off=""
-  case "$KERNEL_VERSION" in
-    6.6|6.12|6.18) pin_on="549"; pin_off="550" ;; 
-    5.15|6.1)      pin_on="427"; pin_off="428" ;;
-  esac
-  dual_general "${1}" "${pin_on}" "${pin_off}"
+loop() {
+  init_gpio
+  echo "FRDMX Internet LED Mode Aktif..."
+  while true; do
+    if curl -X "HEAD" --connect-timeout 3 -so /dev/null "$TARGET"; then
+      led_internet_ok
+    else
+      led_internet_dc
+      sleep 5
+    fi
+  done
 }
 
 case "${1}" in
-  -power)    power "${2}" ;;
-  -lan)      lan "${2}" ;;
-  -internet) internet "${2}" ;;
-  -l)
-    power on
-    internet off
-    while true; do sleep 60; done
-    ;;
-  -s)
-    power dis; lan dis; internet dis
-    ;;
-  *)
-    echo "Usage: $0 [-power|-lan|-internet] [on|off|warn|dis] or [-l|-s]"
-    ;;
+  -l) loop ;;
+  -r) screen -AmdS frdmx_service "${0}" -l && echo "Service Started." ;;
+  -s) screen -ls | grep frdmx_service | cut -d. -f1 | xargs kill 2>/dev/null && echo "Service Stopped." ;;
+  *)  echo "Usage: frdmx [-l|-r|-s]" ;;
 esac
