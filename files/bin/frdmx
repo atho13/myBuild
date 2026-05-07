@@ -13,9 +13,9 @@ fi
 GPIO="/sys/class/gpio"
 TARGET="http://bing.com"
 
-P_ON="521"; P_OFF="517"  # Power LED (Kiri)
-L_ON="547"; L_OFF="548"  # LAN LED (Kanan)
-M_PIN="518"              # Mid LED (Tengah)
+P_ON="521"; P_OFF="517"
+L_ON="547"; L_OFF="548"
+M_PIN="518"
 
 init_gpio() {
   for pin in $P_ON $P_OFF $L_ON $L_OFF $M_PIN; do
