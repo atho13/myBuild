@@ -6,4 +6,4 @@
 #echo AT+CFUN=4 | atinout - /dev/ttyACM2 -
 #python3 /usr/bin/huawei.py
 #/etc/init.d/openclash restart
-#/usr/sbin/ledon -usb reset
+#/usr/sbin/frdmx-net
