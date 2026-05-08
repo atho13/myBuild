@@ -7,7 +7,7 @@ echo "Clearing root password..."
 passwd -d root > /dev/null 2>&1
 
 # Daftar semua file script yang harus diberi izin eksekusi
-for file in /usr/bin/huawei.py /usr/sbin/frdmx-net /usr/sbin/led /usr/sbin/ledon /bin/frdmx /sbin/free.sh /etc/init.d/frdmx-led /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
+for file in /usr/bin/huawei.py /usr/sbin/frdmx-net /usr/sbin/frdmx /sbin/free.sh /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
     [ -f "$file" ] && chmod +x "$file"
 done
 

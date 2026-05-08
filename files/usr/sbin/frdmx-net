@@ -1,32 +1,54 @@
-#!/bin/sh
-# =============================================================
-# FRDMX-Wrt USB Reset & Network Restarter
-# =============================================================
+#!/bin/bash
+# by Lutfa Ilham
 
-GPIO="/sys/class/gpio"
-TARGET="http://bing.com"
+if [ "$(id -u)" != "0" ]; then
+  echo "This script must be run as root" 1>&2
+  exit 1
+fi
 
-echo 510 > "${GPIO}/export" 2>/dev/null
-if [ -d "${GPIO}/gpio510" ]; then
-    U_PIN="505"
-else
-    U_PIN="516"
-fi
-if [ ! -d "${GPIO}/gpio$U_PIN" ]; then
-    echo "$U_PIN" > "${GPIO}/export" 2>/dev/null
-    sleep 0.1
-    echo out > "${GPIO}/gpio$U_PIN/direction" 2>/dev/null
-fi
-echo 1 > "${GPIO}/gpio${U_PIN}/value"
-while true; do
-  if ! curl -X "HEAD" --connect-timeout 5 -so /dev/null "$TARGET"; then
-    logger -t "FRDMX-RESET" "Internet Error! Melakukan USB Reset..."
-    echo 0 > "${GPIO}/gpio${U_PIN}/value"
-    sleep 5
-    echo 1 > "${GPIO}/gpio${U_PIN}/value"
-    /etc/init.d/network restart
-    sleep 30
-  else
-    sleep 15
-  fi
-done
+SERVICE_NAME="Internet Indicator"
+
+function loop() {
+  while true; do
+    frdmx -lan dis
+    if curl -X "HEAD" --connect-timeout 3 -so /dev/null "http://bing.com"; then
+      frdmx -lan on
+    else
+      frdmx -lan off
+    fi
+    sleep 1
+  done
+}
+
+function start() {
+  echo -e "Starting ${SERVICE_NAME} service ..."
+  screen -AmdS internet-indicator "${0}" -l
+}
+
+function stop() {
+  echo -e "Stopping ${SERVICE_NAME} service ..."
+  kill $(screen -list | grep internet-indicator | awk -F '[.]' {'print $1'})
+}
+
+function usage() {
+  cat <<EOF
+Usage:
+  -r  Run ${SERVICE_NAME} service
+  -s  Stop ${SERVICE_NAME} service
+EOF
+}
+
+case "${1}" in
+  -l)
+    loop
+    ;;
+  -r)
+    start
+    ;;
+  -s)
+    stop
+    ;;
+  *)
+    usage
+    ;;
+esac
