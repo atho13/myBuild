@@ -21,7 +21,7 @@ net.ipv4.tcp_rmem = 4096 87380 4194304
 net.ipv4.tcp_wmem = 4096 65536 4194304
 # Congestion control & qdisc
 net.ipv4.tcp_congestion_control = bbr
-net.core.default_qdisc = fq_codel
+net.core.default_qdisc = cake
 # TCP optimisasi
 net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_window_scaling = 1
@@ -38,4 +38,3 @@ net.ipv4.conf.all.send_redirects = 0
 net.ipv4.conf.all.log_martians = 0
 net.ipv4.icmp_echo_ignore_broadcasts = 1
 net.ipv4.tcp_syncookies = 1
-

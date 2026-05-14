@@ -120,18 +120,3 @@ config rule
 	option dest_port '500'
 	option proto 'udp'
 	option target 'ACCEPT'
-
-config rule
-	option name 'Allow-UDPspeeder'
-	option src 'wan'
-	option dest_port '4095 4096'
-	option proto 'udp'
-	option target 'ACCEPT'
-
-config rule
-	option name 'Allow-HAProxy'
-	option src 'wan'
-	option target 'ACCEPT'
-	list proto 'tcp'
-	option dest_port '1194 1195'
-

@@ -89,7 +89,7 @@ jobs:
           luci-mod-status luci-mod-system luci-proto-3g mbim-utils picocom minicom kmod-tcp-bbr \
           luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
           luci-proto-modemmanager modemmanager libqmi libmbim glib2 ipset libcap libcap-bin \
-          ip-full haproxy tcpdump UDPspeeder irqbalance bc \
+          ip-full tcpdump irqbalance bc \
           uhttpd uhttpd-mod-ubus unzip uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia \
           zoneinfo-core zram-swap bash openssh-sftp-server adb wget-ssl httping htop jq tar \
           coreutils-sleep coreutils-stat nano fping kmod-nls-utf8 kmod-usb-storage cgi-io chattr \
