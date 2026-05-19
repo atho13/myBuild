@@ -26,7 +26,6 @@ uci batch <<EOF
     add_list system.ntp.server='ntp.bmkg.go.id'
     add_list system.ntp.server='time.google.com'
     
-    # 1. Antarmuka Modem (Modemmanager) - Prioritas 3 (Metrik Terbesar)
     set network.mm=interface
     set network.mm.proto='modemmanager'
     set network.mm.device='auto'
@@ -34,7 +33,6 @@ uci batch <<EOF
     set network.mm.peerdns='1'
     set network.mm.metric='30'
     
-    # 2. Antarmuka Port WAN (eth1) - Prioritas 2 (Metrik Menengah)
     set network.wan=interface
     set network.wan.proto='dhcp'
     set network.wan.device='eth1'
@@ -46,8 +44,6 @@ uci batch <<EOF
     set network.tethering.device='usb0'
     set network.tethering.metric='10'
 
-    # 4. Kunci IP LAN agar Selalu Aman
-    set network.lan.ipaddr='192.168.1.1'
     delete network.wan6
     
     del_list firewall.@zone[1].network='wan6'
