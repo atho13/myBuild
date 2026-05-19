@@ -7,7 +7,7 @@ echo "Clearing root password..."
 passwd -d root > /dev/null 2>&1
 
 # Daftar semua file script yang harus diberi izin eksekusi
-for file in /usr/bin/huawei.py /usr/sbin/frdmx-net /usr/sbin/frdmx /sbin/free.sh /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
+for file in /usr/bin/huawei.py /sbin/free.sh /etc/rc.local /etc/custom_service/start_service.sh /etc/custom_service/free.sh /www/vnstati/vnstati.sh; do
     [ -f "$file" ] && chmod +x "$file"
 done
 
@@ -26,21 +26,28 @@ uci batch <<EOF
     add_list system.ntp.server='ntp.bmkg.go.id'
     add_list system.ntp.server='time.google.com'
     
+    # 1. Antarmuka Modem (Modemmanager) - Prioritas 3 (Metrik Terbesar)
     set network.mm=interface
     set network.mm.proto='modemmanager'
     set network.mm.device='auto'
     set network.mm.apn='internet'
     set network.mm.peerdns='1'
-    set network.mm.metric='10'
+    set network.mm.metric='30'
     
+    # 2. Antarmuka Port WAN (eth1) - Prioritas 2 (Metrik Menengah)
     set network.wan=interface
     set network.wan.proto='dhcp'
     set network.wan.device='eth1'
+    set network.wan.metric='20'
     
+    # 3. Antarmuka USB Tethering (usb0) - Prioritas 1 (Metrik Terkecil = Utama)
     set network.tethering=interface
     set network.tethering.proto='dhcp'
     set network.tethering.device='usb0'
-    
+    set network.tethering.metric='10'
+
+    # 4. Kunci IP LAN agar Selalu Aman
+    set network.lan.ipaddr='192.168.1.1'
     delete network.wan6
     
     del_list firewall.@zone[1].network='wan6'
