@@ -49,9 +49,8 @@ jobs:
         run: |
           cd ${{ env.WORKING_DIR }}
           
-          # 1. Paksa set ukuran partisi rootfs langsung di dalam file fisik .config
-          make defconfig
-          sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config
+          # 1. Suntikkan ukuran partisi kustom (700 MB) langsung ke berkas .config bawaan Image Builder
+          sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
           echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
           
           # 2. Tambahkan repositori pihak ketiga secara otomatis jika diisi oleh pengguna
