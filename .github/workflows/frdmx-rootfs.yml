@@ -1,4 +1,4 @@
-name: my OWRT rootFS
+name: Frdmx RootFS
 
 on:
   workflow_dispatch:
@@ -75,18 +75,22 @@ jobs:
             cat repositories.conf
           fi
           
-          # 4. Amankan uci-defaults bawaan dan suntikkan set IP dinamis ke dalam 'uci batch'
+          # 4. Amankan uci-defaults bawaan dan suntikkan set IP dinamis secara presisi menggunakan awk
           mkdir -p ${{ github.workspace }}/files/etc/uci-defaults
           TARGET_UCI_FILE="${{ github.workspace }}/files/etc/uci-defaults/99-custom-settings"
           
           if [ -f "$TARGET_UCI_FILE" ]; then
             echo "Berkas 99-custom-settings terdeteksi di repositori."
-            # Memeriksa apakah perintah IP bawaan sudah ada. Jika ada, hapus dulu agar tidak duplikat.
+            # Bersihkan baris IP lama jika ada sebelumnya agar tidak menumpuk
             sed -i '/network.lan.ipaddr/d' "$TARGET_UCI_FILE"
             
-            # Menyisipkan pengaturan IP baru dari Github Input tepat di atas baris 'commit network'
-            sed -i "/commit network/i \    set network.lan.ipaddr='${{ github.event.inputs.openwrt_ip }}'" "$TARGET_UCI_FILE"
-            echo "Berhasil menyisipkan konfigurasi IP ke dalam uci batch!"
+            # Menggunakan awk untuk menyisipkan baris IP tepat sebelum kalimat 'commit network' secara aman
+            awk -v ip="${{ github.event.inputs.openwrt_ip }}" '
+              /commit network/ { print "    set network.lan.ipaddr=\x27" ip "\x27" }
+              { print }
+            ' "$TARGET_UCI_FILE" > "$TARGET_UCI_FILE.tmp" && mv "$TARGET_UCI_FILE.tmp" "$TARGET_UCI_FILE"
+            
+            echo "Berhasil menyisipkan konfigurasi IP ke dalam blok uci batch!"
           else
             echo "Berkas tidak ditemukan di folder repo! Membuat berkas uci-defaults baru..."
             cat <<EOF > "$TARGET_UCI_FILE"
