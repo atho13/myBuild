@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       custom_url:
-        description: "URL Image Builder 24.10 armvirt/64 (.tar.xz)"
+        #description: "URL Image Builder 24.10 armvirt/64 (.tar.xz)"
+        description: "URL Image Builder 25.12 armvirt/64 (.tar.xz)"
         required: true
         default: ""
       openwrt_ip:
@@ -111,7 +112,8 @@ jobs:
             echo "Error: Direktori build $RESULT_DIR tidak ditemukan!"
             exit 1
           fi       
-          echo "build_tag=S905X_RootFS_24.10.6_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          #echo "build_tag=S905X_RootFS_24.10.6_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          echo "build_tag=S905X_RootFS_25.12.4_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
 
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
@@ -122,7 +124,7 @@ jobs:
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            ## OpenWrt 24.10.6 RootFS S905X
+            ## OpenWrt RootFS S905X
             - **Target**: Amlogic armsr-armv8
             - **Format**: .tar.gz (Converted)
             - **Default IP**: ${{ github.event.inputs.openwrt_ip }}
