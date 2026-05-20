@@ -1,0 +1,11 @@
+{
+	"luci-app-mac-todong": {
+		"description": "Grant UCI access for luci-app-mac-todong",
+		"read": {
+			"uci": [ "mac-todong" ]
+		},
+		"write": {
+			"uci": [ "mac-todong" ]
+		}
+	}
+}
