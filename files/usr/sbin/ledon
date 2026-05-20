@@ -1,5 +1,9 @@
 #!/bin/bash
-# By Lutfa Ilham
+
+# B860H v1/v2 GPIO Wrapper
+# by Lutfa Ilham
+# v1.0
+# GPIO Founder REYRE
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
@@ -7,8 +11,6 @@ if [ "$(id -u)" != "0" ]; then
 fi
 
 GPIO="/sys/class/gpio"
-
-KERNEL_VERSION=$(uname -r | cut -d. -f1,2)
 
 function dual_general() {
   pin_on="${2}"
@@ -38,25 +40,9 @@ function dual_general() {
   esac
 }
 
-function power() {
-  if [[ "$KERNEL_VERSION" == "6.6" || "$KERNEL_VERSION" == "6.12" || "$KERNEL_VERSION" == "6.18" ]]; then
-    pin_on="521"
-    pin_off="517"
-  elif [[ "$KERNEL_VERSION" == "5.15" || "$KERNEL_VERSION" == "6.1" ]]; then
-    pin_on="510"
-    pin_off="506"
-  fi
-  dual_general "${1}" "${pin_on}" "${pin_off}"
-}
-
 function lan() {
-  if [[ "$KERNEL_VERSION" == "6.6" || "$KERNEL_VERSION" == "6.12" || "$KERNEL_VERSION" == "6.18" ]]; then
-    pin_on="547"
-    pin_off="548"
-  elif [[ "$KERNEL_VERSION" == "5.15" || "$KERNEL_VERSION" == "6.1" ]]; then
-    pin_on="425"
-    pin_off="426"
-  fi
+  pin_on="598"
+  pin_off="596"
   dual_general "${1}" "${pin_on}" "${pin_off}"
 }
 
@@ -77,19 +63,12 @@ function usb() {
 function usage() {
   cat <<EOF
 Usage:
-  -power  [on, off, warn, dis]
   -lan    [on, off, warn, dis]
   -usb    [reset]
-  
-Supported kernel versions: 5.x 6.x
-Current kernel version: $KERNEL_VERSION
 EOF
 }
 
 case "${1}" in
-  -power)
-    power "${2}"
-    ;;
   -lan)
     lan "${2}"
     ;;
@@ -100,3 +79,4 @@ case "${1}" in
     usage
     ;;
 esac
+
