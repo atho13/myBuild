@@ -37,11 +37,12 @@ on:
       rootfs_size:
         description: 'Select Rootfs Size'
         required: true
-        default: '512'
+        default: '800'
         type: choice
         options:
           - 256
           - 512
+          - 800
           - 1024
           - 1536
       auto_kernel:
