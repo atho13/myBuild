@@ -57,11 +57,11 @@ rebuild_firmware() {
         urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm kmod-usb-net usbutils kmod-usb-net-qmi-wwan \
         kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full qmi-utils \
         luci-mod-network kmod-usb-net-rtl8150 kmod-usb-net-rtl8152 kmod-usb-net-asix kmod-usb-net-asix-ax88179 \
-        kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
-        luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
+        kmod-mii luci-mod-status luci-mod-system luci-proto-3g mbim luci-proto-mbim mbim-utils picocom minicom \
+        luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan kmod-mhi-pci-generic
         kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim luci-proto-modemmanager modemmanager modemmanager-rpcd \
-        libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
-        ip-full php8 tcpdump irqbalance bc uhttpd uhttpd-mod-ubus unzip kmod-tcp-bbr \
+        libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy kmod-mhi-net kmod-mhi-bus \
+        ip-full php8 tcpdump irqbalance bc uhttpd uhttpd-mod-ubus unzip kmod-tcp-bbr kmod-mhi-wwan-ctrl kmod-mhi-wwan-mbim \
         uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash \
         openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat nano fping \
         kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
