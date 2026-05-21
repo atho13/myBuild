@@ -19,7 +19,7 @@ sudo chown -R runner:runner "${make_path}"
 # 2. Download ImageBuilder (URL ARMSr/ARMv8)
 download_imagebuilder() {
     cd "${make_path}"
-    echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.3 (ARMSR/ARMV8)..."
+    echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.4 (ARMSR/ARMV8)..."
     #echo -e "${STEPS} Mengunduh ImageBuilder ImmortalWrt 24.10.6 (ARMSR/ARMV8)..."
     
     URL="https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/openwrt-imagebuilder-25.12.4-armsr-armv8.Linux-x86_64.tar.zst"
