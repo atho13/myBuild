@@ -51,7 +51,7 @@ rebuild_firmware() {
 
     # Daftar paket gabungan & dibersihkan dari konflik
     # Menambahkan '-' pada wpad-basic agar tidak bentrok dengan versi mbedtls/openssl
-    my_packages="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools \
+    my_packages="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools tc-full \
           kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd kmod-tcp-bbr \
           mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
           uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm \
