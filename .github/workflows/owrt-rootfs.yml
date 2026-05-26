@@ -54,17 +54,28 @@ jobs:
         run: |
           cd ${{ env.WORKING_DIR }}
           
-          # 1. Paksa ubah ukuran partisi di file .config Image Builder (Solusi Ampuh)
-          sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=700/' .config
+          # 1. Suntikkan ukuran partisi kustom (700 MB) langsung ke berkas .config bawaan Image Builder
+          sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
+          echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
           
-          # 2. Buat uci-defaults
-          mkdir -p ${{ github.workspace }}/files/etc/uci-defaults
-          cat <<EOF > ${{ github.workspace }}/files/etc/uci-defaults/99-custom-settings
-          uci set network.lan.ipaddr='${{ github.event.inputs.openwrt_ip }}'
-          uci commit network
-          exit 0
-          EOF
-          chmod +x ${{ github.workspace }}/files/etc/uci-defaults/99-custom-settings
+          # 2. Tambahkan repositori pihak ketiga secara otomatis jika diisi oleh pengguna
+          if [ -n "${{ github.event.inputs.custom_repo }}" ]; then
+            echo "Menambahkan repositori kustom..."
+            IFS=',' read -r -a repos <<< "${{ github.event.inputs.custom_repo }}"
+            index=1
+            for repo in "${repos[@]}"; do
+              repo_trimmed=$(echo "$repo" | xargs)
+              echo "src/gz custom_repo_$index $repo_trimmed" >> repositories.conf
+              ((index++))
+            done
+            echo "Isi repositories.conf terbaru:"
+            cat repositories.conf
+          fi
+          
+          # 3. Beri izin eksekusi secara massal untuk semua file di folder files/etc/uci-defaults/ Anda
+          if [ -d "${{ github.workspace }}/files/etc/uci-defaults" ]; then
+            chmod +x ${{ github.workspace }}/files/etc/uci-defaults/*
+          fi
           
           PACKAGES="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools tc-full \
           kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd kmod-tcp-bbr \
