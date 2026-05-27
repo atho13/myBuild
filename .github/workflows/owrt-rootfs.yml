@@ -124,8 +124,8 @@ jobs:
             echo "Error: Direktori build $RESULT_DIR tidak ditemukan!"
             exit 1
           fi       
-          echo "build_tag=S905X_RootFS_24.10.6_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
-          #echo "build_tag=S905X_RootFS_25.12.4_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          #echo "build_tag=S905X_RootFS_24.10.6_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          echo "build_tag=S905X_RootFS_25.12.4_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
 
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
