@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       custom_url:
-        description: "URL Image Builder 24.10 armvirt/64 (.tar.xz)"
-        #description: "URL Image Builder 25.12 armvirt/64 (.tar.xz)"
+        #description: "URL Image Builder 24.10 armvirt/64 (.tar.xz)"
+        description: "URL Image Builder 25.12 armvirt/64 (.tar.xz)"
         required: true
         default: ""
       openwrt_ip:
