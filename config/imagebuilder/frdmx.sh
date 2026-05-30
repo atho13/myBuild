@@ -54,7 +54,7 @@ rebuild_firmware() {
     mkdir -p package/qmodem_source
     
     # Kloning repositori QModem langsung ke folder internal ImageBuilder
-    git clone --depth 1 -b main https://github.com package/qmodem_source/QModem
+    git clone --depth 1 -b main https://github.com package/FUjr/QModem.git;main
     
     # (Opsional) Jika butuh sinkronisasi indeks paket lokal agar terbaca oleh skrip ImageBuilder
     echo -e "${STEPS} Memperbarui indeks paket lokal..."
