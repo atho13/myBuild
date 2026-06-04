@@ -20,8 +20,10 @@ sudo chown -R runner:runner "${make_path}"
 download_imagebuilder() {
     cd "${make_path}"
     echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.4 (ARMSR/ARMV8)..."
+    #echo -e "${STEPS} Mengunduh ImageBuilder ImmortalWrt 24.10.6 (ARMSR/ARMV8)..."
     
-    URL="https://openwrt.org"
+    URL="https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/openwrt-imagebuilder-25.12.4-armsr-armv8.Linux-x86_64.tar.zst"
+    #URL="https://downloads.immortalwrt.org/releases/24.10.6/targets/armsr/armv8/immortalwrt-imagebuilder-24.10.6-armsr-armv8.Linux-x86_64.tar.zst"
     
     curl -fL -o ib.tar.zst "$URL" || { echo -e "${ERROR} Gagal download!"; exit 1; }
     
@@ -45,25 +47,10 @@ rebuild_firmware() {
     echo "CONFIG_TARGET_ROOTFS_PARTSIZE=750" >> .config
     echo "CONFIG_TARGET_KERNEL_PARTSIZE=64" >> .config
 
-    # ====================================================================
-    # SOLUSI DEPENDENSI: KLONING REPO QMODEM LANGSUNG KE FOLDER PACKAGES
-    # ====================================================================
-    echo -e "${STEPS} Mengunduh Source QModem beserta dependensinya..."
-    
-    # Membuat folder khusus paket pihak ketiga jika belum ada
-    mkdir -p package/qmodem_source
-    
-    # Kloning repositori QModem langsung ke folder internal ImageBuilder
-    git clone --depth 1 -b main https://github.com package/qmodem_source/QModem
-    
-    # (Opsional) Jika butuh sinkronisasi indeks paket lokal agar terbaca oleh skrip ImageBuilder
-    echo -e "${STEPS} Memperbarui indeks paket lokal..."
-    # ====================================================================
-
     echo -e "${STEPS} Membangun Rootfs ARMSR..."
 
     # Daftar paket gabungan & dibersihkan dari konflik
-    # Memasukkan paket-paket QModem langsung ke daftar kompilasi target
+    # Menambahkan '-' pada wpad-basic agar tidak bentrok dengan versi mbedtls/openssl
     my_packages="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools tc-full \
           kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd kmod-tcp-bbr \
           mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
@@ -81,14 +68,14 @@ rebuild_firmware() {
           coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
           luci-app-ttyd luci-theme-material iw iwinfo netdata vnstat2 vnstati2 php8-mod-mbstring php8-cli \
           php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
-          kmod-mhi-net kmod-mhi-bus kmod-mhi-pci-generic kmod-mhi-wwan-ctrl kmod-mhi-wwan-mbim kmod-sched-cake \
-          luci-app-qmodem luci-app-qmodem-sms sms-tool"
+          kmod-mhi-net kmod-mhi-bus kmod-mhi-pci-generic kmod-mhi-wwan-ctrl kmod-mhi-wwan-mbim kmod-sched-cake"
         
     # Proses Image Building
-    [ -d "${custom_files_path}" ] && chmod -R +x "${custom_files_path}/etc/uci-defaults"
+    [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
     make image PROFILE="generic" \
                PACKAGES="${my_packages}" \
-               FILES="${custom_files_path}" \
+               FILES="${GITHUB_WORKSPACE}/files" \
+               #FILES="${GITHUB_WORKSPACE}/make-openwrt" \
                V=s
                
     if [ $? -eq 0 ]; then
