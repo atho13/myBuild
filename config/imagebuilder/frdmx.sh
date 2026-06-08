@@ -1,22 +1,18 @@
 #!/bin/bash
 set -e
 
-# 1. Variabel Jalur
 make_path="/builder"
 openwrt_dir="openwrt"
 imagebuilder_path="${make_path}/${openwrt_dir}"
 output_path="${GITHUB_WORKSPACE}/output"
 custom_files_path="${GITHUB_WORKSPACE}/files"
 
-# Status Colors
 STEPS="[\033[95m STEPS \033[0m]"
 SUCCESS="[\033[92m SUCCESS \033[0m]"
 ERROR="[\033[91m ERROR \033[0m]"
 
-# FIX PERMISSION: Memberikan izin tulis agar runner tidak "Permission Denied"
 sudo chown -R runner:runner "${make_path}"
 
-# 2. Download ImageBuilder (URL ARMSr/ARMv8)
 download_imagebuilder() {
     cd "${make_path}"
     echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.4 (ARMSR/ARMV8)..."
@@ -27,7 +23,6 @@ download_imagebuilder() {
     
     curl -fL -o ib.tar.zst "$URL" || { echo -e "${ERROR} Gagal download!"; exit 1; }
     
-    # Verifikasi format file
     if ! file ib.tar.zst | grep -q "Zstandard"; then
         echo -e "${ERROR} File terunduh bukan format Zstandard! Periksa URL."
         exit 1
@@ -43,14 +38,11 @@ rebuild_firmware() {
     cd "${imagebuilder_path}"
     echo -e "${STEPS} Mengatur konfigurasi ukuran partisi (750MB)..."
 
-    # INJECT KONFIGURASI DISINI
     echo "CONFIG_TARGET_ROOTFS_PARTSIZE=750" >> .config
     echo "CONFIG_TARGET_KERNEL_PARTSIZE=64" >> .config
 
     echo -e "${STEPS} Membangun Rootfs ARMSR..."
 
-    # Daftar paket gabungan & dibersihkan dari konflik
-    # Menambahkan '-' pada wpad-basic agar tidak bentrok dengan versi mbedtls/openssl
     my_packages="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools tc-full \
           kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd kmod-tcp-bbr \
           mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
@@ -62,7 +54,7 @@ rebuild_firmware() {
           kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim luci-proto-modemmanager modemmanager modemmanager-rpcd \
           libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
           ip-full php8 tcpdump irqbalance bc uhttpd uhttpd-mod-ubus unzip qmi-utils kmod-usb-net-qmi-wwan \
-          uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash \
+          uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash ca-bundle \
           openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat nano fping \
           kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
           coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
@@ -70,12 +62,10 @@ rebuild_firmware() {
           php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
           kmod-mhi-net kmod-mhi-bus kmod-mhi-pci-generic kmod-mhi-wwan-ctrl kmod-mhi-wwan-mbim kmod-sched-cake"
         
-    # Proses Image Building
     [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
     make image PROFILE="generic" \
                PACKAGES="${my_packages}" \
                FILES="${GITHUB_WORKSPACE}/files" \
-               #FILES="${GITHUB_WORKSPACE}/make-openwrt" \
                V=s
                
     if [ $? -eq 0 ]; then
@@ -87,9 +77,7 @@ rebuild_firmware() {
     fi
 }
 
-# Jalankan Fungsi Utama
 download_imagebuilder
 rebuild_firmware
 
-# Melihat Log
 ls -R ${GITHUB_WORKSPACE}/output

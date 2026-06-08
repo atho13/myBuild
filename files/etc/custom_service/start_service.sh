@@ -6,7 +6,7 @@
 # warranty of any kind, whether express or implied.
 #
 # This file is a part of the make OpenWrt for Amlogic, Rockchip and Allwinner
-# https://github.com/ophub/amlogic-s9xxx-openwrt
+# https://github.com
 #
 # Function: Custom startup services, executed during system boot.
 # Dependent script: /etc/rc.local
@@ -165,6 +165,15 @@ if [[ "${FDT_FILE}" =~ ^(rk3568-nsy-g16-plus\.dtb|rk3568-nsy-g68-plus\.dtb|rk356
     log_message "Network optimizations for ${FDT_FILE} applied."
 fi
 
+# FIX DRIVER WI-FI REALTEK FRDMX ---
+(
+    sleep 5
+    if [[ -d "/sys/class/net/wlan0" ]]; then
+        ip link set wlan0 up
+        log_message "FRDMX-Fix: Interface wlan0 forced to UP state."
+    fi
+) &
+
 # Set up swap space
 (
     # Wait for data partition to become available (max 30 seconds)
@@ -203,3 +212,4 @@ fi
 
 # Finalization
 log_message "All custom startup services have been initialized."
+exit 0

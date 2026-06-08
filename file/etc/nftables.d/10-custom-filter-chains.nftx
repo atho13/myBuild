@@ -36,14 +36,10 @@
 #     type filter hook output priority 1; policy accept;
 #     ct state new log prefix "Firewall4 accepted egress: "
 # }
-chain mangle_prerouting_ttl65 {
-  type filter hook prerouting priority 300; policy accept;
-  counter
-  ip ttl set 65
-}
 chain mangle_postrouting_ttl65 {
   type filter hook postrouting priority 300; policy accept;
   counter
   ip ttl set 65
+  ip6 hoplimit set 65
 }
 
