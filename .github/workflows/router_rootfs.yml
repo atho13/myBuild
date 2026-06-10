@@ -144,7 +144,5 @@ jobs:
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            ## OpenWrt RootFS FRDMX S905X
-            - **Format**: .tar.gz (Universal Format)
-            - **Custom Repo**: ${{ github.event.inputs.custom_repo || 'None' }}
+            ## OpenWrt RootFS for Router s905x
             - **Fitur Baru**: Full Wi-Fi (AP, Station), Mesh (802.11s), WISP (Relayd), iOS/Android USB Tethering, USB Wi-Fi Drivers.
