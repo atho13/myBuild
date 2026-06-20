@@ -4,7 +4,6 @@ echo "Clearing root password..."
 passwd -d root > /dev/null 2>&1
 
 echo "Setting file permissions..."
-# Struktur perulangan for sudah diperbaiki dan divalidasi kodenya
 for file in \
     /usr/bin/huawei.py \
     /usr/sbin/led \
@@ -45,6 +44,14 @@ uci batch <<EOF
     add_list system.ntp.server='ntp.bmkg.go.id'
     add_list system.ntp.server='time.google.com'
      
+    # --- KOFIGURASI NETWORK BRIDGE (br-lan) ---
+    delete network.lan
+    set network.lan=interface
+    set network.lan.device='br-lan'
+    set network.lan.proto='dhcp'
+    set network.lan.stp='1'
+    set network.lan.igmp_snooping='1'
+
     set network.wan=interface
     set network.wan.proto='dhcp'
     set network.wan.device='eth1'
@@ -73,10 +80,32 @@ echo "Generating default wireless configuration profile..."
 if [ -x /sbin/wifi ]; then
     > /etc/config/wireless
     wifi config > /etc/config/wireless
+    
+    uci set wireless.radio0.channel='6'
+    uci set wireless.radio0.hwmode='11g'
+    uci set wireless.radio0.country='ID'
+    uci set wireless.radio0.htmode='HT20'
+    uci set wireless.radio0.disabled='0'
+    
+    uci -q delete wireless.default_radio0
+    uci set wireless.default_radio0=wifi-iface
+    uci set wireless.default_radio0.device='radio0'
+    uci set wireless.default_radio0.network='lan'
+    uci set wireless.default_radio0.mode='ap'
+    uci set wireless.default_radio0.ssid='FRDMX-Wrt'
+    uci set wireless.default_radio0.encryption='none'
+    uci commit wireless
 fi
 
 echo "Applying system optimizations..."
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
+
+if [ -d /sys/block/mmcblk0 ]; then
+    echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null
+fi
+if [ -d /sys/block/sda ]; then
+    echo bfq > /sys/block/sda/queue/scheduler 2>/dev/null
+fi
 
 for dev in /sys/bus/usb/devices/*/power/control; do 
     [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
