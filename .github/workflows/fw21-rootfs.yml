@@ -88,7 +88,7 @@ jobs:
 
           # List Paket S905X Fix 21.02 + Penambahan ledtrig-netdev agar script LED internet bekerja
           PACKAGES="-dnsmasq dnsmasq-full base-files ca-bundle dropbear e2fsprogs firewall fstools \
-          kmod-leds-gpio kmod-ledtrig-netdev kmod-ledtrig-heartbeat ledtrig-netdev zstd wwan \
+          kmod-leds-gpio -kmod-ledtrig-netdev -kmod-ledtrig-heartbeat -ledtrig-netdev zstd wwan \
           kmod-button-hotplug libc libgcc logd mkf2fs mtd netifd odhcp6c odhcpd-ipv6only \
           partx-utils ppp ppp-mod-pppoe procd-ujail uci uclient-fetch urandom-seed urngd luci luci-compat \
           luci-lib-base kmod-usb-net kmod-usb-net-asix kmod-usb-net-asix-ax88179 kmod-usb-net-rtl8150 \
