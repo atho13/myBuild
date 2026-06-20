@@ -1,0 +1,13 @@
+# ====================================================================
+# PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
+# ====================================================================
+# Automatic Restart your Modem Bro..
+30 3 * * 0 for dev in /dev/ttyUSB* /dev/cdc-wdm*; do [ -e "$dev" ] && (echo AT^RESET | atinout - "$dev" - 2>/dev/null; echo AT+CFUN=1,1 | atinout - "$dev" - 2>/dev/null); done && sleep 60 && for iface in $(ubus call network.interface dump | jsonfilter -e '@.interface[@.data.zone="wan"].interface'); do ubus call network.interface."$iface" down && sleep 2 && ubus call network.interface."$iface" up; done
+
+# My Trick
+* * * * * /bin/ash -c 'ping -c 2 -W 3 8.8.8.8 > /dev/null || ping -c 2 -W 3 1.1.1.1 > /dev/null || (sh /usr/sbin/ledon -usb reset && sleep 45 && for iface in $(ubus call network.interface dump | jsonfilter -e "@.interface[@.data.zone=\"wan\"].interface"); do ubus call network.interface."$iface" up; done)'
+
+# Automatic Maintenance Internal your System Bro..
+0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
+59 23 * * * sync && echo 3 > /proc/sys/vm/drop_caches && rm -rf /tmp/luci*
+*/5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1

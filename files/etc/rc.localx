@@ -1,4 +1,6 @@
 # Put your custom commands here that should be executed once
+# the system init finished. By default this file does nothing.
+sysctl -p /etc/sysctl.conf
 bash /etc/custom_service/start_service.sh &
-# /usr/sbin/frdmx-net -r
+/usr/sbin/led -r
 exit 0
