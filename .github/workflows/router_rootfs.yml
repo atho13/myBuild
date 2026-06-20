@@ -49,11 +49,9 @@ jobs:
         run: |
           cd ${{ env.WORKING_DIR }}
           
-          # 1. Suntikkan ukuran partisi kustom (700 MB) langsung ke berkas .config bawaan Image Builder
           sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
           echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
           
-          # 2. Tambahkan repositori pihak ketiga secara otomatis jika diisi oleh pengguna
           if [ -n "${{ github.event.inputs.custom_repo }}" ]; then
             echo "Menambahkan repositori kustom..."
             IFS=',' read -r -a repos <<< "${{ github.event.inputs.custom_repo }}"
@@ -67,19 +65,16 @@ jobs:
             cat repositories.conf
           fi
           
-          # 3. Beri izin eksekusi secara massal untuk semua file di folder files/etc/uci-defaults/ Anda
           if [ -d "${{ github.workspace }}/files/etc/uci-defaults" ]; then
             chmod +x ${{ github.workspace }}/files/etc/uci-defaults/*
           fi
           
-          # 4. Perbaikan Paksa Skrip Mac80211 pada Folder Files Pengguna (Jika Ada)
           if [ -d "${{ github.workspace }}/files" ]; then
             echo "Membersihkan bug ipconfig pada folder files repositori..."
             find ${{ github.workspace }}/files/ -name "mac80211.sh" -exec sed -i 's/ipconfig/ip/g' {} + 2>/dev/null || true
             find ${{ github.workspace }}/files/ -name "mac80211.sh" -exec sed -i 's/wpa_supplicant_run/wpa_supplicant/g' {} + 2>/dev/null || true
           fi
 
-          # 5. Gabungan paket bawaan Anda + paket esensial Wi-Fi (wolfssl), WISP, Tethering & USB Drivers
           PACKAGES="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools tc-full \
           kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd kmod-tcp-bbr \
           mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
@@ -101,7 +96,6 @@ jobs:
           -wpad-basic-mbedtls -wpad-mini -wpad-basic -wpad-mesh-openssl wpad-basic-wolfssl relayd luci-proto-relay \
           kmod-cfg80211 kmod-mac80211 wireless-regdb kmod-mt7601u kmod-mt76x2u kmod-rt2800-usb kmod-usb-net-ipheth usbmuxd"
       
-          # Otomatis deteksi PROFILE yang tersedia di Image Builder agar adaptif
           make image PROFILE="generic" \
                PACKAGES="${PACKAGES}" \
                FILES="${{ github.workspace }}/files" \
