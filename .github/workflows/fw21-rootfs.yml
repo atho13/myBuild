@@ -83,7 +83,7 @@ jobs:
           fi
           # ====================================================================
 
-          echo "CONFIG_TARGET_ROOTFS_PARTSIZE=800" >> .config
+          echo "CONFIG_TARGET_ROOTFS_PARTSIZE=1024" >> .config
           echo "CONFIG_TARGET_ROOTFS_EXT4FS=y" >> .config
 
           # List Paket S905X Fix 21.02 + Penambahan ledtrig-netdev agar script LED internet bekerja
