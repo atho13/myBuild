@@ -44,30 +44,54 @@ uci batch <<EOF
     add_list system.ntp.server='ntp.bmkg.go.id'
     add_list system.ntp.server='time.google.com'
      
-    # --- KOFIGURASI NETWORK BRIDGE (br-lan) ---
+    # --- 1. DEFINISI DEVICE BRIDGE LAN
+    delete network.lan_dev
+    set network.lan_dev=device
+    set network.lan_dev.name='br-lan'
+    set network.lan_dev.type='bridge'
+    # Mengikat port fisik ethernet tunggal STB ke br-lan
+    add_list network.lan_dev.ports='eth0'
+
+    # --- 2. KONFIGURASI INTERFACE LAN STATIC
     delete network.lan
     set network.lan=interface
     set network.lan.device='br-lan'
-    set network.lan.proto='dhcp'
+    set network.lan.proto='static'
+    set network.lan.ipaddr='192.168.1.1'
+    set network.lan.netmask='255.255.255.0'
     set network.lan.stp='1'
     set network.lan.igmp_snooping='1'
 
+    # --- 3. INTERFACE WAN
     set network.wan=interface
     set network.wan.proto='dhcp'
     set network.wan.device='eth1'
     
+    # --- 4. INTERFACE TETHERING
     set network.tethering=interface
     set network.tethering.proto='dhcp'
     set network.tethering.device='usb0'
     
     delete network.wan6
     
+    # --- 5. FIREWALL ZONE TUNING
     del_list firewall.@zone[1].network='wan6'
+    del_list firewall.@zone[1].network='tethering'
+    del_list firewall.@zone[1].network='wan'
     add_list firewall.@zone[1].network='tethering'
     add_list firewall.@zone[1].network='wan'
     
+    # --- 6. WEB SERVER
     set uhttpd.main.index_page='index.php'
     set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
+    
+    # --- 7. LAN FIX
+    delete dhcp.lan
+    set dhcp.lan=dhcp
+    set dhcp.lan.interface='lan'
+    set dhcp.lan.start='100'
+    set dhcp.lan.limit='150'
+    set dhcp.lan.leasetime='12h'
     
     commit network
     commit system
