@@ -17,7 +17,7 @@ for file in \
     [ -f "$file" ] && chmod +x "$file"
 done
 
-echo "Injecting Custom Hotplug for Interface Renaming Fix..."
+echo "Injecting Custom Hotplug for Interface Renaming Fix (WiFi Only)..."
 mkdir -p /etc/hotplug.d/net
 
 cat << 'EOF' > /etc/hotplug.d/net/70-custom-wifi
@@ -62,30 +62,49 @@ uci batch <<EOF
     set network.lan.stp='1'
     set network.lan.igmp_snooping='1'
 
-    # --- 3. INTERFACE WAN
+    # --- 3. OPTIMASI CARD & MEMORI FLASH UNIVERSAL
+    add fstab mount
+    set fstab.@mount[-1].target='/'
+    set fstab.@mount[-1].options='noatime,commit=60'
+    set fstab.@mount[-1].enabled='1'
+
+    # --- 4. INTERFACE WAN
     set network.wan=interface
     set network.wan.proto='dhcp'
     set network.wan.device='eth1'
+    set network.wan.metric='5'
     
-    # --- 4. INTERFACE TETHERING
+    # --- 5. INTERFACE TETHERING & MODEM RAKITAN
     set network.tethering=interface
     set network.tethering.proto='dhcp'
     set network.tethering.device='usb0'
+    set network.tethering.metric='10'
+    
+    # Khusus Modem Rakitan (ModemManager / wwan0)
+    set network.modem=interface
+    set network.modem.proto='modemmanager'
+    set network.modem.device='wwan0'
+    set network.modem.apn='internet'
+    set network.modem.auth='none'
+    set network.modem.metric='20'
     
     delete network.wan6
     
-    # --- 5. FIREWALL ZONE TUNING
+    # --- 6. FIREWALL ZONE TUNING FOR MULTI-WAN
     del_list firewall.@zone[1].network='wan6'
     del_list firewall.@zone[1].network='tethering'
+    del_list firewall.@zone[1].network='modem'
     del_list firewall.@zone[1].network='wan'
-    add_list firewall.@zone[1].network='tethering'
-    add_list firewall.@zone[1].network='wan'
     
-    # --- 6. WEB SERVER
+    add_list firewall.@zone[1].network='wan'
+    add_list firewall.@zone[1].network='tethering'
+    add_list firewall.@zone[1].network='modem'
+    
+    # --- 7. WEB SERVER
     set uhttpd.main.index_page='index.php'
     set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
     
-    # --- 7. LAN FIX
+    # --- 8. LAN FIX
     delete dhcp.lan
     set dhcp.lan=dhcp
     set dhcp.lan.interface='lan'
@@ -98,6 +117,7 @@ uci batch <<EOF
     commit firewall
     commit uhttpd
     commit dhcp
+    commit fstab
 EOF
 
 echo "Generating default wireless configuration profile..."
@@ -158,13 +178,13 @@ fi
 echo "Updating System Schedules (Crontab)..."
 
 cat > /etc/crontabs/root << 'EOF'
-# Script by FRDMX
+# Script by FRDMX-Wrt
 
-# Automatic Restart your Modem Bro..
-30 3 * * 0 for dev in /dev/ttyUSB* /dev/cdc-wdm*; do [ -e "$dev" ] && (echo AT^RESET | atinout - "$dev" - 2>/dev/null; echo AT+CFUN=1,1 | atinout - "$dev" - 2>/dev/null); done && sleep 60 && for iface in $(ubus call network.interface dump | jsonfilter -e '@.interface[*].interface' | grep -i 'wan'); do ubus call network.interface.$iface down && sleep 2 && ubus call network.interface.$iface up; done
+# Automatic Restart your Modem Bro.. (mmcli uses)
+30 3 * * 0 mmcli -m any --restart >/dev/null 2>&1 && sleep 45 && for iface in $(ubus call network.interface dump | jsonfilter -e '@.interface[*].interface' | grep -i 'wan'); do ubus call network.interface.$iface down && sleep 2 && ubus call network.interface.$iface up; done
 
-# My Trick
-* * * * * /bin/ash -c 'ping -c 2 -W 3 8.8.8.8 > /dev/null || (sh /usr/sbin/ledon -usb reset && sleep 20 && for iface in $(ubus call network.interface dump | jsonfilter -e "@.interface[@.data.zone=\"wan\"].interface"); do ubus call network.interface.$iface up; done)'
+# My Trick (mmcli uses)
+*/4 * * * * [ ! -f /tmp/ping_check.lock ] && touch /tmp/ping_check.lock && (ping -c 2 -W 3 8.8.8.8 > /dev/null || ping -c 2 -W 3 1.1.1.1 > /dev/null || (for iface in tethering modem wan; do ubus call network.interface.$iface down && sleep 2; done && mmcli -m any --restart-set-to-low-power >/dev/null 2>&1 || mmcli -m any --restart >/dev/null 2>&1; sleep 30; for iface in tethering modem wan; do ubus call network.interface.$iface up; done)); rm -f /tmp/ping_check.lock
 
 # Automatic Maintenance Internal your System Bro..
 0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
