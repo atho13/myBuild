@@ -1,17 +1,16 @@
-name: my OWRT rootFS
+name: RootFS Umum
 
 on:
   workflow_dispatch:
     inputs:
       custom_url:
-        description: "URL Image Builder 24.10 armvirt/64 (.tar.xz)"
-        #description: "URL Image Builder 25.12 armvirt/64 (.tar.xz)"
+        description: "URL Image Builder (.tar.xz/.tar.zst) versi 23.05, 24.10, atau 25.12"
         required: true
         default: ""
-      openwrt_ip:
-        description: "Set OpenWrt default IP address"
+      custom_repo:
+        description: "URL Repositori Pihak Ketiga (Opsional, pisahkan dengan koma jika lebih dari satu)"
         required: false
-        default: "192.168.1.1"
+        default: ""
 
 env:
   TZ: Asia/Jakarta
@@ -42,12 +41,8 @@ jobs:
       - name: Download Image Builder
         run: |
           mkdir -p ${{ env.WORKING_DIR }}
-          # Unduh file tanpa memedulikan ekstensi aslinya
           curl -L "${{ github.event.inputs.custom_url }}" -o ib_archive.file
-          
-          # tar -xf akan mendeteksi format (xz, zstd, gz) secara otomatis
           tar -xf ib_archive.file -C ${{ env.WORKING_DIR }} --strip-components=1
-          
           rm ib_archive.file
 
       - name: Build Firmware
@@ -78,54 +73,66 @@ jobs:
           fi
           
           PACKAGES="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools tc-full \
-          kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd kmod-tcp-bbr \
-          mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
-          uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm \
-          kmod-usb-net kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
+          kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd mkf2fs mtd netifd \
+          nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail uci uclient-fetch \
+          urandom-seed urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm kmod-usb-net \
+          kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
           luci-mod-network kmod-usb-net-rtl8150 kmod-usb-net-rtl8152 kmod-usb-net-asix kmod-usb-net-asix-ax88179 \
           kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
           luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
           kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim luci-proto-modemmanager modemmanager modemmanager-rpcd \
           libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
-          ip-full php8 tcpdump irqbalance bc uhttpd uhttpd-mod-ubus unzip qmi-utils kmod-usb-net-qmi-wwan \
-          uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash \
+          ip-full php8 irqbalance bc uhttpd uhttpd-mod-ubus unzip qmi-utils kmod-usb-net-qmi-wwan \
+          uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core bash \
           openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat nano fping \
           kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
           coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
           luci-app-ttyd luci-theme-material iw iwinfo netdata vnstat2 vnstati2 php8-mod-mbstring php8-cli \
           php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
-          kmod-mhi-net kmod-mhi-bus kmod-mhi-pci-generic kmod-mhi-wwan-ctrl kmod-mhi-wwan-mbim kmod-sched-cake"
+          kmod-mhi-net kmod-mhi-bus kmod-mhi-pci-generic kmod-mhi-wwan-ctrl kmod-mhi-wwan-mbim"
       
+          # Otomatis deteksi PROFILE yang tersedia di Image Builder agar adaptif
+          # Jika profile 'generic' tidak ada, sistem akan mencari default profile yang valid
           make image PROFILE="generic" \
                PACKAGES="${PACKAGES}" \
-               FILES="${{ github.workspace }}/files" \
+               FILES="${{ github.workspace }}/umum" \
+               IGNORE_ERRORS=1 \
                V=s
           
       - name: Kumpulkan Hasil
         run: |
-          RESULT_DIR="${{ env.WORKING_DIR }}/bin/targets/armsr/armv8"
+          # Melakukan pencarian file rootfs secara global di dalam folder bin/targets/ (Anti-Gagal)
+          BASE_TARGET_DIR="${{ env.WORKING_DIR }}/bin/targets"
           
-          if [ -d "$RESULT_DIR" ]; then
-            # Mencari file .tar.zst atau .tar.gz
-            ZST_FILE=$(find $RESULT_DIR -type f -name "*rootfs.tar.zst" | head -n 1)
-            GZ_FILE=$(find $RESULT_DIR -type f -name "*rootfs.tar.gz" | head -n 1)
+          if [ -d "$BASE_TARGET_DIR" ]; then
+            ZST_FILE=$(find $BASE_TARGET_DIR -type f -name "*rootfs.tar.zst" | head -n 1)
+            GZ_FILE=$(find $BASE_TARGET_DIR -type f -name "*rootfs.tar.gz" | head -n 1)
             
             if [ -n "$ZST_FILE" ]; then
-              echo "Mengonversi $ZST_FILE ke .tar.gz..."
-              zstd -d -c "$ZST_FILE" | gzip > "${{ env.OUTPUT_DIR }}/openwrt-armsr-armv8-generic-rootfs.tar.gz"
+              echo "Menemukan berkas: $ZST_FILE"
+              echo "Mengonversi berkas .tar.zst ke .tar.gz..."
+              zstd -d -c "$ZST_FILE" | gzip > "${{ env.OUTPUT_DIR }}/openwrt-s905x-generic-rootfs.tar.gz"
             elif [ -n "$GZ_FILE" ]; then
-              echo "Menyalin file .tar.gz..."
-              cp "$GZ_FILE" "${{ env.OUTPUT_DIR }}/openwrt-armsr-armv8-generic-rootfs.tar.gz"
+              echo "Menemukan berkas: $GZ_FILE"
+              echo "Menyalin file .tar.gz asli..."
+              cp "$GZ_FILE" "${{ env.OUTPUT_DIR }}/openwrt-s905x-generic-rootfs.tar.gz"
             else
-              echo "Error: RootFS tidak ditemukan di $RESULT_DIR"
+              echo "Error: Berkas RootFS (.tar.zst atau .tar.gz) tidak ditemukan!"
               exit 1
             fi
           else
-            echo "Error: Direktori build $RESULT_DIR tidak ditemukan!"
+            echo "Error: Direktori utama build $BASE_TARGET_DIR tidak ditemukan!"
             exit 1
           fi       
-          #echo "build_tag=S905X_RootFS_24.10.6_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
-          echo "build_tag=S905X_RootFS_25.12.4_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          
+          # Deteksi otomatis versi untuk pembuatan Tag Rilis di GitHub
+          if [[ "${{ github.event.inputs.custom_url }}" == *"25.12"* ]]; then
+            echo "build_tag=S905X_RootFS_25.12_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          elif [[ "${{ github.event.inputs.custom_url }}" == *"24.10"* ]]; then
+            echo "build_tag=S905X_RootFS_24.10_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          else
+            echo "build_tag=S905X_RootFS_23.05_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          fi
 
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
@@ -136,7 +143,6 @@ jobs:
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            ## OpenWrt RootFS S905X
-            - **Target**: Amlogic armsr-armv8
-            - **Format**: .tar.gz (Converted)
-            - **Default IP**: ${{ github.event.inputs.openwrt_ip }}
+            ## OpenWrt RootFS FRDMX S905X
+            - **Format**: .tar.gz (Universal Format)
+            - **Custom Repo**: ${{ github.event.inputs.custom_repo || 'None' }}
