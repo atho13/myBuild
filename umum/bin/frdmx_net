@@ -1,5 +1,5 @@
 #!/bin/sh
-# frdmx-wrt internet detector
+# frdmx-wrt net detector
 
 LOCKFILE="/tmp/ping_check.lock"
 trap 'rm -f "$LOCKFILE"; exit' INT TERM EXIT
@@ -8,11 +8,33 @@ if [ -f "$LOCKFILE" ]; then
 fi
 touch "$LOCKFILE"
 
-if ! ping -c 2 -W 3 8.8.8.8 > /dev/null 2>&1 && ! ping -c 2 -W 3 1.1.1.1 > /dev/null 2>&1; then
-    echo "$(date): Internet putus! Merestart modem..." >> /var/log/internet_reboot.log
+MODEM_IFACES=$(uci show network | grep "proto='modemmanager'" | cut -d'.' -f2)
+if [ -z "$MODEM_IFACES" ]; then
+    MODEM_IFACES="modem tethering wan"
+fi
 
-    for iface in tethering modem wan; do 
-        ubus call network.interface.$iface down
+TEST_IFACE=$(echo $MODEM_IFACES | awk '{print $1}')
+
+LOCAL_IP=$(ubus call network.interface.$TEST_IFACE status 2>/dev/null | grep -A 2 '"ipv4-address"' | grep '"address"' | cut -d'"' -f4)
+
+HTTP_CHECK=1
+if [ -n "$LOCAL_IP" ]; then
+    if httping -c 2 -b "$LOCAL_IP" -g http://142.250.4.102 -T 3 > /dev/null 2>&1 || \
+       httping -c 2 -b "$LOCAL_IP" -g http://104.16.132.229 -T 3 > /dev/null 2>&1; then
+        HTTP_CHECK=0
+    fi
+else
+    if httping -c 2 -g http://142.250.4.102 -T 3 > /dev/null 2>&1 || \
+       httping -c 2 -g http://104.16.132.229 -T 3 > /dev/null 2>&1; then
+        HTTP_CHECK=0
+    fi
+fi
+
+if [ "$HTTP_CHECK" -eq 1 ]; then
+    echo "$(date): Internet putus (HTTP Gagal via $TEST_IFACE)! Restart Modem..." >> /var/log/internet_reboot.log
+
+    for iface in $MODEM_IFACES; do
+        ubus call network.interface.$iface down >/dev/null 2>&1
     done
     sleep 3
 
@@ -20,11 +42,11 @@ if ! ping -c 2 -W 3 8.8.8.8 > /dev/null 2>&1 && ! ping -c 2 -W 3 1.1.1.1 > /dev/
         mmcli -m any --restart >/dev/null 2>&1
     fi
 
-    sleep 45
+    sleep 40
 
-    for iface in tethering modem wan; do 
-        ubus call network.interface.$iface up
+    for iface in $MODEM_IFACES; do
+        ubus call network.interface.$iface up >/dev/null 2>&1
     done
-    echo "$(date): Perbaikan selesai, interface kembali naik." >> /var/log/internet_reboot.log
+    
+    echo "$(date): Perbaikan selesai. Interface [ $MODEM_IFACES ] kembali aktif." >> /var/log/internet_reboot.log
 fi
-EOF
