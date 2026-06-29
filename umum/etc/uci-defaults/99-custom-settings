@@ -6,12 +6,9 @@ passwd -d root > /dev/null 2>&1
 echo "Setting file permissions..."
 for file in \
     /usr/bin/huawei.py \
-    /usr/sbin/led \
-    /usr/sbin/ledon \
     /sbin/free.sh \
     /etc/rc.local \
     /etc/custom_service/start_service.sh \
-    /etc/init.d/todong \
     /www/vnstati/vnstati.sh \
     /etc/hotplug.d/net/70-custom-wifi; do
     [ -f "$file" ] && chmod +x "$file"
