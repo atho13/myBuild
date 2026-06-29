@@ -92,7 +92,6 @@ jobs:
           kmod-mhi-pci-generic kmod-mhi-wwan-ctrl kmod-mhi-wwan-mbim"
       
           # Otomatis deteksi PROFILE yang tersedia di Image Builder agar adaptif
-          # Jika profile 'generic' tidak ada, sistem akan mencari default profile yang valid
           make image PROFILE="generic" \
                PACKAGES="${PACKAGES}" \
                FILES="${{ github.workspace }}/umum" \
