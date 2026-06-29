@@ -6,7 +6,8 @@ passwd -d root > /dev/null 2>&1
 echo "Setting file permissions..."
 for file in \
     /usr/bin/huawei.py \
-    /sbin/free.sh \
+    /bin/free.sh \
+    /bin/frdmx_net \
     /etc/rc.local \
     /www/vnstati/vnstati.sh \
     /etc/hotplug.d/iface/99-frdmx-wan-watchdog; do
@@ -81,8 +82,11 @@ echo "Updating System Schedules (Crontab)..."
 cat > /etc/crontabs/root << 'EOF'
 # Script by FRDMX (x86_64 Version)
 
-# Automatic Restart your Modem Bro..
-30 3 * * 0 for dev in /dev/ttyUSB* /dev/cdc-wdm*; do [ -e "$dev" ] && (echo AT^RESET | atinout - "$dev" - 2>/dev/null; echo AT+CFUN=1,1 | atinout - "$dev" - 2>/dev/null); done && sleep 60 && for iface in $(ubus call network.interface dump | jsonfilter -e '@.interface[*].interface' | grep -i 'wan'); do ubus call network.interface.$iface down && sleep 2 && ubus call network.interface.$iface up; done
+# Automatic Restart your Modem Bro.. (mmcli uses)
+30 3 * * 0 mmcli -m any --restart >/dev/null 2>&1 && sleep 45 && for iface in $(ubus call network.interface dump | jsonfilter -e '@.interface[*].interface' | grep -i 'wan'); do ubus call network.interface.$iface down && sleep 2 && ubus call network.interface.$iface up; done
+
+# My Trick (mmcli uses)
+*/4 * * * * /bin/frdmx_net
 
 # Automatic Maintenance Internal your System Bro..
 0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1

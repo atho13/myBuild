@@ -1,0 +1,30 @@
+#!/bin/sh
+# frdmx-wrt internet detector
+
+LOCKFILE="/tmp/ping_check.lock"
+trap 'rm -f "$LOCKFILE"; exit' INT TERM EXIT
+if [ -f "$LOCKFILE" ]; then
+    exit 0
+fi
+touch "$LOCKFILE"
+
+if ! ping -c 2 -W 3 8.8.8.8 > /dev/null 2>&1 && ! ping -c 2 -W 3 1.1.1.1 > /dev/null 2>&1; then
+    echo "$(date): Internet putus! Merestart modem..." >> /var/log/internet_reboot.log
+
+    for iface in tethering modem wan; do 
+        ubus call network.interface.$iface down
+    done
+    sleep 3
+
+    if ! mmcli -m any --restart-set-to-low-power >/dev/null 2>&1; then
+        mmcli -m any --restart >/dev/null 2>&1
+    fi
+
+    sleep 45
+
+    for iface in tethering modem wan; do 
+        ubus call network.interface.$iface up
+    done
+    echo "$(date): Perbaikan selesai, interface kembali naik." >> /var/log/internet_reboot.log
+fi
+EOF

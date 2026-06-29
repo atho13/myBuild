@@ -8,6 +8,7 @@ for file in \
     /usr/bin/huawei.py \
     /usr/sbin/led \
     /usr/sbin/ledon \
+    /bin/frdmx_ping \
     /sbin/free.sh \
     /etc/rc.local \
     /etc/custom_service/start_service.sh \
@@ -184,7 +185,7 @@ cat > /etc/crontabs/root << 'EOF'
 30 3 * * 0 mmcli -m any --restart >/dev/null 2>&1 && sleep 45 && for iface in $(ubus call network.interface dump | jsonfilter -e '@.interface[*].interface' | grep -i 'wan'); do ubus call network.interface.$iface down && sleep 2 && ubus call network.interface.$iface up; done
 
 # My Trick (mmcli uses)
-*/4 * * * * [ ! -f /tmp/ping_check.lock ] && touch /tmp/ping_check.lock && (ping -c 2 -W 3 8.8.8.8 > /dev/null || ping -c 2 -W 3 1.1.1.1 > /dev/null || (for iface in tethering modem wan; do ubus call network.interface.$iface down && sleep 2; done && mmcli -m any --restart-set-to-low-power >/dev/null 2>&1 || mmcli -m any --restart >/dev/null 2>&1; sleep 30; for iface in tethering modem wan; do ubus call network.interface.$iface up; done)); rm -f /tmp/ping_check.lock
+*/4 * * * * /bin/frdmx_net
 
 # Automatic Maintenance Internal your System Bro..
 0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
