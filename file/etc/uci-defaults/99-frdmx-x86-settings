@@ -80,17 +80,18 @@ ln -sf /etc/openclash/ /www/tinyfm/nikki
 echo "Updating System Schedules (Crontab)..."
 
 cat > /etc/crontabs/root << 'EOF'
-# Script by FRDMX (x86_64 Version)
+# ============================================================
+# PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
+# ============================================================
+# Automatic Restart your Modem Bro..
+30 3 * * 0 for iface in $(uci get firewall.@zone[1].network 2>/dev/null | tr ',' ' ' || echo "wan"); do ubus call network.interface.$iface down; done && sleep 2 && mmcli -m any --restart >/dev/null 2>&1 && sleep 45 && for iface in $(uci get firewall.@zone[1].network 2>/dev/null | tr ',' ' ' || echo "wan"); do ubus call network.interface.$iface up; done
 
-# Automatic Restart your Modem Bro.. (mmcli uses)
-30 3 * * 0 mmcli -m any --restart >/dev/null 2>&1 && sleep 45 && for iface in $(ubus call network.interface dump | jsonfilter -e '@.interface[*].interface' | grep -i 'wan'); do ubus call network.interface.$iface down && sleep 2 && ubus call network.interface.$iface up; done
-
-# My Trick (mmcli uses)
-*/4 * * * * /bin/frdmx_net
+# My Trick (Net Detector Autopilot running every 30 minutes)
+*/30 * * * * /bin/frdmx_net
 
 # Automatic Maintenance Internal your System Bro..
 0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
-59 23 * * * sync && echo 3 > /proc/sys/vm/drop_caches && rm -rf /tmp/luci*
+59 23 * * * sync && sh -c "echo 3 > /proc/sys/vm/drop_caches" && rm -rf /tmp/luci*
 */5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1
 EOF
 
