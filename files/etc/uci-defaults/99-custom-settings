@@ -8,7 +8,7 @@ for file in \
     /usr/bin/huawei.py \
     /usr/sbin/led \
     /usr/sbin/ledon \
-    /bin/frdmx_ping \
+    /bin/frdmx_net \
     /sbin/free.sh \
     /etc/rc.local \
     /etc/custom_service/start_service.sh \
