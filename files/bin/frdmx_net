@@ -15,17 +15,17 @@ fi
 
 TEST_IFACE=$(echo $MODEM_IFACES | awk '{print $1}')
 
-LOCAL_IP=$(ubus call network.interface.$TEST_IFACE status 2>/dev/null | grep -A 2 '"ipv4-address"' | grep '"address"' | cut -d'"' -f4)
+LOCAL_IP=$(ubus call network.interface.$TEST_IFACE status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address')
 
 HTTP_CHECK=1
-if [ -n "$LOCAL_IP" ]; then
-    if httping -c 2 -b "$LOCAL_IP" -g http://142.250.4.102 -T 3 > /dev/null 2>&1 || \
-       httping -c 2 -b "$LOCAL_IP" -g http://104.16.132.229 -T 3 > /dev/null 2>&1; then
-        HTTP_CHECK=0
-    fi
+
+if [ -z "$LOCAL_IP" ]; then
+    echo "$(date): $TEST_IFACE tidak memiliki IP Lokal. Langsung eksekusi restart." >> /var/log/internet_reboot.log
+    HTTP_CHECK=1
 else
-    if httping -c 2 -g http://142.250.4.102 -T 3 > /dev/null 2>&1 || \
-       httping -c 2 -g http://104.16.132.229 -T 3 > /dev/null 2>&1; then
+    # Jika ada IP lokal, lakukan pengecekan HTTP via IP tersebut
+    if httping -c 3 -b "$LOCAL_IP" -g https://google.com -T 3 > /dev/null 2>&1 || \
+       httping -c 3 -b "$LOCAL_IP" -g https://cloudflare.com -T 3 > /dev/null 2>&1; then
         HTTP_CHECK=0
     fi
 fi
@@ -33,20 +33,16 @@ fi
 if [ "$HTTP_CHECK" -eq 1 ]; then
     echo "$(date): Internet putus (HTTP Gagal via $TEST_IFACE)! Restart Modem..." >> /var/log/internet_reboot.log
 
-    for iface in $MODEM_IFACES; do
-        ubus call network.interface.$iface down >/dev/null 2>&1
-    done
+    ubus call network.interface.$TEST_IFACE down >/dev/null 2>&1
     sleep 3
 
     if ! mmcli -m any --restart-set-to-low-power >/dev/null 2>&1; then
         mmcli -m any --restart >/dev/null 2>&1
     fi
 
-    sleep 40
+    sleep 45
 
-    for iface in $MODEM_IFACES; do
-        ubus call network.interface.$iface up >/dev/null 2>&1
-    done
+    ubus call network.interface.$TEST_IFACE up >/dev/null 2>&1
     
-    echo "$(date): Perbaikan selesai. Interface [ $MODEM_IFACES ] kembali aktif." >> /var/log/internet_reboot.log
+    echo "$(date): Perbaikan selesai. Interface [ $TEST_IFACE ] kembali aktif." >> /var/log/internet_reboot.log
 fi
