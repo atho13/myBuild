@@ -179,8 +179,9 @@ fi
 echo "Updating System Schedules (Crontab)..."
 
 cat > /etc/crontabs/root << 'EOF'
-# Script by FRDMX-Wrt
-
+# ====================================================================
+# PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
+# ====================================================================
 # Automatic Restart your Modem Bro.. (mmcli uses)
 30 3 * * 0 mmcli -m any --restart >/dev/null 2>&1 && sleep 45 && for iface in $(ubus call network.interface dump | jsonfilter -e '@.interface[*].interface' | grep -i 'wan'); do ubus call network.interface.$iface down && sleep 2 && ubus call network.interface.$iface up; done
 
