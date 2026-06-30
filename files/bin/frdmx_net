@@ -2,47 +2,81 @@
 # frdmx-wrt net detector
 
 LOCKFILE="/tmp/ping_check.lock"
+LOGFILE="/var/log/internet_reboot.log"
+
 trap 'rm -f "$LOCKFILE"; exit' INT TERM EXIT
 if [ -f "$LOCKFILE" ]; then
     exit 0
 fi
 touch "$LOCKFILE"
 
-MODEM_IFACES=$(uci show network | grep "proto='modemmanager'" | cut -d'.' -f2)
-if [ -z "$MODEM_IFACES" ]; then
-    MODEM_IFACES="modem tethering wan"
+WAN_IFACES=$(uci get firewall.@zone.network 2>/dev/null | tr ' ' '\n')
+
+if [ -z "$WAN_IFACES" ]; then
+    # Fallback standar jika konfigurasi uci kosong
+    WAN_IFACES="wan wan2"
 fi
 
-TEST_IFACE=$(echo $MODEM_IFACES | awk '{print $1}')
+for IFACE in $WAN_IFACES; do
+    STATUS_DATA=$(ubus call network.interface.$IFACE status 2>/dev/null)
+    [ -z "$STATUS_DATA" ] && continue
 
-LOCAL_IP=$(ubus call network.interface.$TEST_IFACE status 2>/dev/null | jsonfilter -e '@["ipv4-address"][0].address')
+    LOCAL_IP=$(echo "$STATUS_DATA" | jsonfilter -e '@["ipv4-address"].address')
+    L3_DEVICE=$(echo "$STATUS_DATA" | jsonfilter -e '@["l3_device"]')
+    PROTO=$(echo "$STATUS_DATA" | jsonfilter -e '@["proto"]')
 
-HTTP_CHECK=1
+    case "$PROTO" in
+        wireguard|openvpn|shadowsocks|v2ray|trojan|tun*) 
+            continue 
+            ;;
+    esac
 
-if [ -z "$LOCAL_IP" ]; then
-    echo "$(date): $TEST_IFACE tidak memiliki IP Lokal. Langsung eksekusi restart." >> /var/log/internet_reboot.log
     HTTP_CHECK=1
-else
-    # Jika ada IP lokal, lakukan pengecekan HTTP via IP tersebut
-    if httping -c 3 -b "$LOCAL_IP" -g https://google.com -T 3 > /dev/null 2>&1 || \
-       httping -c 3 -b "$LOCAL_IP" -g https://cloudflare.com -T 3 > /dev/null 2>&1; then
-        HTTP_CHECK=0
-    fi
-fi
 
-if [ "$HTTP_CHECK" -eq 1 ]; then
-    echo "$(date): Internet putus (HTTP Gagal via $TEST_IFACE)! Restart Modem..." >> /var/log/internet_reboot.log
-
-    ubus call network.interface.$TEST_IFACE down >/dev/null 2>&1
-    sleep 3
-
-    if ! mmcli -m any --restart-set-to-low-power >/dev/null 2>&1; then
-        mmcli -m any --restart >/dev/null 2>&1
+    if [ -z "$LOCAL_IP" ]; then
+        echo "$(date): [ $IFACE ] Tidak ada IP Lokal. Menandai putus." >> "$LOGFILE"
+        HTTP_CHECK=1
+    else
+        if curl --interface "$IFACE" --connect-timeout 4 -sI https://google.com > /dev/null || \
+           curl --interface "$IFACE" --connect-timeout 4 -sI https://cloudflare.com > /dev/null; then
+            HTTP_CHECK=0
+        fi
     fi
 
-    sleep 45
+    if [ "$HTTP_CHECK" -eq 1 ]; then
+        echo "$(date): [ $IFACE / $L3_DEVICE ] Internet Putus! Memulai perbaikan..." >> "$LOGFILE"
 
-    ubus call network.interface.$TEST_IFACE up >/dev/null 2>&1
-    
-    echo "$(date): Perbaikan selesai. Interface [ $TEST_IFACE ] kembali aktif." >> /var/log/internet_reboot.log
-fi
+        ubus call network.interface.$IFACE down >/dev/null 2>&1
+        sleep 2
+
+        if [ "$PROTO" = "modemmanager" ] || [ "$PROTO" = "qmi" ] || [ "$PROTO" = "mbim" ] || [ "$PROTO" = "3g" ]; then
+            MODEM_INDEX=$(mmcli -L 2>/dev/null | grep -o '/Modem/[0-9]' | head -n1 | cut -d'/' -f3)
+            if [ -n "$MODEM_INDEX" ]; then
+                mmcli -m "$MODEM_INDEX" --reset >/dev/null 2>&1
+            else
+                mmcli -m any --reset >/dev/null 2>&1
+            fi
+            
+            COUNTER=0
+            while [ $COUNTER -lt 12 ]; do
+                sleep 5
+                if mmcli -L 2>/dev/null | grep -q "Modem"; then
+                    echo "$(date): [ $IFACE ] Modem rakitan terdeteksi kembali oleh sistem." >> "$LOGFILE"
+                    break
+                fi
+                COUNTER=$((COUNTER + 1))
+            done
+            
+            sleep 5
+
+        elif [ "$PROTO" = "dhcp" ]; then
+            killall -q -SIGUSR2 udhcpc
+            sleep 3
+        fi
+
+        ubus call network.interface.$IFACE up >/dev/null 2>&1
+        
+        sleep 15
+        echo "$(date): [ $IFACE ] Selesai diperbaiki dan diperintahkan aktif kembali." >> "$LOGFILE"
+    fi
+done
