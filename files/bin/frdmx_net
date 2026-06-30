@@ -13,7 +13,6 @@ touch "$LOCKFILE"
 WAN_IFACES=$(uci get firewall.@zone.network 2>/dev/null | tr ' ' '\n')
 
 if [ -z "$WAN_IFACES" ]; then
-    # Fallback standar jika konfigurasi uci kosong
     WAN_IFACES="wan wan2"
 fi
 
@@ -50,6 +49,7 @@ for IFACE in $WAN_IFACES; do
         sleep 2
 
         if [ "$PROTO" = "modemmanager" ] || [ "$PROTO" = "qmi" ] || [ "$PROTO" = "mbim" ] || [ "$PROTO" = "3g" ]; then
+            # Cari indeks modem spesifik agar eksekusi mmcli tepat sasaran
             MODEM_INDEX=$(mmcli -L 2>/dev/null | grep -o '/Modem/[0-9]' | head -n1 | cut -d'/' -f3)
             if [ -n "$MODEM_INDEX" ]; then
                 mmcli -m "$MODEM_INDEX" --reset >/dev/null 2>&1
