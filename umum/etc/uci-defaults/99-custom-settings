@@ -161,8 +161,8 @@ cat > /etc/crontabs/root << 'EOF'
 # Automatic Restart your Modem Bro..
 30 3 * * 0 for iface in $(uci get firewall.@zone[1].network 2>/dev/null | tr ',' ' ' || echo "wan"); do ubus call network.interface.$iface down; done && sleep 2 && mmcli -m any --restart >/dev/null 2>&1 && sleep 45 && for iface in $(uci get firewall.@zone[1].network 2>/dev/null | tr ',' ' ' || echo "wan"); do ubus call network.interface.$iface up; done
 
-# My Trick (Net Detector Autopilot running every 30 minutes)
-*/30 * * * * /bin/frdmx_net
+# My Trick (Net Detector tiap 2 jam, jika mo pake bisa hilangkan tanda #)
+# 0 */2 * * * /bin/frdmx_net
 
 # Automatic Maintenance Internal your System Bro..
 0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
