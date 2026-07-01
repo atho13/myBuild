@@ -36,8 +36,14 @@ for IFACE in $WAN_IFACES; do
         echo "$(date): [ $IFACE ] Tidak ada IP Lokal. Menandai putus." >> "$LOGFILE"
         HTTP_CHECK=1
     else
-        if curl --interface "$IFACE" --connect-timeout 4 -sI https://google.com > /dev/null || \
-           curl --interface "$IFACE" --connect-timeout 4 -sI https://cloudflare.com > /dev/null; then
+        if curl --interface "$IFACE" --connect-timeout 6 -sI https://google.com > /dev/null || \
+           curl --interface "$IFACE" --connect-timeout 6 -sI https://cloudflare.com > /dev/null; then
+            HTTP_CHECK=0
+        
+        elif httping -c 2 -t 6 -G -g https://detik.com > /dev/null || \
+             httping -c 2 -t 6 -G -g https://biznetnetworks.com > /dev/null; then
+
+            echo "$(date): [ $IFACE ] Tes utama gagal, gunakan web alternatif. Internet aman." >> "$LOGFILE"
             HTTP_CHECK=0
         fi
     fi
@@ -49,7 +55,6 @@ for IFACE in $WAN_IFACES; do
         sleep 2
 
         if [ "$PROTO" = "modemmanager" ] || [ "$PROTO" = "qmi" ] || [ "$PROTO" = "mbim" ] || [ "$PROTO" = "3g" ]; then
-            # Cari indeks modem spesifik agar eksekusi mmcli tepat sasaran
             MODEM_INDEX=$(mmcli -L 2>/dev/null | grep -o '/Modem/[0-9]' | head -n1 | cut -d'/' -f3)
             if [ -n "$MODEM_INDEX" ]; then
                 mmcli -m "$MODEM_INDEX" --reset >/dev/null 2>&1
@@ -61,17 +66,32 @@ for IFACE in $WAN_IFACES; do
             while [ $COUNTER -lt 12 ]; do
                 sleep 5
                 if mmcli -L 2>/dev/null | grep -q "Modem"; then
-                    echo "$(date): [ $IFACE ] Modem rakitan terdeteksi kembali oleh sistem." >> "$LOGFILE"
                     break
                 fi
                 COUNTER=$((COUNTER + 1))
             done
-            
-            sleep 5
 
         elif [ "$PROTO" = "dhcp" ]; then
+            echo "$(date): [ $IFACE ] Mencoba metode Pemutusan Daya USB (USB Power Toggle)..." >> "$LOGFILE"
+            if [ -d /sys/bus/usb/devices ]; then
+                for usb_dev in /sys/bus/usb/devices/*; do
+                    if [ -e "$usb_dev/authorized" ]; then
+                        echo 0 > "$usb_dev/authorized" 2>/dev/null
+                        sleep 2
+                        echo 1 > "$usb_dev/authorized" 2>/dev/null
+                    fi
+                done
+            fi
+            
             killall -q -SIGUSR2 udhcpc
             sleep 3
+            
+            /etc/init.d/network restart >/dev/null 2>&1
+            sleep 5
+            
+        else
+            /etc/init.d/network restart >/dev/null 2>&1
+            sleep 5
         fi
 
         ubus call network.interface.$IFACE up >/dev/null 2>&1
