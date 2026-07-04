@@ -72,15 +72,20 @@ for IFACE in $WAN_IFACES; do
             done
 
         elif [ "$PROTO" = "dhcp" ]; then
-            echo "$(date): [ $IFACE ] Mencoba metode Pemutusan Daya USB (USB Power Toggle)..." >> "$LOGFILE"
-            if [ -d /sys/bus/usb/devices ]; then
-                for usb_dev in /sys/bus/usb/devices/*; do
-                    if [ -e "$usb_dev/authorized" ]; then
-                        echo 0 > "$usb_dev/authorized" 2>/dev/null
-                        sleep 2
-                        echo 1 > "$usb_dev/authorized" 2>/dev/null
-                    fi
-                done
+            echo "$(date): [ $IFACE ] Mencoba metode Pemutusan Daya USB Spesifik Modem..." >> "$LOGFILE"
+            
+            # PERBAIKAN: Cari port USB asli yang mengendalikan L3_DEVICE (misal: usb0/eth1)
+            if [ -n "$L3_DEVICE" ] && [ -d "/sys/class/net/$L3_DEVICE/device" ]; then
+                # Melacak jalur symlink hardware USB asli
+                USB_TARGET=$(basename "$(readlink -f "/sys/class/net/$L3_DEVICE/device/../..")")
+                USB_AUTH_PATH="/sys/bus/usb/devices/$USB_TARGET/authorized"
+                
+                if [ -e "$USB_AUTH_PATH" ]; then
+                    echo 0 > "$USB_AUTH_PATH" 2>/dev/null
+                    sleep 3
+                    echo 1 > "$USB_AUTH_PATH" 2>/dev/null
+                    echo "$(date): [ $IFACE ] Berhasil reset daya USB Spesifik pada komponen $USB_TARGET" >> "$LOGFILE"
+                fi
             fi
             
             killall -q -SIGUSR2 udhcpc
