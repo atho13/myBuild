@@ -1,12 +1,11 @@
 #!/bin/bash
-# Smart Hybrid Optimization Script for Community FW (Universal Version)
+# Smart Hybrid Optimization Script for Community by Frdmx-Wrt
 # Works perfectly on x86_64, Amlogic (S905X)
 
 for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do 
     echo "schedutil" > "$i" 2>/dev/null
 done
 
-# Optimasi Batching Jaringan tingkat Kernel agar CPU lebih hemat daya
 echo "16" > /proc/sys/net/core/gro_normal_batch 2>/dev/null
 
 ARCH=$(uname -m)
