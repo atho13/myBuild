@@ -7,6 +7,7 @@ echo "Setting file permissions..."
 for file in \
     /usr/bin/huawei.py \
     /sbin/free.sh \
+    /sbin/yess \
     /bin/frdmx_net \
     /etc/rc.local \
     /etc/custom_service/start_service.sh \

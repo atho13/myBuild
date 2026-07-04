@@ -10,6 +10,7 @@ for file in \
     /usr/sbin/ledon \
     /bin/frdmx_net \
     /sbin/free.sh \
+    /sbin/yess \
     /etc/rc.local \
     /etc/custom_service/start_service.sh \
     /etc/init.d/todong \

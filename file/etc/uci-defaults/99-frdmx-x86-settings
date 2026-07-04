@@ -7,7 +7,7 @@ echo "Setting file permissions..."
 for file in \
     /usr/bin/huawei.py \
     /bin/free.sh \
-    /bin/frdmx_net \
+    /sbin/yess \
     /etc/rc.local \
     /www/vnstati/vnstati.sh \
     /etc/hotplug.d/iface/99-frdmx-wan-watchdog; do
