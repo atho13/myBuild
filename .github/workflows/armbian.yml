@@ -33,7 +33,7 @@ on:
       kernel_repo:
         description: "Set your custom kernel repository (Username/Repo)"
         required: false
-        default: "atho13/kernel"
+        default: "https://github.com/atho13/kernel"
       kernel_tag:
         description: "Set the Release Tag of your custom kernel"
         required: false
