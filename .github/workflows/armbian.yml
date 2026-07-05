@@ -82,7 +82,7 @@ jobs:
           
           # PERBAIKAN: Gunakan URL rilis GitHub yang lengkap dan benar
           echo "Downloading kernel via direct link..."
-          wget -q https://github.com -O deb-6.18.37.tar.gz
+          wget -q https://github.com/atho13/kernel/releases/download/kernel_stable/deb-6.18.37.tar.gz
           
           # Ekstrak file kernel jika berhasil diunduh
           if [ -f "deb-6.18.37.tar.gz" ]; then
