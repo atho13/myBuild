@@ -1,5 +1,5 @@
 # =====================================================================
-# Build Armbian Amlogic - Standalone Fixed Edition (No External Script)
+# Build Armbian Amlogic - Standalone Fixed Clean Edition (No Dependency Bugs)
 # =====================================================================
 
 name: Amlogic FRDMX Armbian
@@ -56,10 +56,20 @@ jobs:
       - name: Initialization Environment
         id: init
         run: |
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
-          sudo -E apt-get -y update
-          sudo -E apt-get -y install $(curl -fsSL https://ophub.org)
-          sudo -E apt-get -y install zstd fakeroot gh wget curl
+          # Bersihkan total sisa file kustomisasi apt pembatas
+          sudo rm -f /etc/apt/apt.conf
+          unset APT_CONFIG
+          export DEBIAN_FRONTEND=noninteractive
+          
+          # Lakukan pembaruan repositori dasar
+          sudo apt-get update -y
+          
+          # Pasang paket dependensi kompilasi utama secara manual (Daftar bersih tanpa script luar yang bug)
+          sudo apt-get install -y \
+            build-essential libncurses5-dev libssl-dev bc bison flex \
+            libelf-dev xz-utils git curl wget jq pigz zstd fakeroot gh \
+            binutils patch bzip2 gawk gettext unzip zip python3 python3-pip
+          
           echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Create Work Directory
@@ -95,10 +105,8 @@ jobs:
           # 1. Unduh Rootfs mentah resmi yang bersih dari server basis data komunitas
           echo "Fetching clean base rootfs for: $BRANCH"
           if [ "$BRANCH" = "noble" ]; then
-              # Tautan unduhan rootfs Ubuntu Noble minimal arsitektur arm64
               wget -q https://github.com -O /builder/base_rootfs.tar.gz
           else
-              # Tautan unduhan rootfs Debian Bookworm minimal arsitektur arm64
               wget -q https://github.com -O /builder/base_rootfs.tar.gz
           fi
           
