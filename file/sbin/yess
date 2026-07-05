@@ -1,39 +1,42 @@
 #!/bin/bash
 # Smart Hybrid Optimization Script for Community by Frdmx-Wrt
-# Works perfectly on x86_64, Amlogic (S905X)
+# Compatible with x86_64 & Amlogic
 
 for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do 
-    echo "schedutil" > "$i" 2>/dev/null
+    [ -f "$i" ] && echo "schedutil" > "$i" 2>/dev/null
 done
 
-echo "16" > /proc/sys/net/core/gro_normal_batch 2>/dev/null
+if [ -f /proc/sys/net/core/gro_normal_batch ]; then
+    echo "16" > /proc/sys/net/core/gro_normal_batch 2>/dev/null
+fi
 
 ARCH=$(uname -m)
 
 if [ "$ARCH" = "x86_64" ]; then
-    CPUS=$(nproc)
+    CPUS=$(nproc 2>/dev/null || echo 2)
     RPS_MASK=$(printf '%x' $(( (1 << CPUS) - 1 )))
     
     for dev in /sys/class/net/*; do
         IFACE=$(basename "$dev")
         [ "$IFACE" = "lo" ] && continue
-        for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do echo "$RPS_MASK" > "$rps" 2>/dev/null; done
-        for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do echo "$RPS_MASK" > "$xps" 2>/dev/null; done
+        
+        for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do [ -f "$rps" ] && echo "$RPS_MASK" > "$rps" 2>/dev/null; done
+        for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do [ -f "$xps" ] && echo "$RPS_MASK" > "$xps" 2>/dev/null; done
     done
-
 else
-    IRQ_ETH=$(awk -F: '/eth0/ {print $1}' /proc/interrupts | sed 's/ //g' | head -n 1)
-    [ ! -z "$IRQ_ETH" ] && echo "e" > /proc/irq/$IRQ_ETH/smp_affinity 2>/dev/null
+    for eth_iface in $(awk -F: '/eth|enp|eth0/ {print $1}' /proc/interrupts | sed 's/ //g'); do
+        [ ! -z "$eth_iface" ] && echo "e" > /proc/irq/$eth_iface/smp_affinity 2>/dev/null
+    done
     
-    for irq in $(awk -F: '/dwc3|usb|ehci/ {print $1}' /proc/interrupts | sed 's/ //g'); do 
-        echo "d" > /proc/irq/$irq/smp_affinity 2>/dev/null
+    for usb_irq in $(awk -F: '/dwc3|usb|ehci|xhci/ {print $1}' /proc/interrupts | sed 's/ //g'); do 
+        [ ! -z "$usb_irq" ] && echo "d" > /proc/irq/$usb_irq/smp_affinity 2>/dev/null
     done
 fi
 
-for usb in /sys/bus/usb/devices/*/power/control; do 
-    echo "on" > "$usb" 2>/dev/null
+for usb_ctrl in /sys/bus/usb/devices/*/power/control; do 
+    [ -f "$usb_ctrl" ] && echo "on" > "$usb_ctrl" 2>/dev/null
 done
 
-for usb in /sys/bus/usb/devices/*/power/autosuspend; do 
-    echo "-1" > "$usb" 2>/dev/null
+for usb_suspend in /sys/bus/usb/devices/*/power/autosuspend; do 
+    [ -f "$usb_suspend" ] && echo "-1" > "$usb_suspend" 2>/dev/null
 done
