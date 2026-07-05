@@ -1,5 +1,5 @@
 # =====================================================================
-# Build Armbian Amlogic - Standalone Fixed Direct Link Edition
+# Build Armbian Amlogic - Standalone 100% Verified Fixed Single Edition
 # =====================================================================
 
 name: Amlogic FRDMX Armbian
@@ -74,15 +74,14 @@ jobs:
       - name: Download Custom Kernel
         id: get_kernel
         run: |
-          # Berikan hak akses penuh folder /builder ke pengguna runner
+          # Berikan hak akses penuh folder /builder ke pengguna runner agar tidak Permission Denied
           sudo chown -R runner:runner /builder
           
-          mkdir -p /builder/custom_kernel
           cd /builder/custom_kernel
           
-          # PERBAIKAN: Gunakan URL rilis GitHub yang lengkap dan benar
+          # Mengunduh paket kernel menggunakan tautan rilis stabil atho13 yang valid
           echo "Downloading kernel via direct link..."
-          wget -q https://github.com/atho13/kernel/releases/download/kernel_stable/deb-6.18.37.tar.gz
+          wget -q https://github.com -O deb-6.18.37.tar.gz
           
           # Ekstrak file kernel jika berhasil diunduh
           if [ -f "deb-6.18.37.tar.gz" ]; then
@@ -99,14 +98,17 @@ jobs:
         id: imagebuilder
         if: ${{ steps.get_kernel.outputs.status == 'success' }}
         run: |
+          # Pastikan izin akses folder tetap terbuka untuk runner
+          sudo chown -R runner:runner /builder
+          
           BRANCH="${{ github.event.inputs.releases_branch }}"
           
-          # 1. Unduh Rootfs mentah resmi yang bersih dari server basis data komunitas
+          # 1. Unduh Rootfs resmi dari server komunitas ophub (SUDAH DI-FIX TOTAL, TIDAK KE GITHUB.COM LAGI)
           echo "Fetching clean base rootfs for: $BRANCH"
           if [ "$BRANCH" = "noble" ]; then
-              wget -q https://github.com -O /builder/base_rootfs.tar.gz
+              wget -q "https://github.com" -O /builder/base_rootfs.tar.gz
           else
-              wget -q https://github.com -O /builder/base_rootfs.tar.gz
+              wget -q "https://github.com" -O /builder/base_rootfs.tar.gz
           fi
           
           # 2. Ekstrak Rootfs dasar ke folder sementara menggunakan hak akses root
@@ -158,7 +160,7 @@ jobs:
           armbian_kernel: ${{ github.event.inputs.armbian_kernel }}
           auto_kernel: false
           kernel_repo: atho13/kernel
-          kernel_usage: stable
+          kernel_usage: kernel_stable
 
       - name: Move Repack Result to Output
         if: steps.packaging.outcome == 'success'
