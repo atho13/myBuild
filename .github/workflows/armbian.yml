@@ -2,7 +2,7 @@
 # Build Armbian Debian/Ubuntu Amlogic - Final Fixed Single Edition
 # =====================================================================
 
-name: Armbian Frdmx
+name: Amlogic FRDMX Armbian
 
 on:
   repository_dispatch:
@@ -62,6 +62,15 @@ jobs:
           sudo -E apt-get -y install $(curl -fsSL https://ophub.org)
           sudo -E apt-get -y install zstd fakeroot gh
           echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Create Simulated Physical Disk
+        run: |
+          sudo mkdir -p /builder
+          sudo truncate -s 20G /builder/mnt.img
+          sudo losetup /dev/loop6 /builder/mnt.img
+          sudo mkfs.xfs /dev/loop6
+          sudo mount /dev/loop6 /builder
+          sudo chown -R runner:runner /builder
 
       - name: Download Custom Kernel & Process Rootfs
         id: imagebuilder
@@ -127,3 +136,38 @@ jobs:
           # Beri penanda sukses dan penamaan waktu rilis
           echo "build_tag=Armbian_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
           echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Rebuild Armbian for Target Boards (.img)
+        id: packaging
+        if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
+        uses: ophub/amlogic-s9xxx-armbian@main
+        with:
+          build_target: armbian
+          armbian_path: build/output/images/*.tar.gz
+          armbian_board: ${{ github.event.inputs.armbian_board }}
+          armbian_kernel: ${{ github.event.inputs.armbian_kernel }}
+          auto_kernel: false                     # Dikunci ke false agar kernel Anda tidak ditimpa oleh ophub
+          kernel_repo: ${{ github.event.inputs.kernel_repo }}
+          kernel_usage: ${{ github.event.inputs.kernel_tag }}
+
+      - name: Move Repack Result to Output
+        if: steps.packaging.outcome == 'success'
+        run: |
+          mkdir -p output/
+          sudo cp -v ${{ env.PACKAGED_OUTPUTPATH }}/*.img* output/ 2>/dev/null || true
+          echo "Final check folder output:"
+          ls -lh output/
+          
+      - name: Upload to GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: "output/*"
+          allowUpdates: true
+          makeLatest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## Armbian OS Custom Kernel For STB Amlogic
+            - **Board**: ${{ github.event.inputs.armbian_board }}
+            - **Kernel**: ${{ github.event.inputs.armbian_kernel }} (${{ github.event.inputs.kernel_repo }})
+            - **Branch OS**: ${{ github.event.inputs.releases_branch }}
