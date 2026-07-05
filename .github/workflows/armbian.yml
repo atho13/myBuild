@@ -1,5 +1,5 @@
 # =====================================================================
-# Build Armbian Amlogic - Standalone 100% Verified Fixed Single Edition
+# Build Armbian Amlogic - Standalone 100% Fixed OpenWrt Packaging Edition
 # =====================================================================
 
 name: Amlogic FRDMX Armbian
@@ -48,15 +48,11 @@ jobs:
       - name: Initialization Environment
         id: init
         run: |
-          # Bersihkan total sisa file kustomisasi apt pembatas
           sudo rm -f /etc/apt/apt.conf
           unset APT_CONFIG
           export DEBIAN_FRONTEND=noninteractive
           
-          # Lakukan pembaruan repositori dasar
           sudo apt-get update -y
-          
-          # Pasang paket dependensi kompilasi utama secara manual
           sudo apt-get install -y \
             build-essential libncurses5-dev libssl-dev bc bison flex \
             libelf-dev xz-utils git curl wget jq pigz zstd fakeroot gh \
@@ -74,16 +70,12 @@ jobs:
       - name: Download Custom Kernel
         id: get_kernel
         run: |
-          # Berikan hak akses penuh folder /builder ke pengguna runner agar tidak Permission Denied
           sudo chown -R runner:runner /builder
-          
           cd /builder/custom_kernel
           
-          # Mengunduh paket kernel menggunakan tautan rilis stabil atho13 yang valid
           echo "Downloading kernel via direct link..."
           wget -q https://github.com/atho13/kernel/releases/download/kernel_stable/deb-6.18.37.tar.gz -O deb-6.18.37.tar.gz
           
-          # Ekstrak file kernel jika berhasil diunduh
           if [ -f "deb-6.18.37.tar.gz" ]; then
               tar -xzvf deb-6.18.37.tar.gz
               rm -f deb-6.18.37.tar.gz
@@ -98,12 +90,9 @@ jobs:
         id: imagebuilder
         if: ${{ steps.get_kernel.outputs.status == 'success' }}
         run: |
-          # Pastikan izin akses folder tetap terbuka untuk runner
           sudo chown -R runner:runner /builder
-          
           BRANCH="${{ github.event.inputs.releases_branch }}"
           
-          # 1. Unduh Rootfs resmi dari server komunitas ophub
           echo "Fetching clean base rootfs for: $BRANCH"
           if [ "$BRANCH" = "noble" ]; then
               wget -q "https://github.com/ophub/amlogic-s9xxx-armbian/releases/download/Armbian_noble_arm64_server_2026.07/Armbian_26.08.0-noble_arm64_6.18.37_rootfs.tar.gz" -O /builder/base_rootfs.tar.gz
@@ -111,10 +100,8 @@ jobs:
               wget -q "https://github.com/ophub/amlogic-s9xxx-armbian/releases/download/Armbian_noble_arm64_server_2026.07/Armbian_26.08.0-noble_arm64_6.18.37_rootfs.tar.gz" -O /builder/base_rootfs.tar.gz
           fi
           
-          # 2. Ekstrak Rootfs dasar ke folder sementara menggunakan hak akses root
           sudo tar -mxf /builder/base_rootfs.tar.gz -C /builder/rootfs_tmp/
           
-          # 3. Suntikkan berkas /boot dan /lib/modules milik kernel modifikasi Anda langsung ke rootfs
           echo "Injecting custom kernel files..."
           sudo mkdir -p /builder/rootfs_tmp/boot/
           sudo mkdir -p /builder/rootfs_tmp/lib/modules/
@@ -126,11 +113,9 @@ jobs:
               sudo cp -r /builder/custom_kernel/lib/modules/* /builder/rootfs_tmp/lib/modules/
           fi
           
-          # Atur standarisasi kepemilikan berkas ke root pengguna
           sudo chown -R root:root /builder/rootfs_tmp/boot/
           sudo chown -R root:root /builder/rootfs_tmp/lib/modules/
           
-          # 4. Kustomisasi Akun Dasar: Aktifkan SSH root & pasang sandi bawaan '1234'
           SSH_CONFIG="/builder/rootfs_tmp/etc/ssh/sshd_config"
           if [ -f "$SSH_CONFIG" ]; then
               sudo sed -i "s|^#*PermitRootLogin .*|PermitRootLogin yes|g" $SSH_CONFIG
@@ -143,10 +128,10 @@ jobs:
               sudo sed -i "s|^root:\*|root:${ROOT_PASS_HASH}|" $SHADOW_FILE
           fi
           
-          # 5. REVISI UTAMA: Bungkus kembali dengan nama file standar agar dikenali oleh modul ophub
           echo "Compressing new custom rootfs..."
           cd /builder/rootfs_tmp/
-          sudo tar -czf ${{ github.workspace }}/build/output/images/Armbian_24.11.0_${BRANCH}_arm64_rootfs.tar.gz *
+          # Kembalikan penamaan ke custom-rootfs.tar.gz agar dibaca modul pengemas
+          sudo tar -czf ${{ github.workspace }}/output/custom-rootfs.tar.gz *
           
           echo "build_tag=Armbian_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
           echo "status=success" >> ${GITHUB_OUTPUT}
@@ -154,12 +139,12 @@ jobs:
       - name: Rebuild Armbian for Target Boards (.img)
         id: packaging
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
-        uses: ophub/amlogic-s9xxx-armbian@main
+        # SOLUSI: Menggunakan modul s9xxx-openwrt karena mendukung pembuatan .img dari file .tar.gz mentah
+        uses: ophub/amlogic-s9xxx-openwrt@main
         with:
-          build_target: armbian
-          armbian_path: build/output/images/Armbian_24.11.0_${{ github.event.inputs.releases_branch }}_arm64_rootfs.tar.gz
-          armbian_board: ${{ github.event.inputs.armbian_board }}
-          armbian_kernel: ${{ github.event.inputs.armbian_kernel }}
+          openwrt_path: output/custom-rootfs.tar.gz
+          openwrt_board: ${{ github.event.inputs.armbian_board }}
+          openwrt_kernel: ${{ github.event.inputs.armbian_kernel }}
           auto_kernel: false
           kernel_repo: atho13/kernel
           kernel_usage: kernel_stable
