@@ -74,6 +74,9 @@ jobs:
       - name: Download Custom Kernel
         id: get_kernel
         run: |
+          # Perbaikan Izin Akses: Berikan hak penuh folder /builder ke pengguna runner
+          sudo chown -R runner:runner /builder
+          
           cd /builder/custom_kernel
           
           # Mengunduh paket kernel langsung menggunakan tautan publik rilis GitHub Anda
