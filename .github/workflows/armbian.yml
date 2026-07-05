@@ -103,7 +103,7 @@ jobs:
           
           BRANCH="${{ github.event.inputs.releases_branch }}"
           
-          # 1. Unduh Rootfs resmi dari server komunitas ophub (SUDAH DI-FIX TOTAL, TIDAK KE GITHUB.COM LAGI)
+          # 1. Unduh Rootfs resmi dari server komunitas ophub
           echo "Fetching clean base rootfs for: $BRANCH"
           if [ "$BRANCH" = "noble" ]; then
               wget -q "https://github.com/ophub/amlogic-s9xxx-armbian/releases/download/Armbian_noble_arm64_server_2026.07/Armbian_26.08.0-noble_arm64_6.18.37_rootfs.tar.gz" -O /builder/base_rootfs.tar.gz
@@ -116,8 +116,6 @@ jobs:
           
           # 3. Suntikkan berkas /boot dan /lib/modules milik kernel modifikasi Anda langsung ke rootfs
           echo "Injecting custom kernel files..."
-          
-          # PERBAIKAN: Pastikan folder penampung modul di rootfs sementara sudah tercipta sebelum disalin
           sudo mkdir -p /builder/rootfs_tmp/boot/
           sudo mkdir -p /builder/rootfs_tmp/lib/modules/
 
@@ -128,7 +126,7 @@ jobs:
               sudo cp -r /builder/custom_kernel/lib/modules/* /builder/rootfs_tmp/lib/modules/
           fi
           
-          # Atur standarisasi kepemilikan berkas ke root pengguna (Sekarang dijamin aman dari No Such File)
+          # Atur standarisasi kepemilikan berkas ke root pengguna
           sudo chown -R root:root /builder/rootfs_tmp/boot/
           sudo chown -R root:root /builder/rootfs_tmp/lib/modules/
           
@@ -145,10 +143,10 @@ jobs:
               sudo sed -i "s|^root:\*|root:${ROOT_PASS_HASH}|" $SHADOW_FILE
           fi
           
-          # 5. Bungkus kembali rootfs kustom baru Anda menjadi format tar.gz untuk di-repack oleh ophub
+          # 5. REVISI UTAMA: Bungkus kembali dengan nama file standar agar dikenali oleh modul ophub
           echo "Compressing new custom rootfs..."
           cd /builder/rootfs_tmp/
-          sudo tar -czf ${{ github.workspace }}/build/output/images/custom-rootfs.tar.gz *
+          sudo tar -czf ${{ github.workspace }}/build/output/images/Armbian_24.11.0_${BRANCH}_arm64_rootfs.tar.gz *
           
           echo "build_tag=Armbian_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
           echo "status=success" >> ${GITHUB_OUTPUT}
@@ -159,7 +157,7 @@ jobs:
         uses: ophub/amlogic-s9xxx-armbian@main
         with:
           build_target: armbian
-          armbian_path: build/output/images/custom-rootfs.tar.gz
+          armbian_path: build/output/images/Armbian_24.11.0_${{ github.event.inputs.releases_branch }}_arm64_rootfs.tar.gz
           armbian_board: ${{ github.event.inputs.armbian_board }}
           armbian_kernel: ${{ github.event.inputs.armbian_kernel }}
           auto_kernel: false
