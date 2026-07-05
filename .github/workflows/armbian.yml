@@ -29,7 +29,7 @@ on:
       armbian_kernel:
         description: "Select kernel version"
         required: false
-        default: "6.18.y"
+        default: "deb-6.18.37"
 
 env:
   TZ: Asia/Jakarta
