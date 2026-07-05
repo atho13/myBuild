@@ -81,7 +81,7 @@ jobs:
           
           # Mengunduh paket kernel menggunakan tautan rilis stabil atho13 yang valid
           echo "Downloading kernel via direct link..."
-          wget -q https://github.com -O deb-6.18.37.tar.gz
+          wget -q https://github.com/atho13/kernel/releases/download/kernel_stable/deb-6.18.37.tar.gz -O deb-6.18.37.tar.gz
           
           # Ekstrak file kernel jika berhasil diunduh
           if [ -f "deb-6.18.37.tar.gz" ]; then
