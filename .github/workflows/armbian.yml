@@ -106,9 +106,9 @@ jobs:
           # 1. Unduh Rootfs resmi dari server komunitas ophub (SUDAH DI-FIX TOTAL, TIDAK KE GITHUB.COM LAGI)
           echo "Fetching clean base rootfs for: $BRANCH"
           if [ "$BRANCH" = "noble" ]; then
-              wget -q "https://github.com" -O /builder/base_rootfs.tar.gz
+              wget -q "https://github.com/ophub/amlogic-s9xxx-armbian/releases/download/Armbian_noble_arm64_server_2026.07/Armbian_26.08.0-noble_arm64_6.18.37_rootfs.tar.gz" -O /builder/base_rootfs.tar.gz
           else
-              wget -q "https://github.com" -O /builder/base_rootfs.tar.gz
+              wget -q "https://github.com/ophub/amlogic-s9xxx-armbian/releases/download/Armbian_noble_arm64_server_2026.07/Armbian_26.08.0-noble_arm64_6.18.37_rootfs.tar.gz" -O /builder/base_rootfs.tar.gz
           fi
           
           # 2. Ekstrak Rootfs dasar ke folder sementara menggunakan hak akses root
