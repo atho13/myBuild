@@ -1,0 +1,142 @@
+# =====================================================================================
+# My Armbian - by Frdmx-Wrt
+# =====================================================================================
+
+name: Amlogic FRDMX
+
+on:
+  repository_dispatch:
+  workflow_dispatch:
+    inputs:
+      releases_branch:
+        description: "Select the releases branch"
+        required: false
+        default: "noble"
+        type: choice
+        options:
+          - trixie
+          - bookworm
+          - resolute
+          - noble
+      openwrt_board:
+        description: "Select device board"
+        required: false
+        default: "s905x-b860h"
+        type: choice
+        options:
+          - s905
+          - s905x
+          - s905x-b860h
+          - s905x2-hg680fj
+          - s905x3
+          - s905x3-x96max
+      openwrt_kernel:
+        description: "Select kernel version"
+        required: false
+        default: "6.18.y"
+        type: choice
+        options:
+          - 6.6.y
+          - 6.12.y
+          - 6.18.y
+      auto_kernel:
+        description: "Auto use the latest kernel"
+        required: false
+        default: true
+        type: boolean
+      kernel_repo:
+        description: "Set the kernel repository"
+        required: false
+        default: "atho13/kernel"
+        type: choice
+        options:
+          - ophub/kernel
+          - atho13/kernel
+      kernel_usage:
+        description: "Set the tags of the stable kernel."
+        required: false
+        default: "stable"
+        type: choice
+        options:
+          - stable
+      openwrt_ip:
+        description: "Set OpenWrt default IP address."
+        required: false
+        default: "192.168.1.1"
+
+env:
+  TZ: Asia/Jakarta
+  IMAGEBUILDER_SH: config/imagebuilder/armbian.sh
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialization environment
+        id: init
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
+          sudo -E apt-get -y update
+          sudo -E apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2404-make-openwrt-depends)
+          sudo -E apt-get -y install zstd fakeroot
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Create simulated physical disk
+        run: |
+          sudo mkdir -p /builder
+          sudo truncate -s 20G /builder/mnt.img
+          sudo losetup /dev/loop6 /builder/mnt.img
+          sudo mkfs.xfs /dev/loop6
+          sudo mount /dev/loop6 /builder
+          sudo chown -R runner:runner /builder
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Build OpenWrt Rootfs
+        id: imagebuilder
+        run: |
+          chmod +x ${IMAGEBUILDER_SH}
+          ./${IMAGEBUILDER_SH} ${{ github.event.inputs.releases_branch }}
+          echo "build_tag=OpenWrt_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          echo "status=success" >> ${GITHUB_OUTPUT}
+
+      - name: Rebuild Armbian for target boards
+        uses: ophub/amlogic-s9xxx-armbian@main
+        if: ${{ steps.clean.outputs.status == 'success' && !cancelled() }}
+        with:
+          build_target: armbian
+          armbian_path: build/output/images/*.img.gz
+          armbian_board: ${{ inputs.armbian_board }}
+          armbian_kernel: ${{ inputs.armbian_kernel }}
+          auto_kernel: true
+          kernel_repo: ${{ inputs.kernel_repo }}
+          kernel_usage: ${{ inputs.kernel_usage }}
+          armbian_fstype: ${{ inputs.armbian_fstype }}
+          builder_name: ${{ inputs.builder_name }}
+
+      - name: Move Repack Result to Output
+        if: steps.packaging.outcome == 'success'
+        run: |
+          sudo cp -v ${{ env.PACKAGED_OUTPUTPATH }}/*.img* output/ 2>/dev/null || true
+          echo "Final check folder output:"
+          ls -lh output/
+          
+      - name: Upload to GitHub Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.build_tag }}
+          artifacts: "output/*"
+          allowUpdates: true
+          makeLatest: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          body: |
+            ## OpenWrt For Amlogic Only
+            - **Board**: ${{ github.event.inputs.openwrt_board }}
+            - **Kernel**: ${{ github.event.inputs.openwrt_kernel }} (${{ github.event.inputs.kernel_repo }})
+            - **IP**: ${{ github.event.inputs.openwrt_ip }}
