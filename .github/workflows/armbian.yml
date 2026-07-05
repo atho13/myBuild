@@ -116,15 +116,19 @@ jobs:
           
           # 3. Suntikkan berkas /boot dan /lib/modules milik kernel modifikasi Anda langsung ke rootfs
           echo "Injecting custom kernel files..."
+          
+          # PERBAIKAN: Pastikan folder penampung modul di rootfs sementara sudah tercipta sebelum disalin
+          sudo mkdir -p /builder/rootfs_tmp/boot/
+          sudo mkdir -p /builder/rootfs_tmp/lib/modules/
+
           if [ -d "/builder/custom_kernel/boot" ]; then
               sudo cp -r /builder/custom_kernel/boot/* /builder/rootfs_tmp/boot/
           fi
           if [ -d "/builder/custom_kernel/lib/modules" ]; then
-              sudo mkdir -p /builder/rootfs_tmp/lib/modules/
               sudo cp -r /builder/custom_kernel/lib/modules/* /builder/rootfs_tmp/lib/modules/
           fi
           
-          # Atur standarisasi kepemilikan berkas ke root pengguna
+          # Atur standarisasi kepemilikan berkas ke root pengguna (Sekarang dijamin aman dari No Such File)
           sudo chown -R root:root /builder/rootfs_tmp/boot/
           sudo chown -R root:root /builder/rootfs_tmp/lib/modules/
           
