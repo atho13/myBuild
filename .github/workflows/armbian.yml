@@ -2,7 +2,7 @@
 # Build Armbian Debian/Ubuntu Amlogic - Single Workflow Edition
 # =====================================================================
 
-name: Amlogic FRDMX Armbian
+name: Armbian Frdmmx
 
 on:
   repository_dispatch:
