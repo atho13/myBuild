@@ -74,12 +74,13 @@ jobs:
       - name: Download Custom Kernel
         id: get_kernel
         run: |
-          # Perbaikan Izin Akses: Berikan hak penuh folder /builder ke pengguna runner
+          # Berikan hak akses penuh folder /builder ke pengguna runner
           sudo chown -R runner:runner /builder
           
+          mkdir -p /builder/custom_kernel
           cd /builder/custom_kernel
           
-          # Mengunduh paket kernel langsung menggunakan tautan publik rilis GitHub Anda
+          # PERBAIKAN: Gunakan URL rilis GitHub yang lengkap dan benar
           echo "Downloading kernel via direct link..."
           wget -q https://github.com -O deb-6.18.37.tar.gz
           
