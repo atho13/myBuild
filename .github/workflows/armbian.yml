@@ -1,5 +1,5 @@
 # =====================================================================
-# Build Armbian Amlogic - Final 100% Fixed Filename Regex Edition
+# Build Armbian Amlogic - Final 100% Fixed Image Partition Creator Edition
 # =====================================================================
 
 name: Amlogic FRDMX Armbian
@@ -128,10 +128,10 @@ jobs:
               sudo sed -i "s|^root:\*|root:${ROOT_PASS_HASH}|" $SHADOW_FILE
           fi
           
-          # REVISI FINAL: Nama berkas wajib mengandung pola "-trunk_" dan informasi versi agar lolos verifikasi ophub
-          echo "Compressing new custom rootfs into standard armbian filename format..."
+          echo "Compressing rootfs package..."
           cd /builder/rootfs_tmp/
-          sudo tar -czf ${{ github.workspace }}/build/output/images/Armbian_25.11.0-trunk_${BRANCH}_arm64_deb-6.18.37.img.gz *
+          # Menggunakan nama kemasan standar berkas tar.gz murni kembali
+          sudo tar -czf ${{ github.workspace }}/output/openwrt-rootfs.tar.gz *
           
           echo "build_tag=Armbian_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
           echo "status=success" >> ${GITHUB_OUTPUT}
@@ -139,15 +139,15 @@ jobs:
       - name: Rebuild Armbian for Target Boards (.img)
         id: packaging
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
-        uses: ophub/amlogic-s9xxx-armbian@main
+        # PENGGUNAAN FINAL: Menggunakan pembuat citra disk otomatis dari repositori s9xxx-openwrt
+        uses: ophub/amlogic-s9xxx-openwrt@main
         with:
-          build_target: armbian
-          armbian_path: build/output/images/Armbian_25.11.0-trunk_${{ github.event.inputs.releases_branch }}_arm64_deb-6.18.37.img.gz
-          armbian_board: ${{ github.event.inputs.armbian_board }}
-          armbian_kernel: ${{ github.event.inputs.armbian_kernel }}
+          openwrt_path: output/openwrt-rootfs.tar.gz
+          openwrt_board: ${{ github.event.inputs.armbian_board }}
+          openwrt_kernel: ${{ github.event.inputs.armbian_kernel }}
           auto_kernel: false
           kernel_repo: atho13/kernel
-          kernel_usage: stable
+          kernel_usage: kernel_stable
 
       - name: Move Repack Result to Output
         if: steps.packaging.outcome == 'success'
