@@ -2,7 +2,7 @@
 # Build Armbian Debian/Ubuntu Amlogic - Final Fixed Single Edition
 # =====================================================================
 
-name: Amlogic FRDMX Armbian
+name: Armbian Frdmx
 
 on:
   repository_dispatch:
