@@ -21,6 +21,12 @@ on:
         description: "Select device board"
         required: false
         default: "s905x-b860h"
+        type: choice
+        options:
+          - s905x-b860h
+          - s905x-hg680p
+          - s905x2-hg680fj
+          - s905x2-s905y2
       armbian_kernel:
         description: "Select kernel version"
         required: false
