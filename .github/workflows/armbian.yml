@@ -93,21 +93,21 @@ jobs:
               echo "WARNING: Kernel tidak ditemukan! Menggunakan basis default."
           fi
           
-          # 4. Kembali ke root repositori untuk menjalankan skrip bash Anda langsung dari .yml
+          # Kembali ke root repositori
           cd ${{ github.workspace }}
           chmod +x ./compile-kernel/tools/script/docker/build_armbian_rootfs_file.sh
           
-          # Eksekusi skrip Anda dengan menyisipkan folder kernel kustom di parameter -m
+          # Tambahkan baris unset ini untuk membersihkan konfigurasi apt yang korup dari sistem host
+          unset APT_CONFIG
+          export DEBIAN_FRONTEND=noninteractive
+          
+          # Jalankan skrip bash Anda
           ./compile-kernel/tools/script/docker/build_armbian_rootfs_file.sh \
               -v "${{ github.event.inputs.releases_branch }}" \
               -s true \
               -c true \
               -k true \
               -m "/builder/custom_kernel"
-          
-          # Beri tanda penanda sukses dan penamaan waktu rilis
-          echo "build_tag=Armbian_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
-          echo "status=success" >> ${GITHUB_OUTPUT}
 
       - name: Rebuild Armbian for Target Boards (.img)
         id: packaging
