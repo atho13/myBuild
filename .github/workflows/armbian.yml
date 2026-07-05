@@ -1,5 +1,5 @@
 # =====================================================================
-# Build Armbian Amlogic - Standalone Fixed Clean Edition (No Dependency Bugs)
+# Build Armbian Amlogic - Standalone Fixed Direct Link Edition
 # =====================================================================
 
 name: Amlogic FRDMX Armbian
@@ -30,14 +30,6 @@ on:
         description: "Select kernel version"
         required: false
         default: "6.18.y"
-      kernel_repo:
-        description: "Set your custom kernel repository (Username/Repo)"
-        required: false
-        default: "https://github.com/atho13/kernel"
-      kernel_tag:
-        description: "Set the Release Tag of your custom kernel"
-        required: false
-        default: "stable"
 
 env:
   TZ: Asia/Jakarta
@@ -64,7 +56,7 @@ jobs:
           # Lakukan pembaruan repositori dasar
           sudo apt-get update -y
           
-          # Pasang paket dependensi kompilasi utama secara manual (Daftar bersih tanpa script luar yang bug)
+          # Pasang paket dependensi kompilasi utama secara manual
           sudo apt-get install -y \
             build-essential libncurses5-dev libssl-dev bc bison flex \
             libelf-dev xz-utils git curl wget jq pigz zstd fakeroot gh \
@@ -81,24 +73,27 @@ jobs:
 
       - name: Download Custom Kernel
         id: get_kernel
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd /builder/custom_kernel
-          echo "Downloading kernel from ${{ github.event.inputs.kernel_repo }} tag ${{ github.event.inputs.kernel_tag }}"
-          gh release download ${{ github.event.inputs.kernel_tag }} --repo ${{ github.event.inputs.kernel_repo }} --pattern "*.tar.gz" --skip-existing || true
           
-          if [ "$(ls -A . 2>/dev/null)" ]; then
-              for f in *.tar.gz; do tar -xzvf "$f"; done
-              rm -f *.tar.gz
+          # Mengunduh paket kernel langsung menggunakan tautan publik rilis GitHub Anda
+          echo "Downloading kernel via direct link..."
+          wget -q https://github.com -O deb-6.18.37.tar.gz
+          
+          # Ekstrak file kernel jika berhasil diunduh
+          if [ -f "deb-6.18.37.tar.gz" ]; then
+              tar -xzvf deb-6.18.37.tar.gz
+              rm -f deb-6.18.37.tar.gz
               echo "Kernel extracted successfully."
+              echo "status=success" >> ${GITHUB_OUTPUT}
           else
-              echo "ERROR: Kernel kustom tidak ditemukan di rilis GitHub Anda!"
+              echo "ERROR: Gagal mengunduh berkas kernel kustom lewat Direct Link!"
               exit 1
           fi
 
       - name: Fetch Official Rootfs & Inject Custom Kernel
         id: imagebuilder
+        if: ${{ steps.get_kernel.outputs.status == 'success' }}
         run: |
           BRANCH="${{ github.event.inputs.releases_branch }}"
           
@@ -158,8 +153,8 @@ jobs:
           armbian_board: ${{ github.event.inputs.armbian_board }}
           armbian_kernel: ${{ github.event.inputs.armbian_kernel }}
           auto_kernel: false
-          kernel_repo: ${{ github.event.inputs.kernel_repo }}
-          kernel_usage: ${{ github.event.inputs.kernel_tag }}
+          kernel_repo: atho13/kernel
+          kernel_usage: stable
 
       - name: Move Repack Result to Output
         if: steps.packaging.outcome == 'success'
@@ -179,6 +174,6 @@ jobs:
           body: |
             ## Armbian OS Custom Kernel For STB Amlogic
             - **Board**: ${{ github.event.inputs.armbian_board }}
-            - **Kernel**: ${{ github.event.inputs.armbian_kernel }} (${{ github.event.inputs.kernel_repo }})
+            - **Kernel**: ${{ github.event.inputs.armbian_kernel }} (atho13/kernel)
             - **Branch OS**: ${{ github.event.inputs.releases_branch }}
             - **Sandi Default Root**: 1234
