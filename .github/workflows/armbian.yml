@@ -140,7 +140,7 @@ jobs:
         id: packaging
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
         # PENGGUNAAN FINAL: Menggunakan pembuat citra disk otomatis dari repositori s9xxx-openwrt
-        uses: atho13/amlogic-s9xxx-openwrt@main
+        uses: atho13/amlogic-s9xxx-armbian@main
         with:
           openwrt_path: output/openwrt-rootfs.tar.gz
           openwrt_board: ${{ github.event.inputs.armbian_board }}
