@@ -1,72 +1,41 @@
-# =====================================================================================
-# My Armbian - by Frdmx-Wrt
-# =====================================================================================
+# =====================================================================
+# Build Armbian Debian/Ubuntu Amlogic - Single Workflow Edition
+# =====================================================================
 
-name: Amlogic FRDMX
+name: Amlogic FRDMX Armbian
 
 on:
   repository_dispatch:
   workflow_dispatch:
     inputs:
       releases_branch:
-        description: "Select the releases branch"
+        description: "Select the releases branch (codename)"
         required: false
-        default: "noble"
+        default: "bookworm"
         type: choice
         options:
           - trixie
           - bookworm
-          - resolute
           - noble
-      openwrt_board:
+      armbian_board:
         description: "Select device board"
         required: false
         default: "s905x-b860h"
-        type: choice
-        options:
-          - s905
-          - s905x
-          - s905x-b860h
-          - s905x2-hg680fj
-          - s905x3
-          - s905x3-x96max
-      openwrt_kernel:
+      armbian_kernel:
         description: "Select kernel version"
         required: false
         default: "6.18.y"
-        type: choice
-        options:
-          - 6.6.y
-          - 6.12.y
-          - 6.18.y
-      auto_kernel:
-        description: "Auto use the latest kernel"
-        required: false
-        default: true
-        type: boolean
       kernel_repo:
-        description: "Set the kernel repository"
+        description: "Set your custom kernel repository (Username/Repo)"
         required: false
         default: "atho13/kernel"
-        type: choice
-        options:
-          - ophub/kernel
-          - atho13/kernel
-      kernel_usage:
-        description: "Set the tags of the stable kernel."
+      kernel_tag:
+        description: "Set the Release Tag of your custom kernel"
         required: false
         default: "stable"
-        type: choice
-        options:
-          - stable
-      openwrt_ip:
-        description: "Set OpenWrt default IP address."
-        required: false
-        default: "192.168.1.1"
 
 env:
   TZ: Asia/Jakarta
-  IMAGEBUILDER_SH: config/imagebuilder/armbian.sh
 
 jobs:
   build:
@@ -76,19 +45,19 @@ jobs:
       packages: write
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Initialization environment
+      - name: Initialization Environment
         id: init
         run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android 2>/dev/null
           sudo -E apt-get -y update
-          sudo -E apt-get -y install $(curl -fsSL https://ophub.org/ubuntu2404-make-openwrt-depends)
-          sudo -E apt-get -y install zstd fakeroot
+          sudo -E apt-get -y install $(curl -fsSL https://ophub.org)
+          sudo -E apt-get -y install zstd fakeroot gh
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Create simulated physical disk
+      - name: Create Simulated Physical Disk
         run: |
           sudo mkdir -p /builder
           sudo truncate -s 20G /builder/mnt.img
@@ -96,32 +65,61 @@ jobs:
           sudo mkfs.xfs /dev/loop6
           sudo mount /dev/loop6 /builder
           sudo chown -R runner:runner /builder
-          echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Build OpenWrt Rootfs
+      - name: Download Custom Kernel & Process Rootfs
         id: imagebuilder
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          chmod +x ${IMAGEBUILDER_SH}
-          ./${IMAGEBUILDER_SH} ${{ github.event.inputs.releases_branch }}
-          echo "build_tag=OpenWrt_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          # 1. Buat direktori kerja untuk kernel kustom
+          mkdir -p /builder/custom_kernel
+          cd /builder/custom_kernel
+          
+          # 2. Unduh paket kernel modifikasi (.tar.gz) langsung dari rilis GitHub Anda
+          echo "Downloading kernel from ${{ github.event.inputs.kernel_repo }} tag ${{ github.event.inputs.kernel_tag }}"
+          gh release download ${{ github.event.inputs.kernel_tag }} --repo ${{ github.event.inputs.kernel_repo }} --pattern "*.tar.gz" --skip-existing || true
+          
+          # 3. Ekstrak file kernel jika ditemukan
+          if [ "$(ls -A . 2>/dev/null)" ]; then
+              for f in *.tar.gz; do tar -xzvf "$f"; done
+              rm -f *.tar.gz
+          else
+              echo "WARNING: Kernel tidak ditemukan! Menggunakan basis default."
+          fi
+          
+          # 4. Kembali ke root repositori untuk menjalankan skrip bash Anda langsung dari .yml
+          cd ${{ github.workspace }}
+          chmod +x ./compile-kernel/tools/script/docker/build_armbian_rootfs_file.sh
+          
+          # Eksekusi skrip Anda dengan menyisipkan folder kernel kustom di parameter -m
+          ./compile-kernel/tools/script/docker/build_armbian_rootfs_file.sh \
+              -v "${{ github.event.inputs.releases_branch }}" \
+              -s true \
+              -c true \
+              -k true \
+              -m "/builder/custom_kernel"
+          
+          # Beri tanda penanda sukses dan penamaan waktu rilis
+          echo "build_tag=Armbian_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
           echo "status=success" >> ${GITHUB_OUTPUT}
 
-      - name: Rebuild Armbian for target boards
-        uses: ophub/amlogic-s9xxx-armbian@main
+      - name: Rebuild Armbian for Target Boards (.img)
+        id: packaging
         if: ${{ steps.imagebuilder.outputs.status == 'success' && !cancelled() }}
+        uses: ophub/amlogic-s9xxx-armbian@main
         with:
           build_target: armbian
-          armbian_path: output/*rootfs.tar.*
-          armbian_board: s905x-b860h
-          armbian_kernel: 6.18.y 
-          auto_kernel: false 
-          kernel_repo: atho13/kernel
-          kernel_usage: stable 
-          armbian_fstype: ext4
+          armbian_path: build/output/images/*.tar.gz    # Mengarah ke lokasi file .tar.gz hasil kompresi skrip bash Anda
+          armbian_board: ${{ github.event.inputs.armbian_board }}
+          armbian_kernel: ${{ github.event.inputs.armbian_kernel }}
+          auto_kernel: false                     # Dikunci ke false agar kernel modifikasi Anda tidak ditimpa
+          kernel_repo: ${{ github.event.inputs.kernel_repo }}
+          kernel_usage: ${{ github.event.inputs.kernel_tag }}
 
       - name: Move Repack Result to Output
         if: steps.packaging.outcome == 'success'
         run: |
+          mkdir -p output/
           sudo cp -v ${{ env.PACKAGED_OUTPUTPATH }}/*.img* output/ 2>/dev/null || true
           echo "Final check folder output:"
           ls -lh output/
@@ -135,7 +133,7 @@ jobs:
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            ## OpenWrt For Amlogic Only
-            - **Board**: ${{ github.event.inputs.openwrt_board }}
-            - **Kernel**: ${{ github.event.inputs.openwrt_kernel }} (${{ github.event.inputs.kernel_repo }})
-            - **IP**: ${{ github.event.inputs.openwrt_ip }}
+            ## Armbian OS Custom Kernel For B860H
+            - **Board**: ${{ github.event.inputs.armbian_board }}
+            - **Kernel**: ${{ github.event.inputs.armbian_kernel }} (${{ github.event.inputs.kernel_repo }})
+            - **Branch OS**: ${{ github.event.inputs.releases_branch }}
