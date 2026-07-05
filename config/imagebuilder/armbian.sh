@@ -1,83 +1,273 @@
 #!/bin/bash
-set -e
+#==========================================================================
+#
+# This file is a part of the Rebuild Armbian
+# https://github.com/ophub/amlogic-s9xxx-armbian
+#
+# Optional parameters:
+# -v, --VERSION_CODENAME: Set the version codename of Armbian rootfs file, e.g., bookworm, resolute, etc.
+# -s, --SSHD_CONFIG:      Enable or disable sshd_config file, default is false.
+# -c, --COMMAND_COLORS:   Enable or disable command colors, default is false.
+# -k, --COMPILE_KERNEL:   Add armbian-kernel and uInitrd generation script, default none.
+#
+# Usage: ./compile-kernel/tools/script/docker/build_armbian_rootfs_file.sh -v bookworm -s true -c true -k true
+#        ./compile-kernel/tools/script/docker/build_armbian_rootfs_file.sh -v bookworm
+#
+#===================== Set make environment variables =====================
+#
+# Set environment variables
+current_path="${PWD}"
+build_path="${current_path}/build"
+image_path="${build_path}/output/images"
+cache_path="${build_path}/cache/rootfs"
+tmp_rootfs="${image_path}/tmp_rootfs"
 
-make_path="/builder"
-openwrt_dir="openwrt"
-imagebuilder_path="${make_path}/${openwrt_dir}"
-output_path="${GITHUB_WORKSPACE}/output"
-custom_files_path="${GITHUB_WORKSPACE}/files"
-
+#
+# Set font color
 STEPS="[\033[95m STEPS \033[0m]"
+INFO="[\033[94m INFO \033[0m]"
 SUCCESS="[\033[92m SUCCESS \033[0m]"
+WARNING="[\033[93m WARNING \033[0m]"
+NOTE="[\033[93m NOTE \033[0m]"
 ERROR="[\033[91m ERROR \033[0m]"
+#
+#==========================================================================
 
-sudo chown -R runner:runner "${make_path}"
-
-download_imagebuilder() {
-    cd "${make_path}"
-    echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.4 (ARMSR/ARMV8)..."
-    #echo -e "${STEPS} Mengunduh ImageBuilder ImmortalWrt 24.10.6 (ARMSR/ARMV8)..."
-    
-    URL="https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/openwrt-imagebuilder-25.12.4-armsr-armv8.Linux-x86_64.tar.zst"
-    #URL="https://downloads.immortalwrt.org/releases/24.10.6/targets/armsr/armv8/immortalwrt-imagebuilder-24.10.6-armsr-armv8.Linux-x86_64.tar.zst"
-    
-    curl -fL -o ib.tar.zst "$URL" || { echo -e "${ERROR} Gagal download!"; exit 1; }
-    
-    if ! file ib.tar.zst | grep -q "Zstandard"; then
-        echo -e "${ERROR} File terunduh bukan format Zstandard! Periksa URL."
-        exit 1
-    fi
-
-    mkdir -p "${openwrt_dir}"
-    zstd -d ib.tar.zst -c | tar -x -C "${openwrt_dir}" --strip-components=1
-    rm -f ib.tar.zst
-    echo -e "${SUCCESS} ImageBuilder berhasil diekstrak."
+error_msg() {
+    echo -e " ${ERROR} ${1}"
+    exit 1
 }
 
-rebuild_firmware() {
-    cd "${imagebuilder_path}"
-    echo -e "${STEPS} Mengatur konfigurasi ukuran partisi (750MB)..."
+init_var() {
+    echo -e "${STEPS} Initializing variables..."
 
-    echo "CONFIG_TARGET_ROOTFS_PARTSIZE=750" >> .config
-    echo "CONFIG_TARGET_KERNEL_PARTSIZE=64" >> .config
+    # If it is followed by [ : ], it means that the option requires a parameter value
+    local options="v:s:c:k:p:"
+    parsed_args=$(getopt -o "${options}" -- "${@}")
+    [[ ${?} -ne 0 ]] && error_msg "Parameter parsing failed."
+    eval set -- "${parsed_args}"
 
-    echo -e "${STEPS} Membangun Rootfs ARMSR..."
+    while true; do
+        case "${1}" in
+        -v | --VERSION_CODENAME)
+            if [[ -n "${2}" ]]; then
+                version_codename="${2}"
+                shift 2
+            else
+                error_msg "Invalid -v parameter [ ${2} ]!"
+            fi
+            ;;
+        -s | --SSHD_CONFIG)
+            if [[ -n "${2}" ]]; then
+                sshd_config_enable="${2}"
+                shift 2
+            else
+                error_msg "Invalid -s parameter [ ${2} ]!"
+            fi
+            ;;
+        -c | --COMMAND_COLORS)
+            if [[ -n "${2}" ]]; then
+                command_colors="${2}"
+                shift 2
+            else
+                error_msg "Invalid -c parameter [ ${2} ]!"
+            fi
+            ;;
+        -k | --COMPILE_KERNEL)
+            if [[ -n "${2}" ]]; then
+                compile_kernel="${2}"
+                shift 2
+            else
+                error_msg "Invalid -k parameter [ ${2} ]!"
+            fi
+            ;;
+        -p | --PLATFORM_TYPE)
+            if [[ -n "${2}" ]]; then
+                platform_type="${2}"
+                shift 2
+            else
+                error_msg "Invalid -p parameter [ ${2} ]!"
+            fi
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            [[ -n "${1}" ]] && error_msg "Invalid option [ ${1} ]!"
+            break
+            ;;
+        esac
+    done
 
-    my_packages="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools tc-full \
-          kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd kmod-tcp-bbr \
-          mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
-          uci uclient-fetch urandom-seed urngd luci luci-compat luci-lib-base kmod-usb-net-huawei-cdc-ncm \
-          kmod-usb-net kmod-usb-net-rndis luci-lib-ip luci-lib-jsonc luci-lib-nixio luci-mod-admin-full \
-          luci-mod-network kmod-usb-net-rtl8150 kmod-usb-net-rtl8152 kmod-usb-net-asix kmod-usb-net-asix-ax88179 \
-          kmod-mii luci-mod-status luci-mod-system luci-proto-3g luci-proto-mbim mbim-utils picocom minicom \
-          luci-proto-ncm luci-proto-ppp luci-proto-qmi screen kmod-tun ttyd kmod-usb-atm kmod-macvlan \
-          kmod-usb-net-cdc-ncm kmod-usb-net-cdc-mbim luci-proto-modemmanager modemmanager modemmanager-rpcd \
-          libqmi libmbim glib2 ipset libcap libcap-bin ruby ruby-yaml kmod-inet-diag kmod-nft-tproxy \
-          ip-full php8 tcpdump irqbalance bc uhttpd uhttpd-mod-ubus unzip qmi-utils kmod-usb-net-qmi-wwan \
-          uqmi usb-modeswitch uuidgen zstd wwan ziptool zoneinfo-asia zoneinfo-core zram-swap bash ca-bundle \
-          openssh-sftp-server adb wget-ssl httping htop jq tar coreutils-sleep coreutils-stat nano fping \
-          kmod-nls-utf8 kmod-usb-storage cgi-io chattr comgt comgt-ncm coremark coreutils coreutils-base64 \
-          coreutils-nohup kmod-usb-net-sierrawireless kmod-usb-serial-qualcomm kmod-usb-serial-sierrawireless \
-          luci-app-ttyd luci-theme-material iw iwinfo netdata vnstat2 vnstati2 php8-mod-mbstring php8-cli \
-          php8-fastcgi php8-fpm php8-mod-session php8-mod-ctype php8-mod-fileinfo php8-mod-zip php8-mod-iconv \
-          kmod-mhi-net kmod-mhi-bus kmod-mhi-pci-generic kmod-mhi-wwan-ctrl kmod-mhi-wwan-mbim kmod-sched-cake"
-        
-    [ -d "${GITHUB_WORKSPACE}/files" ] && chmod -R +x "${GITHUB_WORKSPACE}/files/etc/uci-defaults"
-    make image PROFILE="generic" \
-               PACKAGES="${my_packages}" \
-               FILES="${GITHUB_WORKSPACE}/files" \
-               V=s
-               
-    if [ $? -eq 0 ]; then
-        echo -e "${SUCCESS} Build Berhasil!"
-        mkdir -p "${output_path}"
-        cp bin/targets/armsr/armv8/*.tar.* "${output_path}/" 2>/dev/null || true
+    echo -e "${INFO} VERSION CODENAME: [ ${version_codename} ]"
+}
+
+redo_rootfs() {
+    echo -e "${STEPS} Rebuilding Armbian [ ${version_codename} ] rootfs file..."
+
+    # Searching for Armbian image
+    image_file="$(basename $(ls ${image_path}/*.img 2>/dev/null | head -n 1))"
+    # Get image version, such as 25.11.0
+    image_version="$(echo "${image_file}" | grep -oE '[0-9]{2}\.[0-9]{1,2}\.[0-9]{1,2}' | head -n 1)"
+    # Get image kernel version, such as 6.12.56
+    image_kernel="$(echo "${image_file}" | grep -oE '[0-9]+\.[0-9]{1,2}\.[0-9]{1,3}' | grep -v "${image_version}" | head -n 1)"
+    # Set image save name
+    image_save_name="Armbian_${image_version}-trunk_${version_codename}_${platform_type:-arm64}_${image_kernel}.img"
+
+    # Searching for rootfs file
+    rootfs_file="$(ls ${cache_path}/rootfs-*.tar.zst 2>/dev/null | head -n 1)"
+    rootfs_save_name="Armbian_${image_version}-${version_codename}_${platform_type:-arm64}_${image_kernel}_rootfs.tar.gz"
+
+    # Create temporary directory
+    mkdir -p ${tmp_rootfs}
+    sudo chown root:root ${tmp_rootfs}
+    [[ "${?}" == "0" ]] && echo -e "${INFO} 01. Temporary directory created successfully." || error_msg "01. Failed to create directory!"
+
+    # Redo Armbian rootfs
+    if [[ -n "${rootfs_file}" ]]; then
+        sudo tar -mxf ${rootfs_file} -C ${tmp_rootfs}/
+        [[ "${?}" == "0" ]] && echo -e "${INFO} 02. Armbian rootfs unpacked successfully." || error_msg "02. Failed to unpack rootfs file!"
+
+        cd ${tmp_rootfs}/
+
+        # 03. Set sshd_config
+        if [[ -n "${sshd_config_enable}" && "${sshd_config_enable}" =~ ^(true|yes)$ ]]; then
+            # SSH access is enabled by default
+            ssh_config="etc/ssh/sshd_config"
+            [[ -f "${ssh_config}" ]] && {
+                sudo sed -i "s|^#*Port .*|Port 22|g" ${ssh_config}
+                sudo sed -i "s|^#*PermitRootLogin .*|PermitRootLogin yes|g" ${ssh_config}
+                sudo sed -i "s|^#*PasswordAuthentication .*|PasswordAuthentication yes|g" ${ssh_config}
+                [[ -d "var/run/sshd" ]] || sudo mkdir -p -m0755 var/run/sshd
+                echo -e "${INFO} 03.01 sshd_config adjusted successfully."
+            } || error_msg "03.01 Failed to adjust sshd_config!"
+
+            # Set root password to 1234
+            [[ -f "etc/shadow" ]] && {
+                rootnewpasswd="$(openssl passwd -6 "1234")"
+                sudo sed -i "s|^root:\*|root:${rootnewpasswd}|" etc/shadow
+                echo -e "${INFO} 03.02 Default account adjusted successfully."
+            } || error_msg "03.02 Failed to adjust root password!"
+        else
+            echo -e "${NOTE} 03. Skipping sshd_config adjustment."
+        fi
+
+        # 04. Set command colors
+        if [[ -n "${command_colors}" && "${command_colors}" =~ ^(true|yes)$ ]]; then
+            # Set terminal colors
+            [[ -f "usr/bin/dircolors" ]] && {
+                # Set the default color for command
+                sudo chmod +x usr/bin/dircolors
+
+                # Add color support for command and set the default prompt
+                sudo tee -a root/.bashrc >/dev/null <<'EOF'
+
+# enable color support of ls and also add handy aliases
+if [ -x /usr/bin/dircolors ]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
+
+# Color prompt (green username@hostname + blue path)
+PS1='\[\e[1;32m\]\u@\h\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '
+
+EOF
+                # Add the bashrc file to the root profile
+                sudo tee -a root/.profile >/dev/null <<'EOF'
+
+if [ -f "$HOME/.bashrc" ]; then
+    . "$HOME/.bashrc"
+fi
+
+EOF
+                echo -e "${INFO} 04. Default color scheme adjusted successfully."
+            } || error_msg "04. Failed to adjust dircolors!"
+        else
+            echo -e "${NOTE} 04. Skipping sshd_config adjustment."
+        fi
+
+        # 05. Add armbian-kernel script
+        if [[ -n "${compile_kernel}" && "${compile_kernel}" =~ ^(true|yes)$ ]]; then
+            down_script="https://raw.githubusercontent.com/ophub/amlogic-s9xxx-armbian/refs/heads/main/build-armbian/armbian-files/common-files/usr/sbin/armbian-kernel"
+            add_script="usr/sbin/armbian-kernel"
+            sudo mkdir -p usr/sbin/
+            sudo wget -q --show-progress --no-check-certificate -O ${add_script} ${down_script}
+            [[ "${?}" == "0" ]] && {
+                sudo chmod +x ${add_script}
+                sudo chown root:root ${add_script}
+                echo -e "${INFO} 05.01. armbian-kernel script added successfully."
+            } || error_msg "05.01. Failed to add armbian-kernel script!"
+
+            # Add uInitrd generation script
+            sudo mkdir -p etc/initramfs/post-update.d/
+            sudo chown root:root etc/initramfs/post-update.d/
+            sudo tee etc/initramfs/post-update.d/99-uboot >/dev/null <<'EOF'
+#!/bin/bash -e
+
+tempname="/boot/uInitrd-$1"
+echo "update-initramfs: Armbian: Converting to u-boot format: ${tempname}" >&2
+mkimage -A arm64 -O linux -T ramdisk -C gzip -n uInitrd -d $2 $tempname
+
+echo "update-initramfs: Armbian: Symlinking ${tempname} to /boot/uInitrd" >&2
+ln -sfv $(basename $tempname) /boot/uInitrd || {
+        echo "update-initramfs: Symlink failed, moving ${tempname} to /boot/uInitrd" >&2
+        mv -v $tempname /boot/uInitrd
+}
+
+echo "update-initramfs: Armbian: done." >&2
+
+exit 0
+
+EOF
+            sudo chmod +x etc/initramfs/post-update.d/99-uboot
+            [[ "${?}" == "0" ]] && echo -e "${INFO} 05.02. uInitrd generation script added successfully." || error_msg "05.02. Failed to adjust uInitrd!"
+        else
+            echo -e "${NOTE} 05. Skipping armbian-kernel script addition."
+        fi
+
+        # Compress the rootfs file
+        sudo tar -czf ${rootfs_save_name} *
+        sudo mv -f ${rootfs_save_name} ../
+        [[ "${?}" == "0" ]] && echo -e "${INFO} 06. Armbian rootfs created successfully." || error_msg "06. Failed to redo rootfs!"
     else
-        echo -e "${ERROR} Build Gagal!"; exit 1
+        error_msg "02. Failed to find rootfs file!"
     fi
+
+    # Rename Armbian image
+    if [[ -n "${image_file}" ]]; then
+        cd ${image_path}/
+        mv -f ${image_file} ${image_save_name}
+        pigz -qf *.img || gzip -qf *.img
+        [[ "${?}" == "0" ]] && echo -e "${INFO} 07. Armbian image renamed successfully." || error_msg "07. Failed to rename the image!"
+    else
+        error_msg "07. Failed to find Armbian image!"
+    fi
+
+    # Clean up files in the image directory
+    cd ${image_path}/
+    sudo rm -rf $(ls . | grep -vE ".img.gz|.tar.gz" | xargs) 2>/dev/null
+    #for file in *; do [[ ! -d "${file}" ]] && sha256sum "${file}" >"${file}.sha"; done
+    [[ "${?}" == "0" ]] && echo -e "${INFO} 08. The files in the current directory:\n$(ls -lh .)" || error_msg "08. Failed to clean up!"
+
+    # Delete Armbian build source codes and temporary files
+    cd ${build_path}/
+    sudo rm -rf $(ls . | grep -v "^output$" | xargs)
+    [[ "${?}" == "0" ]] && echo -e "${INFO} 09. Armbian source code cleaned up successfully." || error_msg "09. Failed to clean up!"
+
+    cd ${current_path}/
+    sync && sleep 3
 }
 
-download_imagebuilder
-rebuild_firmware
+echo -e "${STEPS} Starting to rebuild the Armbian rootfs file..."
+echo -e "${INFO} Current path: [ ${current_path} ]"
 
-ls -R ${GITHUB_WORKSPACE}/output
+# Initialize variables
+init_var "${@}"
+# Redo Armbian rootfs
+redo_rootfs
+
+echo -e "${SUCCESS} Armbian rootfs file rebuilt successfully."
