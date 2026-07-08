@@ -1,9 +1,7 @@
 #!/bin/bash
 
-# Internet Indicator for B860H v1/v2 Wrapper
+# Internet Indicator
 # by Lutfa Ilham
-# v1.0
-# GPIO Founder REYRE
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
@@ -14,11 +12,17 @@ SERVICE_NAME="Internet Indicator"
 
 function loop() {
   while true; do
-    ledon -lan dis
+      ledon -lan dis
+      ledon -power dis
+      ledon -mid on
     if curl -X "HEAD" --connect-timeout 3 -so /dev/null "http://bing.com"; then
       ledon -lan on
+      ledon -power on
+      ledon -mid off
     else
       ledon -lan off
+      ledon -power off
+      ledon -mid on
     fi
     sleep 1
   done
