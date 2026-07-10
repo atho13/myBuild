@@ -10,22 +10,25 @@ if [ -f "$LOCKFILE" ]; then
 fi
 touch "$LOCKFILE"
 
-WAN_IFACES=$(uci get firewall.@zone.network 2>/dev/null | tr ' ' '\n')
+WAN_IFACES=""
+for zone in $(uci show firewall | grep -E '\.name='\''wan'\''' | cut -d'.' -f2); do
+    WAN_IFACES="$WAN_IFACES $(uci -q get firewall.$zone.network)"
+done
 
-if [ -z "$WAN_IFACES" ]; then
+if [ -z "$(echo "$WAN_IFACES" | sed 's/ //g')" ]; then
     WAN_IFACES="wan wan2"
 fi
 
 for IFACE in $WAN_IFACES; do
     STATUS_DATA=$(ubus call network.interface.$IFACE status 2>/dev/null)
     [ -z "$STATUS_DATA" ] && continue
-
-    LOCAL_IP=$(echo "$STATUS_DATA" | jsonfilter -e '@["ipv4-address"].address')
-    L3_DEVICE=$(echo "$STATUS_DATA" | jsonfilter -e '@["l3_device"]')
-    PROTO=$(echo "$STATUS_DATA" | jsonfilter -e '@["proto"]')
+    
+    LOCAL_IP=$(echo "$STATUS_DATA" | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null)
+    L3_DEVICE=$(echo "$STATUS_DATA" | jsonfilter -e '@["l3_device"]' 2>/dev/null)
+    PROTO=$(echo "$STATUS_DATA" | jsonfilter -e '@["proto"]' 2>/dev/null)
 
     case "$PROTO" in
-        wireguard|openvpn|shadowsocks|v2ray|trojan|tun*) 
+        wireguard|openvpn|shadowsocks|v2ray|trojan|tun*|tailscale|zerotier) 
             continue 
             ;;
     esac
@@ -36,20 +39,23 @@ for IFACE in $WAN_IFACES; do
         echo "$(date): [ $IFACE ] Tidak ada IP Lokal. Menandai putus." >> "$LOGFILE"
         HTTP_CHECK=1
     else
-        if curl --interface "$IFACE" --connect-timeout 6 -sI https://google.com > /dev/null || \
-           curl --interface "$IFACE" --connect-timeout 6 -sI https://cloudflare.com > /dev/null; then
+        if curl --interface "$IFACE" --connect-timeout 5 -sI https://google.com > /dev/null || \
+           curl --interface "$IFACE" --connect-timeout 5 -sI https://cloudflare.com > /dev/null; then
             HTTP_CHECK=0
-        
-        elif httping -c 2 -t 6 -G -g https://detik.com > /dev/null || \
-             httping -c 2 -t 6 -G -g https://biznetnetworks.com > /dev/null; then
-
-            echo "$(date): [ $IFACE ] Tes utama gagal, gunakan web alternatif. Internet aman." >> "$LOGFILE"
-            HTTP_CHECK=0
+        else
+            if httping -c 2 -t 5 -G -g https://detik.com > /dev/null || \
+               httping -c 2 -t 5 -G -g https://biznetnetworks.com > /dev/null; then
+                echo "$(date): [ $IFACE ] Tes utama curl gagal, verifikasi httping sukses. Internet aman." >> "$LOGFILE"
+                HTTP_CHECK=0
+            else
+                echo "$(date): [ $IFACE ] Tes utama curl dan verifikasi httping gagal total!" >> "$LOGFILE"
+                HTTP_CHECK=1
+            fi
         fi
     fi
 
     if [ "$HTTP_CHECK" -eq 1 ]; then
-        echo "$(date): [ $IFACE / $L3_DEVICE ] Internet Putus! Memulai perbaikan..." >> "$LOGFILE"
+        echo "$(date): [ $IFACE / ${L3_DEVICE:-unknown} ] Memulai proses perbaikan jaringan..." >> "$LOGFILE"
 
         ubus call network.interface.$IFACE down >/dev/null 2>&1
         sleep 2
@@ -72,11 +78,7 @@ for IFACE in $WAN_IFACES; do
             done
 
         elif [ "$PROTO" = "dhcp" ]; then
-            echo "$(date): [ $IFACE ] Mencoba metode Pemutusan Daya USB Spesifik Modem..." >> "$LOGFILE"
-            
-            # PERBAIKAN: Cari port USB asli yang mengendalikan L3_DEVICE (misal: usb0/eth1)
             if [ -n "$L3_DEVICE" ] && [ -d "/sys/class/net/$L3_DEVICE/device" ]; then
-                # Melacak jalur symlink hardware USB asli
                 USB_TARGET=$(basename "$(readlink -f "/sys/class/net/$L3_DEVICE/device/../..")")
                 USB_AUTH_PATH="/sys/bus/usb/devices/$USB_TARGET/authorized"
                 
@@ -84,13 +86,12 @@ for IFACE in $WAN_IFACES; do
                     echo 0 > "$USB_AUTH_PATH" 2>/dev/null
                     sleep 3
                     echo 1 > "$USB_AUTH_PATH" 2>/dev/null
-                    echo "$(date): [ $IFACE ] Berhasil reset daya USB Spesifik pada komponen $USB_TARGET" >> "$LOGFILE"
+                    echo "$(date): [ $IFACE ] Frdmx tool Sukses mereset daya USB pada komponen $USB_TARGET" >> "$LOGFILE"
                 fi
             fi
             
             killall -q -SIGUSR2 udhcpc
-            sleep 3
-            
+            sleep 2
             /etc/init.d/network restart >/dev/null 2>&1
             sleep 5
             
@@ -102,6 +103,6 @@ for IFACE in $WAN_IFACES; do
         ubus call network.interface.$IFACE up >/dev/null 2>&1
         
         sleep 15
-        echo "$(date): [ $IFACE ] Selesai diperbaiki dan diperintahkan aktif kembali." >> "$LOGFILE"
+        echo "$(date): [ $IFACE ] Perbaikan selesai dan aktif kembali." >> "$LOGFILE"
     fi
 done
