@@ -19,19 +19,22 @@ if [ "$ARCH" = "x86_64" ]; then
         IFACE=$(basename "$dev")
         [ "$IFACE" = "lo" ] && continue
         
-        for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do [ -f "$rps" ] && echo "$RPS_MASK" > "$rps" 2>/dev/null; done
-        for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do [ -f "$xps" ] && echo "$RPS_MASK" > "$xps" 2>/dev/null; done
+        if [ -d "/sys/class/net/$IFACE/queues" ]; then
+            for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do [ -f "$rps" ] && echo "$RPS_MASK" > "$rps" 2>/dev/null; done
+            for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do [ -f "$xps" ] && echo "$RPS_MASK" > "$xps" 2>/dev/null; done
+        fi
     done
-else
-    for eth_irq in $(awk -F: '/^[ ]*[0-9]+:.*(eth|enp|eth0)/ {print $1}' /proc/interrupts | sed 's/ //g'); do
+
+elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
+    for eth_irq in $(awk -F: '/(eth|enp|eth0|dwmac|ethernet)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do
         if [ ! -z "$eth_irq" ] && [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
-            echo "e" > /proc/irq/$eth_irq/smp_affinity 2>/dev/null
+            echo "2" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null # CPU1 (Hex 2)
         fi
     done
     
-    for usb_irq in $(awk -F: '/^[ ]*[0-9]+:.*(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts | sed 's/ //g'); do 
+    for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do 
         if [ ! -z "$usb_irq" ] && [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
-            echo "d" > /proc/irq/$usb_irq/smp_affinity 2>/dev/null
+            echo "4" > "/proc/irq/$usb_irq/smp_affinity" 2>/dev/null # CPU2 (Hex 4)
         fi
     done
 fi
@@ -45,5 +48,5 @@ for usb_suspend in /sys/bus/usb/devices/*/power/autosuspend; do
 done
 
 echo "1" > /proc/sys/net/ipv4/tcp_low_latency 2>/dev/null
-echo "1" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null
-echo "0" > /proc/sys/net/ipv4/tcp_sack 2>/dev/null
+echo "2" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null 
+echo "1" > /proc/sys/net/ipv4/tcp_sack 2>/dev/null     

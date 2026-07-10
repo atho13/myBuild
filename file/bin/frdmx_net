@@ -1,107 +1,56 @@
-#!/bin/sh
-# frdmx-wrt net detector
+#!/bin/bash
+# Smart Hybrid Optimization Script for Community by Frdmx-Wrt
 
-LOCKFILE="/tmp/ping_check.lock"
-LOGFILE="/var/log/internet_reboot.log"
-
-trap 'rm -f "$LOCKFILE"; exit' INT TERM EXIT
-if [ -f "$LOCKFILE" ]; then
-    exit 0
-fi
-touch "$LOCKFILE"
-
-WAN_IFACES=$(uci get firewall.@zone.network 2>/dev/null | tr ' ' '\n')
-
-if [ -z "$WAN_IFACES" ]; then
-    WAN_IFACES="wan wan2"
-fi
-
-for IFACE in $WAN_IFACES; do
-    STATUS_DATA=$(ubus call network.interface.$IFACE status 2>/dev/null)
-    [ -z "$STATUS_DATA" ] && continue
-
-    LOCAL_IP=$(echo "$STATUS_DATA" | jsonfilter -e '@["ipv4-address"].address')
-    L3_DEVICE=$(echo "$STATUS_DATA" | jsonfilter -e '@["l3_device"]')
-    PROTO=$(echo "$STATUS_DATA" | jsonfilter -e '@["proto"]')
-
-    case "$PROTO" in
-        wireguard|openvpn|shadowsocks|v2ray|trojan|tun*) 
-            continue 
-            ;;
-    esac
-
-    HTTP_CHECK=1
-
-    if [ -z "$LOCAL_IP" ]; then
-        echo "$(date): [ $IFACE ] Tidak ada IP Lokal. Menandai putus." >> "$LOGFILE"
-        HTTP_CHECK=1
-    else
-        if curl --interface "$IFACE" --connect-timeout 6 -sI https://google.com > /dev/null || \
-           curl --interface "$IFACE" --connect-timeout 6 -sI https://cloudflare.com > /dev/null; then
-            HTTP_CHECK=0
-        
-        elif httping -c 2 -t 6 -G -g https://detik.com > /dev/null || \
-             httping -c 2 -t 6 -G -g https://biznetnetworks.com > /dev/null; then
-
-            echo "$(date): [ $IFACE ] Tes utama gagal, gunakan web alternatif. Internet aman." >> "$LOGFILE"
-            HTTP_CHECK=0
+for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do 
+    if [ -f "$i" ]; then
+        AVAILABLE_GOV=$(cat "$(dirname "$i")/scaling_available_governors" 2>/dev/null)
+        if echo "$AVAILABLE_GOV" | grep -q "schedutil"; then
+            echo "schedutil" > "$i" 2>/dev/null
+        elif echo "$AVAILABLE_GOV" | grep -q "performance"; then
+            echo "performance" > "$i" 2>/dev/null
         fi
-    fi
-
-    if [ "$HTTP_CHECK" -eq 1 ]; then
-        echo "$(date): [ $IFACE / $L3_DEVICE ] Internet Putus! Memulai perbaikan..." >> "$LOGFILE"
-
-        ubus call network.interface.$IFACE down >/dev/null 2>&1
-        sleep 2
-
-        if [ "$PROTO" = "modemmanager" ] || [ "$PROTO" = "qmi" ] || [ "$PROTO" = "mbim" ] || [ "$PROTO" = "3g" ]; then
-            MODEM_INDEX=$(mmcli -L 2>/dev/null | grep -o '/Modem/[0-9]' | head -n1 | cut -d'/' -f3)
-            if [ -n "$MODEM_INDEX" ]; then
-                mmcli -m "$MODEM_INDEX" --reset >/dev/null 2>&1
-            else
-                mmcli -m any --reset >/dev/null 2>&1
-            fi
-            
-            COUNTER=0
-            while [ $COUNTER -lt 12 ]; do
-                sleep 5
-                if mmcli -L 2>/dev/null | grep -q "Modem"; then
-                    break
-                fi
-                COUNTER=$((COUNTER + 1))
-            done
-
-        elif [ "$PROTO" = "dhcp" ]; then
-            echo "$(date): [ $IFACE ] Mencoba metode Pemutusan Daya USB Spesifik Modem..." >> "$LOGFILE"
-            
-            # PERBAIKAN: Cari port USB asli yang mengendalikan L3_DEVICE (misal: usb0/eth1)
-            if [ -n "$L3_DEVICE" ] && [ -d "/sys/class/net/$L3_DEVICE/device" ]; then
-                # Melacak jalur symlink hardware USB asli
-                USB_TARGET=$(basename "$(readlink -f "/sys/class/net/$L3_DEVICE/device/../..")")
-                USB_AUTH_PATH="/sys/bus/usb/devices/$USB_TARGET/authorized"
-                
-                if [ -e "$USB_AUTH_PATH" ]; then
-                    echo 0 > "$USB_AUTH_PATH" 2>/dev/null
-                    sleep 3
-                    echo 1 > "$USB_AUTH_PATH" 2>/dev/null
-                    echo "$(date): [ $IFACE ] Berhasil reset daya USB Spesifik pada komponen $USB_TARGET" >> "$LOGFILE"
-                fi
-            fi
-            
-            killall -q -SIGUSR2 udhcpc
-            sleep 3
-            
-            /etc/init.d/network restart >/dev/null 2>&1
-            sleep 5
-            
-        else
-            /etc/init.d/network restart >/dev/null 2>&1
-            sleep 5
-        fi
-
-        ubus call network.interface.$IFACE up >/dev/null 2>&1
-        
-        sleep 15
-        echo "$(date): [ $IFACE ] Selesai diperbaiki dan diperintahkan aktif kembali." >> "$LOGFILE"
     fi
 done
+
+if [ -f /proc/sys/net/core/gro_normal_batch ]; then
+    echo "16" > /proc/sys/net/core/gro_normal_batch 2>/dev/null
+fi
+
+ARCH=$(uname -m)
+
+if [ "$ARCH" = "x86_64" ]; then
+    CPUS=$(nproc 2>/dev/null || echo 2)
+    RPS_MASK=$(printf '%x' $(( (1 << CPUS) - 1 )))
+    
+    for dev in /sys/class/net/*; do
+        IFACE=$(basename "$dev")
+        [ "$IFACE" = "lo" ] && continue
+        
+        for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do [ -f "$rps" ] && echo "$RPS_MASK" > "$rps" 2>/dev/null; done
+        for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do [ -f "$xps" ] && echo "$RPS_MASK" > "$xps" 2>/dev/null; done
+    done
+else
+    for eth_irq in $(awk -F: '/^[ ]*[0-9]+:.*(eth|enp|eth0)/ {print $1}' /proc/interrupts | sed 's/ //g'); do
+        if [ ! -z "$eth_irq" ] && [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
+            echo "e" > /proc/irq/$eth_irq/smp_affinity 2>/dev/null
+        fi
+    done
+    
+    for usb_irq in $(awk -F: '/^[ ]*[0-9]+:.*(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts | sed 's/ //g'); do 
+        if [ ! -z "$usb_irq" ] && [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
+            echo "d" > /proc/irq/$usb_irq/smp_affinity 2>/dev/null
+        fi
+    done
+fi
+
+for usb_ctrl in /sys/bus/usb/devices/*/power/control; do 
+    [ -f "$usb_ctrl" ] && echo "on" > "$usb_ctrl" 2>/dev/null
+done
+
+for usb_suspend in /sys/bus/usb/devices/*/power/autosuspend; do 
+    [ -f "$usb_suspend" ] && echo "-1" > "$usb_suspend" 2>/dev/null
+done
+
+echo "1" > /proc/sys/net/ipv4/tcp_low_latency 2>/dev/null
+echo "1" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null
+echo "0" > /proc/sys/net/ipv4/tcp_sack 2>/dev/null
