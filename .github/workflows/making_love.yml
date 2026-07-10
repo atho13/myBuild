@@ -42,6 +42,7 @@ on:
         options:
           - 256
           - 512
+          - 768
           - 1024
           - 1536
       auto_kernel:
