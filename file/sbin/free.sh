@@ -1,8 +1,12 @@
 #!/bin/sh
-#frdmx cleaner
-#
+# frdmx cleaner - Optimized for Performance & Usability
+
 sync
+
 echo 3 > /proc/sys/vm/drop_caches
-rm -rf /tmp/luci-modulecache
-rm -f /tmp/log/*.log 2>/dev/null
+
+for logfile in /tmp/log/*.log; do
+    [ -f "$logfile" ] && [ $(wc -c < "$logfile") -gt 1048576 ] && echo "" > "$logfile"
+done
+
 exit 0
