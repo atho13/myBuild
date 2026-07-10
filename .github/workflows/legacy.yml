@@ -1,4 +1,4 @@
-name: Legacy x86 Builder (Custom Folder)
+name: Legacy x86 Builder
 
 on:
   workflow_dispatch:
