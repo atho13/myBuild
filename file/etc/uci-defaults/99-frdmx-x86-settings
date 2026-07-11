@@ -14,46 +14,80 @@ for file in \
     [ -f "$file" ] && chmod +x "$file"
 done
 
-echo "Configuring UCI settings..."
+echo "Configuring UCI settings via batch..."
 uci batch <<EOF
-    set system.@system[0].hostname='FRDMX-x86'
-    set system.@system[0].timezone='WIB-7'
-    set system.@system[0].zonename='Asia/Jakarta'
-    
-    delete system.ntp.server
-    add_list system.ntp.server='0.id.pool.ntp.org'
-    add_list system.ntp.server='1.id.pool.ntp.org'
-    add_list system.ntp.server='ntp.bmkg.go.id'
-    add_list system.ntp.server='time.google.com'
-     
-    set network.wan=interface
-    set network.wan.proto='dhcp'
-    set network.wan.device='eth1'
-    
-    set network.tethering=interface
-    set network.tethering.proto='dhcp'
-    set network.tethering.device='usb0'
-    
-    delete network.wan6
-    
-    del_list firewall.@zone[1].network='wan6'
-    add_list firewall.@zone[1].network='tethering'
-    add_list firewall.@zone[1].network='wan'
-    
-    set uhttpd.main.index_page='index.php'
-    set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
-    
-    commit network
-    commit system
-    commit firewall
-    commit uhttpd
-    commit dhcp
+set system.@system[0].hostname='FRDMX-x86'
+set system.@system[0].timezone='WIB-7'
+set system.@system[0].zonename='Asia/Jakarta'
+
+delete system.ntp.server
+add_list system.ntp.server='0.id.pool.ntp.org'
+add_list system.ntp.server='1.id.pool.ntp.org'
+add_list system.ntp.server='ntp.bmkg.go.id'
+add_list system.ntp.server='time.google.com'
+
+delete network.lan
+set network.lan=interface
+set network.lan.device='eth0'
+set network.lan.proto='static'
+set network.lan.ipaddr='10.10.10.1'
+set network.lan.netmask='255.255.255.0'
+
+set network.wan=interface
+set network.wan.proto='dhcp'
+set network.wan.device='eth1'
+
+set network.tethering=interface
+set network.tethering.proto='dhcp'
+set network.tethering.device='usb0'
+
+delete network.wan6
+
+del_list firewall.@zone[1].network='wan6'
+del_list firewall.@zone[1].network='tethering'
+del_list firewall.@zone[1].network='wan'
+
+add_list firewall.@zone[1].network='wan'
+add_list firewall.@zone[1].network='tethering'
+
+set uhttpd.main.index_page='index.php'
+set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
+
+delete dhcp.lan
+set dhcp.lan=dhcp
+set dhcp.lan.interface='lan'
+set dhcp.lan.start='100'
+set dhcp.lan.limit='150'
+set dhcp.lan.leasetime='12h'
+
+commit network
+commit system
+commit firewall
+commit uhttpd
+commit dhcp
 EOF
 
 echo "Generating default wireless configuration profile..."
 if [ -x /sbin/wifi ]; then
     > /etc/config/wireless
-    wifi config > /etc/config/wireless
+    
+    cat << 'EOF' > /etc/config/wireless
+config wifi-device 'radio0'
+	option type 'mac80211'
+	option path 'platform/soc/ffe00000.crypto'
+	option channel '6'
+	option hwmode '11g'
+	option htmode 'HT20'
+	option country 'ID'
+	option disabled '0'
+
+config wifi-iface 'default_radio0'
+	option device 'radio0'
+	option network 'lan'
+	option mode 'ap'
+	option ssid='FRDMX-Wrt'
+	option encryption 'none'
+EOF
 fi
 
 echo "Applying system optimizations..."
@@ -63,7 +97,7 @@ for dev in /sys/bus/usb/devices/*/power/control; do
     [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
 done
 
-[ -f /etc/php.ini ] && sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini
+[ -f /etc/php.ini ] && sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini 2>/dev/null
 
 if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
     uci set ttyd.@ttyd[0].command='/bin/bash --login'
@@ -74,20 +108,26 @@ fi
 echo "Creating application symlinks for TinyFM..."
 mkdir -p /www/tinyfm
 ln -sf / /www/tinyfm/rootfs
-ln -sf /etc/openclash/ /www/tinyfm/openclash
-ln -sf /etc/openclash/ /www/tinyfm/nikki
+[ -d /etc/openclash ] && ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null || ln -sf /etc/openclash/ /www/tinyfm/openclash
+[ -d /etc/nikki ] && ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null || ln -sf /etc/nikki/ /www/tinyfm/nikki
+
+echo "Registering scripts to Startup (rc.local)..."
+sed -i '/\/sbin\/yess/d' /etc/rc.local
+
+if [ -f "/sbin/yess" ]; then
+    sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
+fi
 
 echo "Updating System Schedules (Crontab)..."
-
 cat > /etc/crontabs/root << 'EOF'
 # ============================================================
 # PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
 # ============================================================
 # Automatic Restart your Modem Bro..
-30 3 * * 0 for iface in $(uci get firewall.@zone[1].network 2>/dev/null | tr ',' ' ' || echo "wan"); do ubus call network.interface.$iface down; done && sleep 2 && mmcli -m any --restart >/dev/null 2>&1 && sleep 45 && for iface in $(uci get firewall.@zone[1].network 2>/dev/null | tr ',' ' ' || echo "wan"); do ubus call network.interface.$iface up; done
+30 3 * * 0 for iface in wan tethering; do ubus call network.interface.$iface down; done && sleep 2 && mmcli -m any --reset >/dev/null 2>&1 && sleep 45 && for iface in wan tethering; do ubus call network.interface.$iface up; done
 
-# My Trick (Net Detector tiap 2 jam, jika mo pake bisa hilangkan tanda #)
-# 0 */2 * * * /bin/frdmx_net
+# My Trick (Net Detector otomatis berjalan tiap 30 menit)
+*/30 * * * * [ -x /bin/frdmx_net ] && /bin/frdmx_net >/dev/null 2>&1
 
 # Automatic Maintenance Internal your System Bro..
 0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
@@ -96,16 +136,11 @@ cat > /etc/crontabs/root << 'EOF'
 EOF
 
 /etc/init.d/cron enable
-/etc/init.d/cron restart
 
-echo "Restarting core services..."
+echo "Applying sysctl changes..."
 sysctl -p /etc/sysctl.conf >/dev/null 2>&1
-/etc/init.d/network restart
-/etc/init.d/uhttpd restart
-/etc/init.d/ttyd restart
 
-# Menjalankan pembersihan RAM awal secara instan pasca-instalasi
-[ -f "/sbin/free.sh" ] && sh /sbin/free.sh
+[ -f "/bin/free.sh" ] && sh /bin/free.sh >/dev/null 2>&1
 
 echo "Done! Router FRDM-X x86_64 configuration finished successfully."
 exit 0
