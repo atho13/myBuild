@@ -3,7 +3,7 @@
 # Smart Net Detector with Safe Limit Counter
 
 TARGET_PRIMARY_1="https://google.com"
-TARGET_PRIMARY_2="https://1.1.1"
+TARGET_PRIMARY_2="https://1.1.1.1"
 TARGET_BACKUP_1="https://biznet.id"
 TARGET_BACKUP_2="https://kompas.com"
 
@@ -67,3 +67,4 @@ echo "$CURRENT_COUNT" > "$COUNTER_FILE"
 
 echo "Proses pemulihan selesai. Tunggu modem melakukan dial-up ulang."
 exit 1
+
