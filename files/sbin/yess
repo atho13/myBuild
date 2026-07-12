@@ -51,9 +51,9 @@ elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
     if [ "$CPUS" -ge 3 ]; then
         USB_MASK="4"
     elif [ "$CPUS" -eq 2 ]; then
-        USB_MASK="2" # CPU1
+        USB_MASK="2"
     else
-        USB_MASK="1" # CPU0
+        USB_MASK="1"
     fi
     
     for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do 
