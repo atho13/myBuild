@@ -26,7 +26,7 @@ echo "[$(date)] Cek koneksi internet..."
 
 if check_http "$TARGET_PRIMARY_1" || check_http "$TARGET_PRIMARY_2"; then
     echo "STATUS: INTERNET OK (Target Utama Merespons)"
-    echo "0" > "$COUNTER_FILE"
+    echo "0" > "$COUNTER_FILE" # Reset counter ke 0 karena internet lancar
     exit 0
 fi
 
@@ -59,6 +59,15 @@ fi
 for iface in $WAN_INTERFACES; do
     [ "$iface" = "loopback" ] && continue
     echo "Mereset antarmuka modem: $iface ..."
+    
+    if command -v mmcli >/dev/null 2>&1; then
+        MODEM_INDEX=$(mmcli -L 2>/dev/null | awk '/Modem/ {print $1}' | awk -F'/' '{print $NF}')
+        if [ -n "$MODEM_INDEX" ]; then
+            echo "Mengirim perintah disconnect ke modul modem rakitan index: $MODEM_INDEX"
+            mmcli -m "$MODEM_INDEX" --simple-disconnect 2>/dev/null
+        fi
+    fi
+
     ifup "$iface" 2>/dev/null
 done
 
@@ -67,4 +76,3 @@ echo "$CURRENT_COUNT" > "$COUNTER_FILE"
 
 echo "Proses pemulihan selesai. Tunggu modem melakukan dial-up ulang."
 exit 1
-
