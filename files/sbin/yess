@@ -2,7 +2,14 @@
 # Smart Hybrid Optimization Script for Community by Frdmx-Wrt
 
 for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do 
-    [ -f "$i" ] && echo "schedutil" > "$i" 2>/dev/null
+    if [ -f "$i" ]; then
+        AVAILABLE_GOV=$(cat "$(dirname "$i")/scaling_available_governors" 2>/dev/null)
+        if echo "$AVAILABLE_GOV" | grep -q "schedutil"; then
+            echo "schedutil" > "$i" 2>/dev/null
+        elif echo "$AVAILABLE_GOV" | grep -q "performance"; then
+            echo "performance" > "$i" 2>/dev/null
+        fi
+    fi
 done
 
 if [ -f /proc/sys/net/core/gro_normal_batch ]; then
@@ -20,21 +27,38 @@ if [ "$ARCH" = "x86_64" ]; then
         [ "$IFACE" = "lo" ] && continue
         
         if [ -d "/sys/class/net/$IFACE/queues" ]; then
-            for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do [ -f "$rps" ] && echo "$RPS_MASK" > "$rps" 2>/dev/null; done
-            for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do [ -f "$xps" ] && echo "$RPS_MASK" > "$xps" 2>/dev/null; done
+            for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do 
+                [ -f "$rps" ] && echo "$RPS_MASK" > "$rps" 2>/dev/null
+            done
+            for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do 
+                [ -f "$xps" ] && echo "$RPS_MASK" > "$xps" 2>/dev/null
+            done
         fi
     done
 
 elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
+    CPUS=$(nproc 2>/dev/null || echo 4)
+    
+    ETH_MASK="2"
+    [ "$CPUS" -le 1 ] && ETH_MASK="1"
+    
     for eth_irq in $(awk -F: '/(eth|enp|eth0|dwmac|ethernet)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do
-        if [ ! -z "$eth_irq" ] && [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
-            echo "2" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null # CPU1 (Hex 2)
+        if [ -n "$eth_irq" ] && [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
+            echo "$ETH_MASK" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null
         fi
     done
     
+    if [ "$CPUS" -ge 3 ]; then
+        USB_MASK="4"
+    elif [ "$CPUS" -eq 2 ]; then
+        USB_MASK="2" # CPU1
+    else
+        USB_MASK="1" # CPU0
+    fi
+    
     for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do 
-        if [ ! -z "$usb_irq" ] && [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
-            echo "4" > "/proc/irq/$usb_irq/smp_affinity" 2>/dev/null # CPU2 (Hex 4)
+        if [ -n "$usb_irq" ] && [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
+            echo "$USB_MASK" > "/proc/irq/$usb_irq/smp_affinity" 2>/dev/null
         fi
     done
 fi
@@ -48,5 +72,5 @@ for usb_suspend in /sys/bus/usb/devices/*/power/autosuspend; do
 done
 
 echo "1" > /proc/sys/net/ipv4/tcp_low_latency 2>/dev/null
-echo "2" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null 
-echo "1" > /proc/sys/net/ipv4/tcp_sack 2>/dev/null     
+echo "1" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null 
+echo "1" > /proc/sys/net/ipv4/tcp_sack 2>/dev/null
