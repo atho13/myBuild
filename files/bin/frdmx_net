@@ -11,7 +11,7 @@ TIMEOUT_MS=5000
 COUNT=2
 MAX_RESETS=3
 
-COUNTER_FILE="/tmp/frdmx_net_counter"
+COUNTER_FILE="/tmp/frdmx_net"
 
 check_http() {
     local url=$1
