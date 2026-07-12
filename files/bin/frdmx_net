@@ -34,7 +34,7 @@ echo "PERINGATAN: Jalur utama gagal. Mencoba validasi via target lokal (Backup).
 
 if check_http "$TARGET_BACKUP_1" || check_http "$TARGET_BACKUP_2"; then
     echo "STATUS: INTERNET OK (Terhubung via Akses Jaringan Lokal / IIX)"
-    echo "0" > "$COUNTER_FILE" # Reset counter ke 0 karena internet sukses terhubung
+    echo "0" > "$COUNTER_FILE"
     exit 0
 fi
 
