@@ -1,56 +1,78 @@
 #!/bin/bash
-# Smart Hybrid Optimization Script for Community by Frdmx-Wrt
+# For Frdmx-Wrt Community..
+# Smart Net Detector with Safe Limit Counter
 
-for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do 
-    if [ -f "$i" ]; then
-        AVAILABLE_GOV=$(cat "$(dirname "$i")/scaling_available_governors" 2>/dev/null)
-        if echo "$AVAILABLE_GOV" | grep -q "schedutil"; then
-            echo "schedutil" > "$i" 2>/dev/null
-        elif echo "$AVAILABLE_GOV" | grep -q "performance"; then
-            echo "performance" > "$i" 2>/dev/null
+TARGET_PRIMARY_1="https://google.com"
+TARGET_PRIMARY_2="https://1.1.1.1"
+TARGET_BACKUP_1="https://biznet.id"
+TARGET_BACKUP_2="https://kompas.com"
+
+TIMEOUT_MS=5000
+COUNT=2
+MAX_RESETS=3
+
+COUNTER_FILE="/tmp/frdmx_net"
+
+check_http() {
+    local url=$1
+    if httping -q -c "$COUNT" -t "$((TIMEOUT_MS / 1000))" -g "$url" 2>/dev/null; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+echo "[$(date)] Cek koneksi internet..."
+
+if check_http "$TARGET_PRIMARY_1" || check_http "$TARGET_PRIMARY_2"; then
+    echo "STATUS: INTERNET OK (Target Utama Merespons)"
+    echo "0" > "$COUNTER_FILE" # Reset counter ke 0 karena internet lancar
+    exit 0
+fi
+
+echo "PERINGATAN: Jalur utama gagal. Mencoba validasi via target lokal (Backup)..."
+
+if check_http "$TARGET_BACKUP_1" || check_http "$TARGET_BACKUP_2"; then
+    echo "STATUS: INTERNET OK (Terhubung via Akses Jaringan Lokal / IIX)"
+    echo "0" > "$COUNTER_FILE"
+    exit 0
+fi
+
+CURRENT_COUNT=$(cat "$COUNTER_FILE" 2>/dev/null)
+[ -z "$CURRENT_COUNT" ] && CURRENT_COUNT=0
+
+if [ "$CURRENT_COUNT" -ge "$MAX_RESETS" ]; then
+    echo "STATUS: INTERNET DOWN TOTAL! Batas maksimal reset ($MAX_RESETS kali) telah tercapai."
+    echo "Kemungkinan: Kuota habis / Gangguan massal ISP / BTS Mati."
+    echo "Skrip hentikan proses restart otomatis untuk mencegah modem overheat."
+    exit 1
+fi
+
+echo "STATUS: INTERNET DOWN! Mulai proses pemulihan Bro, harap tunggu (Percobaan ke-$((CURRENT_COUNT + 1)) dari $MAX_RESETS)..."
+
+WAN_INTERFACES=$(uci get firewall.@zone.network 2>/dev/null | tr ' ' '\n' | sed "s/'//g")
+
+if [ -z "$WAN_INTERFACES" ]; then
+    WAN_INTERFACES=$(uci show network | grep -E '\.name=' | grep -i 'wan' | awk -F'.' '{print $2}')
+fi
+
+for iface in $WAN_INTERFACES; do
+    [ "$iface" = "loopback" ] && continue
+    echo "Mereset antarmuka modem: $iface ..."
+    
+    if command -v mmcli >/dev/null 2>&1; then
+        MODEM_INDEX=$(mmcli -L 2>/dev/null | awk '/Modem/ {print $1}' | awk -F'/' '{print $NF}')
+        if [ -n "$MODEM_INDEX" ]; then
+            echo "Mengirim perintah disconnect ke modul modem rakitan index: $MODEM_INDEX"
+            mmcli -m "$MODEM_INDEX" --simple-disconnect 2>/dev/null
         fi
     fi
+
+    ifup "$iface" 2>/dev/null
 done
 
-if [ -f /proc/sys/net/core/gro_normal_batch ]; then
-    echo "16" > /proc/sys/net/core/gro_normal_batch 2>/dev/null
-fi
+CURRENT_COUNT=$((CURRENT_COUNT + 1))
+echo "$CURRENT_COUNT" > "$COUNTER_FILE"
 
-ARCH=$(uname -m)
-
-if [ "$ARCH" = "x86_64" ]; then
-    CPUS=$(nproc 2>/dev/null || echo 2)
-    RPS_MASK=$(printf '%x' $(( (1 << CPUS) - 1 )))
-    
-    for dev in /sys/class/net/*; do
-        IFACE=$(basename "$dev")
-        [ "$IFACE" = "lo" ] && continue
-        
-        for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do [ -f "$rps" ] && echo "$RPS_MASK" > "$rps" 2>/dev/null; done
-        for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do [ -f "$xps" ] && echo "$RPS_MASK" > "$xps" 2>/dev/null; done
-    done
-else
-    for eth_irq in $(awk -F: '/^[ ]*[0-9]+:.*(eth|enp|eth0)/ {print $1}' /proc/interrupts | sed 's/ //g'); do
-        if [ ! -z "$eth_irq" ] && [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
-            echo "e" > /proc/irq/$eth_irq/smp_affinity 2>/dev/null
-        fi
-    done
-    
-    for usb_irq in $(awk -F: '/^[ ]*[0-9]+:.*(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts | sed 's/ //g'); do 
-        if [ ! -z "$usb_irq" ] && [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
-            echo "d" > /proc/irq/$usb_irq/smp_affinity 2>/dev/null
-        fi
-    done
-fi
-
-for usb_ctrl in /sys/bus/usb/devices/*/power/control; do 
-    [ -f "$usb_ctrl" ] && echo "on" > "$usb_ctrl" 2>/dev/null
-done
-
-for usb_suspend in /sys/bus/usb/devices/*/power/autosuspend; do 
-    [ -f "$usb_suspend" ] && echo "-1" > "$usb_suspend" 2>/dev/null
-done
-
-echo "1" > /proc/sys/net/ipv4/tcp_low_latency 2>/dev/null
-echo "1" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null
-echo "0" > /proc/sys/net/ipv4/tcp_sack 2>/dev/null
+echo "Proses pemulihan selesai. Tunggu modem melakukan dial-up ulang."
+exit 1
