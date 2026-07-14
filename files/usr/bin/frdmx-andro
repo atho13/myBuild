@@ -1,6 +1,5 @@
 #!/bin/ash
 # Watchdog khusus HP Android via USB Tethering - frdmx-Wrt Community
-# Files: /usr/bin/android-watchdog.sh
 
 HOST1="8.8.8.8"
 HOST2="1.1.1.1"
