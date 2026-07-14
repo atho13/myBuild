@@ -6,6 +6,7 @@ passwd -d root > /dev/null 2>&1
 echo "Setting file permissions..."
 for file in \
     /usr/bin/huawei.py \
+    /usr/bin/frdmx-andro \
     /usr/sbin/led \
     /usr/sbin/ledon \
     /bin/frdmx_net \
