@@ -1,0 +1,72 @@
+#!/bin/ash
+# Watchdog khusus HP Android via USB Tethering - frdmx-Wrt Community
+# Files: /usr/bin/android-watchdog.sh
+
+HOST1="8.8.8.8"
+HOST2="1.1.1.1"
+HOST3="9.9.9.9"
+
+failed_count=0
+pingfail=3        # Berapa kali gagal berturut-turut sebelum mode pesawat
+WAIT_TIME=5       # Jeda waktu (detik) saat mode pesawat aktif
+
+enable_airplane_mode() {
+    echo "$(date +"%Y-%m-%d %H:%M:%S") - [ADB-HP] Mengaktifkan mode pesawat..." > /dev/kmsg
+    adb shell cmd connectivity airplane-mode enable 2>/dev/null
+    adb shell settings put global airplane_mode_on 1 2>/dev/null
+    adb shell am broadcast -a android.intent.action.AIRPLANE_MODE 2>/dev/null
+}
+
+disable_airplane_mode() {
+    echo "$(date +"%Y-%m-%d %H:%M:%S") - [ADB-HP] Menonaktifkan mode pesawat..." > /dev/kmsg
+    adb shell cmd connectivity airplane-mode disable 2>/dev/null
+    adb shell settings put global airplane_mode_on 0 2>/dev/null
+    adb shell am broadcast -a android.intent.action.AIRPLANE_MODE 2>/dev/null
+}
+
+get_active_wan_interface() {
+    local iface=""
+    for uci_iface in $(uci show network | grep -E "\.proto='(dhcp|modemmanager|qmi|mbim)'" | cut -d'.' -f2); do
+        iface=$(uci get network."$uci_iface".device 2>/dev/null || uci get network."$uci_iface".ifname 2>/dev/null)
+        if [ -n "$iface" ] && ifconfig "$iface" >/dev/null 2>&1; then
+            echo "$iface"
+            return 0
+        fi
+    done
+    for fallback_iface in usb0 rndis0 wwan0 eth1 eth2; do
+        if ifconfig "$fallback_iface" >/dev/null 2>&1; then
+            echo "$fallback_iface"
+            return 0
+        fi
+    done
+    echo "usb0"
+}
+
+echo "[ADB-HP] Mulai cek koneksi USB Tethering dengan pendeteksi otomatis..." > /dev/kmsg
+
+while true; do
+    INTERFACE=$(get_active_wan_interface)
+    
+    PING_RESULT1=$(ping -I "$INTERFACE" -c 1 -W 3 "$HOST1" 2>&1)
+    PING_RESULT2=$(ping -I "$INTERFACE" -c 1 -W 3 "$HOST2" 2>&1)
+    PING_RESULT3=$(ping -I "$INTERFACE" -c 1 -W 3 "$HOST3" 2>&1)
+
+    if echo "$PING_RESULT1" | grep -E "seq=|time=" > /dev/null || \
+       echo "$PING_RESULT2" | grep -E "seq=|time=" > /dev/null || \
+       echo "$PING_RESULT3" | grep -E "seq=|time=" > /dev/null; then
+        failed_count=0
+    else
+        failed_count=$((failed_count + 1))
+        echo "$(date +"%Y-%m-%d %H:%M:%S") - [ADB-HP] Internet putus di $INTERFACE! Gagal: $failed_count/$pingfail" > /dev/kmsg
+        
+        if [ $failed_count -ge $pingfail ]; then
+            echo "[ADB-HP] Batas gagal terpenuhi. Mengirim perintah On/Off Mode Pesawat ke HP..." > /dev/kmsg
+            enable_airplane_mode
+            sleep "$WAIT_TIME"
+            disable_airplane_mode
+            sleep 20
+            failed_count=0
+        fi
+    fi
+    sleep 15
+done
