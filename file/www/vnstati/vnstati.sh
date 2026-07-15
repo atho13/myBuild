@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 vnstati -s -i br-lan -o /www/vnstati/br-lan_vnstat_s.png
 vnstati -5 -i br-lan -o /www/vnstati/br-lan_vnstat_5.png
 vnstati -h -i br-lan -o /www/vnstati/br-lan_vnstat_h.png
