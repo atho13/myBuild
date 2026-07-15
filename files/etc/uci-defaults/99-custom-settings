@@ -17,24 +17,9 @@ for file in \
     /etc/init.d/todong \
     /www/vnstati/vnstati.sh \
     /etc/hotplug.d/usb/90-frdmx-modem \
-    /etc/hotplug.d/iface/99-frdmx-wan-watchdog \
-    /etc/hotplug.d/net/70-custom-wifi; do
+    /etc/hotplug.d/iface/99-frdmx-wan-watchdog; do
     [ -f "$file" ] && chmod +x "$file"
 done
-
-echo "Injecting Custom Hotplug for Interface Renaming Fix (WiFi Only)..."
-mkdir -p /etc/hotplug.d/net
-
-cat << 'EOF' > /etc/hotplug.d/net/70-custom-wifi
-#!/bin/sh
-if [ "$ACTION" = "add" ] && [ "$INTERFACE" = "phy0-sta0" ]; then
-    ip link set phy0-sta0 down
-    ip link set phy0-sta0 name wlan0
-    ip link set wlan0 up
-fi
-EOF
-
-chmod +x /etc/hotplug.d/net/70-custom-wifi
 
 echo "Configuring UCI settings via batch..."
 uci batch <<EOF
@@ -60,7 +45,7 @@ delete network.lan
 set network.lan=interface
 set network.lan.device='br-lan'
 set network.lan.proto='static'
-set network.lan.ipaddr='10.10.10.1'
+set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
 
 add fstab mount
@@ -114,29 +99,6 @@ commit dhcp
 commit fstab
 EOF
 
-echo "Generating default wireless configuration profile..."
-if [ -x /sbin/wifi ]; then
-    > /etc/config/wireless
-    
-    cat << 'EOF' > /etc/config/wireless
-config wifi-device 'radio0'
-	option type 'mac80211'
-	option path 'platform/soc/ffe00000.crypto'
-	option channel '6'
-	option hwmode '11g'
-	option htmode 'HT20'
-	option country 'ID'
-	option disabled '0'
-
-config wifi-iface 'default_radio0'
-	option device 'radio0'
-	option network 'lan'
-	option mode 'ap'
-	option ssid='FRDMX-Wrt'
-	option encryption 'none'
-EOF
-fi
-
 echo "Applying system optimizations..."
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 
@@ -162,8 +124,8 @@ fi
 echo "Creating application symlinks for TinyFM..."
 mkdir -p /www/tinyfm
 ln -sf / /www/tinyfm/rootfs
-[ -d /etc/openclash ] && ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null || ln -sf /etc/openclash/ /www/tinyfm/openclash
-[ -d /etc/nikki ] && ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null || ln -sf /etc/nikki/ /www/tinyfm/nikki
+[ -d /etc/openclash ] && ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null
+[ -d /etc/nikki ] && ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null
 
 echo "Registering scripts to Startup (rc.local)..."
 sed -i '/start_service.sh/d' /etc/rc.local
