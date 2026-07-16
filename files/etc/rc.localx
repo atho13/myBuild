@@ -1,6 +1,11 @@
 # Put your custom commands here that should be executed once
 # the system init finished. By default this file does nothing.
+
+# khusus hp android - aktifkan mode debugging usb (hilangkan tanda #)
+#/usr/bin/frdmx-andro &
+
 sysctl -p /etc/sysctl.conf
 bash /etc/custom_service/start_service.sh &
 /usr/sbin/led -r
+/sbin/yess.sh &
 exit 0
