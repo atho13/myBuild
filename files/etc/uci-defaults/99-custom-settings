@@ -124,8 +124,8 @@ fi
 echo "Creating application symlinks for TinyFM..."
 mkdir -p /www/tinyfm
 ln -sf / /www/tinyfm/rootfs
-[ -d /etc/openclash ] && ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null
-[ -d /etc/nikki ] && ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null
+ln -sf /etc/openclash/ /www/tinyfm/openclash
+ln -sf /etc/nikki/ /www/tinyfm/nikki
 
 echo "Registering scripts to Startup (rc.local)..."
 sed -i '/start_service.sh/d' /etc/rc.local

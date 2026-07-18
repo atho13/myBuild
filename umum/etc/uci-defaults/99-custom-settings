@@ -145,7 +145,7 @@ echo "Creating application symlinks for TinyFM..."
 mkdir -p /www/tinyfm
 ln -sf / /www/tinyfm/rootfs
 ln -sf /etc/openclash/ /www/tinyfm/openclash
-ln -sf /etc/openclash/ /www/tinyfm/nikki
+ln -sf /etc/nikki/ /www/tinyfm/nikki
 
 echo "Registering start_service.sh to Startup with 30s delay..."
 if [ -f "/etc/custom_service/start_service.sh" ]; then
