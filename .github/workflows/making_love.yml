@@ -1,4 +1,4 @@
-name: Making Love OpenWrt
+name: Making OpenWrt
 
 on:
   workflow_dispatch:
