@@ -100,6 +100,13 @@ commit fstab
 EOF
 
 echo "Applying system optimizations..."
+
+if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
+    uci set ttyd.main.command='/bin/bash --login'
+    uci commit ttyd
+    /etc/init.d/ttyd enable
+fi
+
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 
 if [ -d /sys/block/mmcblk0 ]; then
