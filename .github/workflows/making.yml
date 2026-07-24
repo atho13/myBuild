@@ -33,6 +33,8 @@ on:
           - 6.1.y
           - 6.6.y
           - 6.12.y
+          - 6.14.y
+          - 6.17.y
           - 6.18.y
       rootfs_size:
         description: 'Select Rootfs Size'
