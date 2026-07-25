@@ -7,10 +7,10 @@ on:
         description: "URL Image Builder (.tar.xz/.tar.zst) versi 23.05, 24.10, atau 25.12"
         required: true
         default: ""
-      custom_repo:
-        description: "URL Repositori Pihak Ketiga (Opsional, pisahkan dengan koma jika lebih dari satu)"
-        required: false
-        default: ""
+      #custom_repo:
+        #description: "URL Repositori Pihak Ketiga (Opsional, pisahkan dengan koma jika lebih dari satu)"
+        #required: false
+        #default: ""
 
 env:
   TZ: Asia/Jakarta
