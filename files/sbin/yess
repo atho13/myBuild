@@ -1,7 +1,7 @@
 #!/bin/bash
 # Smart Hybrid Optimization Script for Community by Frdmx-Wrt
 
-for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do 
+for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
     if [ -f "$i" ]; then
         AVAILABLE_GOV=$(cat "$(dirname "$i")/scaling_available_governors" 2>/dev/null)
         if echo "$AVAILABLE_GOV" | grep -q "schedutil"; then
@@ -17,28 +17,23 @@ if [ -f /proc/sys/net/core/gro_normal_batch ]; then
 fi
 
 ARCH=$(uname -m)
-
 if [ "$ARCH" = "x86_64" ]; then
     CPUS=$(nproc 2>/dev/null || echo 2)
     RPS_MASK=$(printf '%x' $(( (1 << CPUS) - 1 )))
-    
     for dev in /sys/class/net/*; do
         IFACE=$(basename "$dev")
         [ "$IFACE" = "lo" ] && continue
-        
         if [ -d "/sys/class/net/$IFACE/queues" ]; then
-            for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do 
+            for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do
                 [ -f "$rps" ] && echo "$RPS_MASK" > "$rps" 2>/dev/null
             done
-            for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do 
+            for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do
                 [ -f "$xps" ] && echo "$RPS_MASK" > "$xps" 2>/dev/null
             done
         fi
     done
-
 elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
     CPUS=$(nproc 2>/dev/null || echo 4)
-    
     ETH_MASK="2"
     [ "$CPUS" -le 1 ] && ETH_MASK="1"
     
@@ -47,7 +42,7 @@ elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
             echo "$ETH_MASK" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null
         fi
     done
-    
+
     if [ "$CPUS" -ge 3 ]; then
         USB_MASK="4"
     elif [ "$CPUS" -eq 2 ]; then
@@ -55,22 +50,19 @@ elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
     else
         USB_MASK="1"
     fi
-    
-    for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do 
+    for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do
         if [ -n "$usb_irq" ] && [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
             echo "$USB_MASK" > "/proc/irq/$usb_irq/smp_affinity" 2>/dev/null
         fi
     done
 fi
 
-for usb_ctrl in /sys/bus/usb/devices/*/power/control; do 
-    [ -f "$usb_ctrl" ] && echo "on" > "$usb_ctrl" 2>/dev/null
+for usb_node in /sys/bus/usb/devices/*; do
+    if [ -d "$usb_node/power" ]; then
+        [ -f "$usb_node/power/control" ] && echo "on" > "$usb_node/power/control" 2>/dev/null
+        [ -f "$usb_node/power/autosuspend" ] && echo "-1" > "$usb_node/power/autosuspend" 2>/dev/null
+    fi
 done
 
-for usb_suspend in /sys/bus/usb/devices/*/power/autosuspend; do 
-    [ -f "$usb_suspend" ] && echo "-1" > "$usb_suspend" 2>/dev/null
-done
-
-echo "1" > /proc/sys/net/ipv4/tcp_low_latency 2>/dev/null
-echo "1" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null 
+echo "1" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null
 echo "1" > /proc/sys/net/ipv4/tcp_sack 2>/dev/null
