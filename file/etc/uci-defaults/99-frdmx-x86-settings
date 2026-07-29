@@ -8,52 +8,70 @@ for file in \
     /usr/bin/huawei.py \
     /usr/bin/frdmx-andro \
     /bin/free.sh \
+    /bin/frdmx_net \
     /sbin/yess \
     /etc/rc.local \
     /www/vnstati/vnstati.sh \
-    /etc/hotplug.d/usb/90-frdmx-modem \
-    /etc/hotplug.d/iface/99-frdmx-wan-watchdog; do
+    /etc/hotplug.d/usb/90-frdmx-modem; do
     [ -f "$file" ] && chmod +x "$file"
 done
 
 echo "Configuring UCI settings via batch..."
 uci batch <<EOF
-set system.@system[0].hostname='FRDMX-x86'
+set system.@system[0].hostname='FRDMX'
 set system.@system[0].timezone='WIB-7'
 set system.@system[0].zonename='Asia/Jakarta'
-
 delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
 add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
 add_list system.ntp.server='time.google.com'
 
+delete network.lan_dev
+set network.lan_dev=device
+set network.lan_dev.name='br-lan'
+set network.lan_dev.type='bridge'
+add_list network.lan_dev.ports='eth0'
+set network.lan_dev.stp='1'
+set network.lan_dev.igmp_snooping='1'
+
 delete network.lan
 set network.lan=interface
-set network.lan.device='eth0'
+set network.lan.device='br-lan'
 set network.lan.proto='static'
-set network.lan.ipaddr='10.10.10.1'
+set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
+set network.lan.ip6assign='64'
 
+delete network.wan6
+delete network.wan
 set network.wan=interface
 set network.wan.proto='dhcp'
 set network.wan.device='eth1'
+set network.wan.metric='5'
 
+delete network.tethering
 set network.tethering=interface
 set network.tethering.proto='dhcp'
 set network.tethering.device='usb0'
+set network.tethering.metric='10'
 
-delete network.wan6
+delete network.modem
+set network.modem=interface
+set network.modem.proto='modemmanager'
+set network.modem.device='wwan0'
+set network.modem.apn='internet'
+set network.modem.auth='none'
+set network.modem.metric='20'
+add_list network.modem.allowedauth='none'
 
 del_list firewall.@zone[1].network='wan6'
-del_list firewall.@zone[1].network='tethering'
 del_list firewall.@zone[1].network='wan'
-
+del_list firewall.@zone[1].network='tethering'
+del_list firewall.@zone[1].network='modem'
 add_list firewall.@zone[1].network='wan'
 add_list firewall.@zone[1].network='tethering'
-
-set uhttpd.main.index_page='index.php'
-set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
+add_list firewall.@zone[1].network='modem'
 
 delete dhcp.lan
 set dhcp.lan=dhcp
@@ -65,7 +83,6 @@ set dhcp.lan.leasetime='12h'
 commit network
 commit system
 commit firewall
-commit uhttpd
 commit dhcp
 EOF
 
@@ -80,7 +97,7 @@ config wifi-device 'radio0'
 	option channel '6'
 	option hwmode '11g'
 	option htmode 'HT20'
-	option country 'ID'
+	option country 'CN'
 	option disabled '0'
 
 config wifi-iface 'default_radio0'
