@@ -10,27 +10,26 @@ TARGET_BACKUP_2="https://kompas.com"
 TIMEOUT_MS=5000
 COUNT=2
 MAX_RESETS=3
-
 COUNTER_FILE="/tmp/frdmx_net"
 
 check_http() {
-    local url=$1
-    if httping -q -c "$COUNT" -t "$((TIMEOUT_MS / 1000))" -g "$url" 2>/dev/null; then
+    local target=$1
+    if httping -q -c "$COUNT" -t "$((TIMEOUT_MS / 1000))" -g "$target" 2>/dev/null; then
         return 0
     else
         return 1
     fi
 }
 
-echo "[$(date)] Cek koneksi internet..."
+echo "[$(date)] Cek koneksi internet via httping..."
 
 if check_http "$TARGET_PRIMARY_1" || check_http "$TARGET_PRIMARY_2"; then
     echo "STATUS: INTERNET OK (Target Utama Merespons)"
-    echo "0" > "$COUNTER_FILE" # Reset counter ke 0 karena internet lancar
+    echo "0" > "$COUNTER_FILE"
     exit 0
 fi
 
-echo "PERINGATAN: Jalur utama gagal. Mencoba validasi via target lokal (Backup)..."
+echo "PERINGATAN: Jalur utama gagal. Mencoba via target lokal (Backup)..."
 
 if check_http "$TARGET_BACKUP_1" || check_http "$TARGET_BACKUP_2"; then
     echo "STATUS: INTERNET OK (Terhubung via Akses Jaringan Lokal / IIX)"
@@ -43,36 +42,31 @@ CURRENT_COUNT=$(cat "$COUNTER_FILE" 2>/dev/null)
 
 if [ "$CURRENT_COUNT" -ge "$MAX_RESETS" ]; then
     echo "STATUS: INTERNET DOWN TOTAL! Batas maksimal reset ($MAX_RESETS kali) telah tercapai."
-    echo "Kemungkinan: Kuota habis / Gangguan massal ISP / BTS Mati."
-    echo "Skrip hentikan proses restart otomatis untuk mencegah modem overheat."
+    echo "Skrip menghentikan proses otomatis untuk mencegah modem rakitan overheat."
     exit 1
 fi
 
-echo "STATUS: INTERNET DOWN! Mulai proses pemulihan Bro, harap tunggu (Percobaan ke-$((CURRENT_COUNT + 1)) dari $MAX_RESETS)..."
+echo "STATUS: INTERNET DOWN! Mulai proses pemulihan (Percobaan ke-$((CURRENT_COUNT + 1)) dari $MAX_RESETS)..."
 
-WAN_INTERFACES=$(uci get firewall.@zone.network 2>/dev/null | tr ' ' '\n' | sed "s/'//g")
-
-if [ -z "$WAN_INTERFACES" ]; then
-    WAN_INTERFACES=$(uci show network | grep -E '\.name=' | grep -i 'wan' | awk -F'.' '{print $2}')
-fi
+WAN_INTERFACES=$(uci -q show network | grep -E "\.proto='(modemmanager|qmi|mbim|3g|ncm|dhcp)'" | cut -d'.' -f2 | cut -d'=' -f1)
+[ -z "$WAN_INTERFACES" ] && WAN_INTERFACES="wan"
 
 for iface in $WAN_INTERFACES; do
-    [ "$iface" = "loopback" ] && continue
-    echo "Mereset antarmuka modem: $iface ..."
+    [ "$iface" = "lan" ] || [ "$iface" = "loopback" ] && continue
+    echo "Mereset antarmuka jaringan: $iface ..."
     
     if command -v mmcli >/dev/null 2>&1; then
-        MODEM_INDEX=$(mmcli -L 2>/dev/null | awk '/Modem/ {print $1}' | awk -F'/' '{print $NF}')
+        MODEM_INDEX=$(mmcli -L 2>/dev/null | grep -oE '/Modem/[0-9]+' | cut -d'/' -f3)
         if [ -n "$MODEM_INDEX" ]; then
-            echo "Mengirim perintah disconnect ke modul modem rakitan index: $MODEM_INDEX"
-            mmcli -m "$MODEM_INDEX" --simple-disconnect 2>/dev/null
+            echo "[frdmx-Wrt] Disconnect modem indeks: $MODEM_INDEX"
+            mmcli -m "$MODEM_INDEX" --simple-disconnect >/dev/null 2>&1
+            sleep 1
         fi
     fi
-
     ifup "$iface" 2>/dev/null
 done
 
 CURRENT_COUNT=$((CURRENT_COUNT + 1))
 echo "$CURRENT_COUNT" > "$COUNTER_FILE"
-
 echo "Proses pemulihan selesai. Tunggu modem melakukan dial-up ulang."
 exit 1
