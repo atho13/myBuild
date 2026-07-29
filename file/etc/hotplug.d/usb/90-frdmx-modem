@@ -1,56 +1,66 @@
 #!/bin/sh
 # Custom Multi-Modem - frdmx-Wrt Community
-# Designed for built-in firmware distribution
 
 APN="internet"
+LOCKFILE="/tmp/pnp-modem.lock"
 
-if [ "$ACTION" = "add" ] && { [ "$SUBSYSTEM" = "tty" ] || [ "$SUBSYSTEM" = "usb" ]; }; then
-    if [ -f /sbin/usbmode ]; then
-        /sbin/usbmode -f /etc/usb-mode.json 2>/dev/null
+if [ "$ACTION" != "add" ]; then
+    exit 0
+fi
+
+if [ "$DEVICENAME" != "ttyUSB0" ] && [ "$DEVICENAME" != "ttyACM0" ] && [ "$SUBSYSTEM" != "usb" ]; then
+    exit 0
+fi
+
+if [ -f "$LOCKFILE" ]; then
+    LAST_RUN=$(stat -c %Y "$LOCKFILE" 2>/dev/null || echo 0)
+    NOW=$(date +%s)
+    if [ $((NOW - LAST_RUN)) -lt 15 ]; then
+        exit 0
     fi
+fi
+touch "$LOCKFILE"
 
-    sleep 8
-    MODEM_PORT=""
+if [ -f /sbin/usbmode ]; then
+    /sbin/usbmode -f /etc/usb-mode.json >/dev/null 2>&1 &
+fi
 
-    for port in /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB4 /dev/ttyACM0 /dev/ttyACM1 /dev/ttyACM2; do
-        if [ -c "$port" ]; then
-            if exec 3<>"$port"; then
-                if chat -t 2 -v "" "AT" "OK" >&3 <&3 2>/dev/null; then
-                    echo "[PnP-Modem] Modem terdeteksi pada port: $port" > /dev/kmsg
-                    MODEM_PORT="$port"
-                    exec 3>&-
-                    break
-                fi
-                exec 3>&-
-            fi
+sleep 4
+MODEM_PORT=""
+
+for port in /dev/ttyACM0 /dev/ttyACM1 /dev/ttyACM2 /dev/ttyUSB0 /dev/ttyUSB1 /dev/ttyUSB2 /dev/ttyUSB3 /dev/ttyUSB4; do
+    if [ -c "$port" ]; then
+        if chat -t 2 -v "" "AT" "OK" > "$port" < "$port" 2>/dev/null; then
+            echo "[PnP-Modem] Modem 4G/5G dikunci pada port: $port" > /dev/kmsg
+            MODEM_PORT="$port"
+            break
+        fi
+    fi
+done
+
+if [ -n "$MODEM_PORT" ]; then
+    echo "[PnP-Modem] Mengonfigurasi APN: $APN" > /dev/kmsg
+    chat -t 2 -v "" "AT+CFUN=1" "OK" > "$MODEM_PORT" < "$MODEM_PORT" 2>/dev/null
+    sleep 1
+    chat -t 2 -v "" "AT+CGDCONT=1,\"IP\",\"$APN\"" "OK" > "$MODEM_PORT" < "$MODEM_PORT" 2>/dev/null
+    sleep 1
+
+    IFACE_FOUND=""
+    for iface in $(uci -q show network | grep -E "\.proto='(modemmanager|qmi|mbim|3g|ncm)'" | cut -d'.' -f2 | cut -d'=' -f1); do
+        if [ -n "$iface" ] && [ "$iface" != "lan" ]; then
+            IFACE_FOUND="$iface"
+            break
         fi
     done
 
-    if [ -n "$MODEM_PORT" ]; then
-        echo "[PnP-Modem] Konfigurasi APN dan Fungsionalitas Modem..." > /dev/kmsg
-        if exec 3<>"$MODEM_PORT"; then
-            chat -t 2 -v "" "AT+CFUN=1" "OK" >&3 <&3 2>/dev/null && sleep 1
-            chat -t 2 -v "" "AT+CGDCONT=1,\"IP\",\"$APN\"" "OK" >&3 <&3 2>/dev/null && sleep 1
-            chat -t 2 -v "" "AT+EDPRFIX=0" "OK" >&3 <&3 2>/dev/null && sleep 1
-            exec 3>&-
-        fi
-
-        IFACE_FOUND=""
-        for iface in $(uci show network | grep -E "\.proto='(modemmanager|qmi|mbim|3g|ncm)'" | cut -d'.' -f2); do
-            if [ -n "$iface" ]; then
-                IFACE_FOUND="$iface"
-                break
-            fi
-        done
-
-        if [ -n "$IFACE_FOUND" ]; then
-            echo "[PnP-Modem] Memicu interface aktif: $IFACE_FOUND" > /dev/kmsg
-            ifup "$IFACE_FOUND" 2>/dev/null
-        else
-            echo "[PnP-Modem] Protokol spesifik tidak ditemukan. Mencoba interface default..." > /dev/kmsg
-            ifup wan 2>/dev/null || ifup wwan 2>/dev/null
-        fi
+    if [ -n "$IFACE_FOUND" ]; then
+        echo "[PnP-Modem] Mengaktifkan interface: $IFACE_FOUND" > /dev/kmsg
+        sleep 2
+        ifup "$IFACE_FOUND" 2>/dev/null
     else
-        echo "[PnP-Modem] Driver terbaca, tapi modem belum merespons AT Command." > /dev/kmsg
+        ifup wan 2>/dev/null
     fi
 fi
+
+rm -f "$LOCKFILE"
+exit 0
