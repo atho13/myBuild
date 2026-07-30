@@ -25,7 +25,6 @@ on:
           - nanopi-r5c
           - nanopi-r5s
           - orangepi-5-plus
-          - orangepi-zero3
           - rk3318-box
           - s905-beelink-mini
           - s905-mxqpro-plus
