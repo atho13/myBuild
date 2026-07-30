@@ -18,8 +18,8 @@ download_imagebuilder() {
     echo -e "${STEPS} Mengunduh ImageBuilder OpenWrt 25.12.4 (ARMSR/ARMV8)..."
     #echo -e "${STEPS} Mengunduh ImageBuilder ImmortalWrt 24.10.6 (ARMSR/ARMV8)..."
     
-    URL="https://downloads.openwrt.org/releases/25.12.4/targets/armsr/armv8/openwrt-imagebuilder-25.12.4-armsr-armv8.Linux-x86_64.tar.zst"
-    #URL="https://downloads.immortalwrt.org/releases/24.10.6/targets/armsr/armv8/immortalwrt-imagebuilder-24.10.6-armsr-armv8.Linux-x86_64.tar.zst"
+    #URL="https://downloads.openwrt.org/releases/25.12.5/targets/armsr/armv8/openwrt-imagebuilder-25.12.5-armsr-armv8.Linux-x86_64.tar.zst"
+    URL="https://downloads.immortalwrt.org/releases/24.10.8/targets/armsr/armv8/immortalwrt-imagebuilder-24.10.8-armsr-armv8.Linux-x86_64.tar.zst"
     
     curl -fL -o ib.tar.zst "$URL" || { echo -e "${ERROR} Gagal download!"; exit 1; }
     
