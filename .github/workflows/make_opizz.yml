@@ -102,7 +102,7 @@ jobs:
     steps:
       - name: Clone OpenWrt Builder Packaging
         run: |
-          git clone --depth 1 https://github.com
+          git clone --depth 1 https://github.com/ophub/amlogic-s9xxx-openwrt.git
           cd amlogic-s9xxx-openwrt
           mkdir -p openwrt-armsr
     
@@ -175,7 +175,7 @@ jobs:
     steps:
       - name: Clone OpenWrt Builder Packaging
         run: |
-          git clone --depth 1 https://github.com
+          git clone --depth 1 https://github.com/ophub/amlogic-s9xxx-openwrt.git
           cd amlogic-s9xxx-openwrt
           mkdir -p openwrt-armsr
     
