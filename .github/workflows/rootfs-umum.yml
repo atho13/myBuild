@@ -1,4 +1,4 @@
-name: RootFS Opizz
+name: RootFS Umum
 
 on:
   workflow_dispatch:
