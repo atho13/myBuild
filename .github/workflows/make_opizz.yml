@@ -16,16 +16,16 @@ on:
       board_version:
         description: 'Select board version to compile'
         required: true
-        default: 's905x-b860h'
+        default: 'orangepi-zero3'
         type: choice
         options:
+          - orangepi-zero3
           - s905x
           - s905x-b860h
           - h96-max-m2
           - nanopi-r5c
           - nanopi-r5s
           - orangepi-5-plus
-          - orangepi-zero3
           - rk3318-box
           - s905-beelink-mini
           - s905-mxqpro-plus
@@ -40,6 +40,7 @@ on:
           - s912-nexbox-a2
           - s922x
           - tanix-tx6
+          - all
       kernel_version:
         description: 'Select kernel version'
         required: true
@@ -56,9 +57,9 @@ on:
           - 6.17.y
           - 6.18.y
       rootfs_size:
-        description: 'Select Rootfs Size'
+        description: 'Select Rootfs Size (MB)'
         required: true
-        default: '512'
+        default: '1024'
         type: choice
         options:
           - 256
@@ -80,6 +81,9 @@ on:
         required: true
         default: ''
 
+env:
+  TZ: Asia/Jakarta
+
 jobs:
   download:
     name: Download Rootfs
@@ -88,15 +92,18 @@ jobs:
       - name: Download Rootfs
         run: |
           wget "${{ github.event.inputs.rootfs_url }}"
-          ROOTFS_PATH=$(find ./ -name "*rootfs.tar.gz")
+          ROOTFS_PATH=$(find ./ -name "*rootfs.tar.gz" | head -n 1)
+          if [ -z "$ROOTFS_PATH" ]; then
+            echo "Error: Berkas rootfs.tar.gz tidak ditemukan!"
+            exit 1
+          fi
           echo "ROOTFS_PATH=$ROOTFS_PATH" >> $GITHUB_ENV
           
       - name: Upload Rootfs
         uses: actions/upload-artifact@v4
         with:
-          name: amlogic-rootfs
-          path: |
-            ${{ env.ROOTFS_PATH }}
+          name: openwrt-rootfs
+          path: ${{ env.ROOTFS_PATH }}
 
   build_specific:
     name: Build ${{ github.event.inputs.board_version }}
@@ -104,59 +111,54 @@ jobs:
     needs: download
     if: github.event.inputs.board_version != 'all'
     steps:
-      - name: Clone Amlogic Builder
+      - name: Clone OpenWrt Builder Packaging
         run: |
-          if [ -d "amlogic-s9xxx-armbian" ]; then
-            rm -rf amlogic-s9xxx-armbian
-          fi
-          git clone --depth 1 https://github.com/atho13/amlogic-s9xxx-armbian.git
-          mkdir -p amlogic-s9xxx-openwrt/openwrt-armsr
+          git clone --depth 1 https://ophub/amlogic-s9xxx-openwrt
+          cd amlogic-s9xxx-openwrt
+          mkdir -p openwrt-armsr
     
-      - name: Download Rootfs
+      - name: Download Rootfs Artifact
         uses: actions/download-artifact@v4
         with:
-          name: amlogic-rootfs
+          name: openwrt-rootfs
           path: ./amlogic-s9xxx-openwrt/openwrt-armsr/
-          # path: ./Action_ImmortalWrt/releases/download/2026.03.06-0017/openwrt-armsr
           
-      - name: Build Firmware ${{ github.event.inputs.board_version }} with Kernel ${{ github.event.inputs.kernel_version }}
+      - name: Build Firmware Single Board
         run: |
-          cd amlogic-s9xxx-armbian
+          cd amlogic-s9xxx-openwrt
+          # Memastikan file rootfs terbaca dengan nama yang dikenali skrip remake Ophub
+          cd openwrt-armsr && mv *.tar.gz openwrt-s905x-generic-rootfs.tar.gz 2>/dev/null || true
+          cd ..
           sudo ./remake -b ${{ github.event.inputs.board_version }} -k ${{ github.event.inputs.kernel_version }} -s ${{ github.event.inputs.rootfs_size }}
       
       - name: Find Firmware
         run: |
-          FILE_PATH=$(find ./amlogic-s9xxx-armbian/openwrt/out/ -name "*.img.gz")
+          FILE_PATH=$(find ./amlogic-s9xxx-openwrt/openwrt/out/ -name "*.img.gz" | head -n 1)
           if [[ -z "$FILE_PATH" ]]; then
-            echo "Error: Tidak ada file firmware ditemukan!"
+            echo "Error: Tidak ada file firmware .img.gz ditemukan!"
             exit 1
           fi
           echo "FILE_PATH=$FILE_PATH" >> $GITHUB_ENV
 
-      - name: Set up date
-        id: set_date
-        run: |
-          export TZ='Asia/Jakarta'
-          echo "date_time=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-          
       - name: Create Release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.AKSI_GITHUB }}
         with:
-          name: FRDMX-Wrt ${{ github.event.inputs.openwrt_ver }}
-          tag_name: v${{ github.event.inputs.openwrt_ver }}_k${{ github.event.inputs.kernel_version }}
+          name: FRDMX-Wrt-${{ github.event.inputs.board_version }}-${{ github.event.inputs.openwrt_ver }}
+          tag_name: v${{ github.event.inputs.openwrt_ver }}_${{ github.event.inputs.board_version }}_k${{ github.event.inputs.kernel_version }}
           draft: false
           prerelease: false
-          files: |
-                ${{ env.FILE_PATH }}
+          files: ${{ env.FILE_PATH }}
           body: |
             ### Information
+            * Board Target: ${{ github.event.inputs.board_version }}
+            * Kernel: ${{ github.event.inputs.kernel_version }}
             * Default IP: 192.168.1.1
             * Default username: frmdx
 
   build_all:
-    name: Build All
+    name: Build All Matrices
     runs-on: ubuntu-22.04
     needs: download
     if: github.event.inputs.board_version == 'all'
@@ -181,53 +183,48 @@ jobs:
           - s912-nexbox-a1
           - s912-nexbox-a2
           - s922x
+          - tanix-tx6
     steps:
-      - name: Clone Amlogic Builder
+      - name: Clone OpenWrt Builder Packaging
         run: |
-          if [ -d "amlogic-s9xxx-armbian" ]; then
-            rm -rf amlogic-s9xxx-armbian
-          fi
-          git clone --depth 1 https://github.com/atho13/amlogic-s9xxx-armbian.git
-          mkdir -p amlogic-s9xxx-armbian/openwrt-armsr
+          git clone --depth 1 https://ophub/amlogic-s9xxx-openwrt
+          cd amlogic-s9xxx-openwrt
+          mkdir -p openwrt-armsr
     
-      - name: Download Rootfs
+      - name: Download Rootfs Artifact
         uses: actions/download-artifact@v4
         with:
-          name: amlogic-rootfs
+          name: openwrt-rootfs
           path: ./amlogic-s9xxx-openwrt/openwrt-armsr/
           
-      - name: Build Firmware ${{ matrix.board_version }} with Kernel ${{ github.event.inputs.kernel_version }}
+      - name: Build Firmware Matrix
         run: |
-          cd amlogic-s9xxx-armbian/
+          cd amlogic-s9xxx-openwrt
+          cd openwrt-armsr && mv *.tar.gz openwrt-s905x-generic-rootfs.tar.gz 2>/dev/null || true
+          cd ..
           sudo ./remake -b ${{ matrix.board_version }} -k ${{ github.event.inputs.kernel_version }} -s ${{ github.event.inputs.rootfs_size }}
       
       - name: Find Firmware
         run: |
-          FILE_PATH=$(find ./amlogic-s9xxx-armbian/openwrt/out/ -name "*.img.gz")
+          FILE_PATH=$(find ./amlogic-s9xxx-openwrt/openwrt/out/ -name "*.img.gz" | head -n 1)
           if [[ -z "$FILE_PATH" ]]; then
-            echo "Error: Tidak ada file firmware ditemukan!"
+            echo "Error: Tidak ada file firmware .img.gz ditemukan!"
             exit 1
           fi
           echo "FILE_PATH=$FILE_PATH" >> $GITHUB_ENV
 
-      - name: Set up date
-        id: set_date
-        run: |
-          export TZ='Asia/Jakarta'
-          echo "date_time=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
-          
       - name: Create Release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.AKSI_GITHUB }}
         with:
-          name: FRDM-Wrt ${{ github.event.inputs.openwrt_ver }}
-          tag_name: v${{ github.event.inputs.openwrt_ver }}_k${{ github.event.inputs.kernel_version }}
+          name: FRDM-Wrt-Multi-${{ github.event.inputs.openwrt_ver }}
+          tag_name: v${{ github.event.inputs.openwrt_ver }}_matrix_k${{ github.event.inputs.kernel_version }}
           draft: false
           prerelease: false
-          files: |
-                ${{ env.FILE_PATH }}
+          files: ${{ env.FILE_PATH }}
           body: |
-            ### FRDMX-Wrt Information
+            ### FRDMX-Wrt Multi-Platform Information
+            * Kernel: ${{ github.event.inputs.kernel_version }}
             * Default IP: 192.168.1.1
             * Default username: frdmx
