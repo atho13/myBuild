@@ -43,7 +43,7 @@ eval $(awk '/^MemTotal:/ {t=$2} /^MemAvailable:/ {a=$2} END {printf "MEM_T=%d; M
 eval $(df -k / | awk 'NR==2 {printf "ST_T=%d; ST_U=%d; ST_P=%s", $2*1024, $3*1024, $5}')
 
 [ -f /etc/banner ]
-echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
 
 print_info "Builder"    "FRDMX-Wrt"
 print_info "Model"      "$MODEL"
@@ -54,4 +54,4 @@ print_info "Memory"     "$(hr $((MEM_T-MEM_A))) / $(hr $MEM_T)"
 print_info "Storage"    "$(hr $ST_U) / $(hr $ST_T) ($ST_P)"
 print_info "Net Status" "$NET_STATUS"
 
-echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
