@@ -18,7 +18,7 @@ for file in \
     /etc/init.d/todong \
     /www/vnstati/vnstati.sh \
     /etc/hotplug.d/usb/90-frdmx-modem \
-    /etc/hotplug.d/iface/99-frdmx-wan-watchdog; do
+    /etc/hotplug.d/iface/99-frdmx-watchdog; do
     [ -f "$file" ] && chmod +x "$file"
 done
 
