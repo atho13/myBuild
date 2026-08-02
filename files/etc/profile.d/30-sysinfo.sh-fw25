@@ -43,7 +43,7 @@ eval $(awk '/^MemTotal:/ {t=$2} /^MemAvailable:/ {a=$2} END {printf "MEM_T=%d; M
 eval $(df -k / | awk 'NR==2 {printf "ST_T=%d; ST_U=%d; ST_P=%s", $2*1024, $3*1024, $5}')
 
 [ -f /etc/banner ]
-echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
 
 print_info "Builder"    "FRDMX-Wrt"
 print_info "Model"      "$MODEL"
@@ -54,9 +54,9 @@ print_info "Memory"     "$(hr $((MEM_T-MEM_A))) / $(hr $MEM_T)"
 print_info "Storage"    "$(hr $ST_U) / $(hr $ST_T) ($ST_P)"
 print_info "Net Status" "$NET_STATUS"
 
-echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
 echo -e "${C_YELLOW}Install : ${C_CYAN}apk add --allow-untrusted ./*.apk${C_RESET}"
-echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
 printf "${C_WHITE}%-17s ${C_WHITE}%s${C_RESET}\n" "COMMAND" "DESCRIPTION"
 printf "${C_CYAN}%-17s ${C_RESET}%s\n" "apk add" "Install a package"
 printf "${C_CYAN}%-17s ${C_RESET}%s\n" "apk del" "Remove a package"
@@ -64,4 +64,4 @@ printf "${C_CYAN}%-17s ${C_RESET}%s\n" "apk upgrade" "Upgrade all packages"
 printf "${C_CYAN}%-17s ${C_RESET}%s\n" "apk info -L" "List package contents"
 printf "${C_CYAN}%-17s ${C_RESET}%s\n" "apk info" "List installed packages"
 printf "${C_CYAN}%-17s ${C_RESET}%s\n" "apk update" "Update package lists"
-echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
+echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
