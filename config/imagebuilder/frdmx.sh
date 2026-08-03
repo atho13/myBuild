@@ -39,7 +39,7 @@ rebuild_firmware() {
     echo -e "${STEPS} Mengatur konfigurasi ukuran partisi (768MB)..."
 
     echo "CONFIG_TARGET_ROOTFS_PARTSIZE=768" >> .config
-    echo "CONFIG_TARGET_KERNEL_PARTSIZE=128" >> .config
+    echo "CONFIG_TARGET_KERNEL_PARTSIZE=255" >> .config
 
     echo -e "${STEPS} Membangun Rootfs ARMSR..."
 
