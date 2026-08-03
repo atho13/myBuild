@@ -121,8 +121,8 @@ jobs:
           auto_kernel: ${{ github.event.inputs.auto_kernel }}
           # --- TAMBAHKAN BARIS DI BAWAH INI ---
           openwrt_fs: btrfs
-          openwrt_size: 900
-          boot_size: 128
+          openwrt_size: 1024
+          boot_size: 256
           auto_expand: false
 
       - name: Move Repack Result to Output
