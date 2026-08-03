@@ -119,6 +119,11 @@ jobs:
           kernel_repo: ${{ github.event.inputs.kernel_repo }}
           kernel_usage: ${{ github.event.inputs.kernel_usage }}
           auto_kernel: ${{ github.event.inputs.auto_kernel }}
+          # --- TAMBAHKAN BARIS DI BAWAH INI ---
+          openwrt_fs: btrfs
+          openwrt_size: 768
+          boot_size: 128
+          auto_expand: false
 
       - name: Move Repack Result to Output
         if: steps.packaging.outcome == 'success'
