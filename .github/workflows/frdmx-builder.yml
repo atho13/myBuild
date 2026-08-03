@@ -121,7 +121,7 @@ jobs:
           auto_kernel: ${{ github.event.inputs.auto_kernel }}
           # --- TAMBAHKAN BARIS DI BAWAH INI ---
           openwrt_fs: btrfs
-          openwrt_size: 768
+          openwrt_size: 700
           boot_size: 128
           auto_expand: false
 
