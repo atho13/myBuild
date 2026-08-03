@@ -118,11 +118,24 @@ done
 
 [ -f /etc/php.ini ] && sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini 2>/dev/null
 
-if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
-    uci set ttyd.@ttyd[0].command='/bin/bash --login'
-    uci commit ttyd
-    /etc/init.d/ttyd enable
+# if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
+    # uci set ttyd.@ttyd[0].command='/bin/bash --login'
+    # uci commit ttyd
+    # /etc/init.d/ttyd enable
 fi
+
+# me909s and dw5821e
+echo "Removing USB modeswitch entries..."
+sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json
+
+# xmm-modem
+echo "Disabling XMM-Modem and TTYD..."
+uci batch <<EOF
+set xmm-modem.@xmm-modem[0].enable='0'
+set ttyd.@ttyd[0].command='/bin/bash --login'
+commit xmm-modem
+commit ttyd
+EOF
 
 echo "Creating application symlinks for TinyFM..."
 mkdir -p /www/tinyfm
