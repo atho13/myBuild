@@ -48,7 +48,6 @@ set network.lan.device='br-lan'
 set network.lan.proto='static'
 set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
-set network.lan.ip6assign='64'
 
 add fstab mount
 set fstab.@mount[-1].target='/'
