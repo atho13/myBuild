@@ -34,20 +34,13 @@ add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
 add_list system.ntp.server='time.google.com'
 
-delete network.lan_dev
-set network.lan_dev=device
-set network.lan_dev.name='br-lan'
-set network.lan_dev.type='bridge'
-add_list network.lan_dev.ports='eth0'
-set network.lan_dev.stp='1'
-set network.lan_dev.igmp_snooping='1'
-
 delete network.lan
 set network.lan=interface
-set network.lan.device='br-lan'
+set network.lan.device='eth0'
 set network.lan.proto='static'
 set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
+set network.lan.delegate='0'
 
 add fstab mount
 set fstab.@mount[-1].target='/'
@@ -72,6 +65,8 @@ set network.modem.auth='none'
 set network.modem.metric='20'
 
 delete network.wan6
+set network.globals=globals
+set network.globals.ula_prefix=''
 
 del_list firewall.@zone[1].network='wan6'
 del_list firewall.@zone[1].network='tethering'
@@ -91,6 +86,9 @@ set dhcp.lan.interface='lan'
 set dhcp.lan.start='100'
 set dhcp.lan.limit='150'
 set dhcp.lan.leasetime='12h'
+set dhcp.lan.ra='disabled'
+set dhcp.lan.dhcpv6='disabled'
+set dhcp.lan.ndp='disabled'
 
 commit network
 commit system
