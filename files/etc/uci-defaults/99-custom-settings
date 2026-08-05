@@ -77,9 +77,6 @@ add_list firewall.@zone[1].network='wan'
 add_list firewall.@zone[1].network='tethering'
 add_list firewall.@zone[1].network='modem'
 
-set uhttpd.main.index_page='index.php'
-set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
-
 delete dhcp.lan
 set dhcp.lan=dhcp
 set dhcp.lan.interface='lan'
@@ -93,7 +90,6 @@ set dhcp.lan.ndp='disabled'
 commit network
 commit system
 commit firewall
-commit uhttpd
 commit dhcp
 commit fstab
 EOF
