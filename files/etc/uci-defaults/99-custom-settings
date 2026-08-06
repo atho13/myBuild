@@ -94,27 +94,7 @@ commit dhcp
 commit fstab
 EOF
 
-# Web server
-echo "Configuring web server and PHP..."
-uci batch <<EOF
-set uhttpd.main.ubus_prefix='/ubus'
-set uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
-set uhttpd.main.index_page='cgi-bin/luci'
-add_list uhttpd.main.index_page='index.html'
-add_list uhttpd.main.index_page='index.php'
-commit uhttpd
-EOF
-
-# php8
-cp /etc/php.ini /etc/php.ini.bak
-sed -i 's|^memory_limit = .*|memory_limit = 128M|g' /etc/php.ini
-sed -i 's|^max_execution_time = .*|max_execution_time = 60|g' /etc/php.ini
-sed -i 's|^display_errors = .*|display_errors = Off|g' /etc/php.ini
-sed -i 's|^;*date\.timezone =.*|date.timezone = Asia/Jakarta|g' /etc/php.ini
-ln -sf /usr/lib/php8 /usr/lib/php
-
 echo "Applying system optimizations..."
-
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 
 if [ -d /sys/block/mmcblk0 ]; then
@@ -130,10 +110,10 @@ done
 
 [ -f /etc/php.ini ] && sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini
 
-# if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
-    # uci set ttyd.@ttyd.command='/bin/bash --login'
-    # uci commit ttyd
-    # /etc/init.d/ttyd enable
+if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
+    uci set ttyd.@ttyd[0].command='/bin/bash --login'
+    uci commit ttyd
+    /etc/init.d/ttyd enable
 fi
 
 # me909s and dw5821e
