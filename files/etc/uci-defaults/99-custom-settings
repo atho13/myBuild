@@ -43,16 +43,6 @@ set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
 set network.lan.delegate='0'
 
-add fstab mount
-set fstab.@mount[-1].target='/'
-set fstab.@mount[-1].options='noatime,commit=60'
-set fstab.@mount[-1].enabled='1'
-
-set network.wan=interface
-set network.wan.proto='dhcp'
-set network.wan.device='eth1'
-set network.wan.metric='5'
-
 set network.tethering=interface
 set network.tethering.proto='dhcp'
 set network.tethering.device='usb0'
@@ -69,12 +59,7 @@ delete network.wan6
 set network.globals=globals
 set network.globals.ula_prefix=''
 
-del_list firewall.@zone[1].network='wan6'
-del_list firewall.@zone[1].network='tethering'
-del_list firewall.@zone[1].network='modem'
-del_list firewall.@zone[1].network='wan'
-
-add_list firewall.@zone[1].network='wan'
+delete firewall.@zone[1].network
 add_list firewall.@zone[1].network='tethering'
 add_list firewall.@zone[1].network='modem'
 
@@ -88,21 +73,18 @@ set dhcp.lan.ra='disabled'
 set dhcp.lan.dhcpv6='disabled'
 set dhcp.lan.ndp='disabled'
 
-commit network
 commit system
+commit network
 commit firewall
 commit dhcp
-commit fstab
 EOF
 
 echo "Applying system optimizations..."
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 
+# Set BFQ I/O untuk Storage Internal eMMC
 if [ -d /sys/block/mmcblk0 ]; then
     echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null
-fi
-if [ -d /sys/block/sda ]; then
-    echo bfq > /sys/block/sda/queue/scheduler 2>/dev/null
 fi
 
 for dev in /sys/bus/usb/devices/*/power/control; do 
@@ -123,12 +105,12 @@ uci commit xmm-modem
 echo "Creating application symlinks for TinyFM..."
 mkdir -p /www/tinyfm
 ln -sf / /www/tinyfm/rootfs
-ln -sf /etc/openclash/ /www/tinyfm/openclash
-ln -sf /etc/nikki/ /www/tinyfm/nikki
+ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null
+ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null
 
 echo "Registering scripts to Startup (rc.local)..."
-sed -i '/start_service.sh/d' /etc/rc.local
-sed -i '/\/sbin\/yess/d' /etc/rc.local
+sed -i '/start_service.sh/d' /etc/rc.local 2>/dev/null
+sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
 
 if [ -f "/sbin/yess" ]; then
     sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
@@ -140,9 +122,6 @@ fi
 
 echo "Applying permissions and sysctl..."
 chmod 600 /etc/crontabs/root 2>/dev/null
-chmod +x /sbin/free.sh 2>/dev/null
-chmod +x /www/vnstati/vnstati.sh 2>/dev/null
-
 sysctl -p /etc/sysctl.conf >/dev/null 2>&1
 
 [ -f "/sbin/free.sh" ] && sh /sbin/free.sh >/dev/null 2>&1
