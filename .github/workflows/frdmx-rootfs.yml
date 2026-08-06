@@ -49,11 +49,9 @@ jobs:
         run: |
           cd ${{ env.WORKING_DIR }}
         
-          # 1. Suntikkan ukuran partisi kustom (700 MB) langsung ke berkas .config bawaan Image Builder
           sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
           echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
         
-          # 2. Tambahkan repositori pihak ketiga secara otomatis jika diisi oleh pengguna
           if [ -n "${{ github.event.inputs.custom_repo }}" ]; then
             echo "Menambahkan repositori kustom..."
             IFS=',' read -r -a repos <<< "${{ github.event.inputs.custom_repo }}"
@@ -67,12 +65,10 @@ jobs:
             cat repositories.conf
           fi
         
-          # 3. Beri izin eksekusi secara massal untuk semua file di folder files/etc/uci-defaults/ Anda
           if [ -d "${{ github.workspace }}/files/etc/uci-defaults" ]; then
             chmod +x ${{ github.workspace }}/files/etc/uci-defaults/*
           fi
         
-          # --- PERBAIKAN PAKET PHP8 UNTUK UHTTPD DAN INJECT ---
           PACKAGES="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools tc-full \
           kmod-button-hotplug kmod-nft-offload libc libgcc libustream-mbedtls logd kmod-tcp-bbr \
           mkf2fs mtd netifd nftables odhcp6c odhcpd-ipv6only partx-utils ppp ppp-mod-pppoe procd-ujail \
@@ -93,7 +89,6 @@ jobs:
           php8-mod-curl kmod-mhi-net kmod-mhi-bus kmod-mhi-pci-generic kmod-mhi-wwan-ctrl \
           kmod-mhi-wwan-mbim kmod-sched-cake"
     
-          # 4. Deteksi otomatis PROFILE yang valid jika "generic" tidak tersedia di Image Builder
           CURRENT_PROFILE="generic"
           if ! make info | grep -q "Profile: $CURRENT_PROFILE"; then
             CURRENT_PROFILE=$(make info | grep -E '^Profile:' | head -n 1 | awk '{print $2}')
