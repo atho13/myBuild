@@ -1,9 +1,17 @@
 #!/bin/sh
 
-echo "Clearing root password..."
+# ====================================================================
+# SKRIP SETUP OTOMATIS OPENWRT - EDISI KOMUNITAS X86_64 (FRDMX)
+# ====================================================================
+
+echo "================================================="
+echo "   Memulai Konfigurasi Otomatis FRDMX x86_64..."
+echo "================================================="
+
+echo "[*] Menghapus password root default (Keamanan Awal)..."
 passwd -d root > /dev/null 2>&1
 
-echo "Setting file permissions..."
+echo "[*] Mengatur izin eksekusi berkas sistem..."
 for file in \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
@@ -18,10 +26,12 @@ for file in \
     /www/cgi-bin/traffic \
     /etc/hotplug.d/usb/90-frdmx-modem \
     /etc/hotplug.d/iface/99-frdmx-watchdog; do
-    [ -f "$file" ] && chmod +x "$file"
+    if [ -f "$file" ]; then
+        chmod +x "$file"
+    fi
 done
 
-echo "Configuring UCI settings via batch..."
+echo "[*] Mengonfigurasi pengaturan UCI secara massal..."
 uci batch <<EOF
 # 1. Konfigurasi Sistem & Waktu (NTP)
 set system.@system.hostname='FRDMX'
@@ -111,36 +121,36 @@ commit dhcp
 commit uhttpd
 EOF
 
-# REVISI 1: Solusi fstab aman tanpa menggunakan indeks negatif (Khusus x86 Storage)
+# REVISI fstab aman tanpa menggunakan indeks negatif
 uci set fstab.root_mount=mount
 uci set fstab.root_mount.target='/'
 uci set fstab.root_mount.options='noatime,commit=60'
 uci set fstab.root_mount.enabled='1'
 uci commit fstab
 
-# REVISI 2: Pencarian Zona WAN secara dinamis & Aman untuk Semua Multi-WAN
-echo "Configuring Firewall zones for x86_64..."
-uci -q get firewall.@zone >/dev/null
-if [ $? -eq 0 ]; then
-    i=0
-    while :; do
-        zone_name=$(uci -q get firewall.@zone[$i].name)
-        [ -z "$zone_name" ] && break
-        if [ "$zone_name" = "wan" ]; then
-            uci delete firewall.@zone[$i].network 2>/dev/null
-            uci add_list firewall.@zone[$i].network='wan'
-            uci add_list firewall.@zone[$i].network='wan6'
-            uci add_list firewall.@zone[$i].network='tethering'
-            uci add_list firewall.@zone[$i].network='modem'
-            uci commit firewall
-            break
-        fi
-        i=$((i+1))
-    done
-fi
+echo "[*] Menyinkronkan zona Firewall (WAN, Tethering, Modem)..."
+i=0
+while true; do
+    zone_name=$(uci -q get firewall.@zone[$i].name)
+    if [ -z "$zone_name" ]; then
+        break
+    fi
+    if [ "$zone_name" = "wan" ]; then
+        uci -q delete firewall.@zone[$i].network
+        uci add_list firewall.@zone[$i].network='wan'
+        uci add_list firewall.@zone[$i].network='wan6'
+        uci add_list firewall.@zone[$i].network='tethering'
+        uci add_list firewall.@zone[$i].network='modem'
+        uci commit firewall
+        break
+    fi
+    i=$((i+1))
+done
 
-echo "Applying system optimizations..."
-sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
+echo "[*] Menerapkan optimalisasi sistem firmware..."
+if [ -f /etc/opkg.conf ]; then
+    sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
+fi
 
 # Penjadwal I/O untuk SD Card / EMMC internal x86
 if [ -d /sys/block/mmcblk0 ]; then
@@ -156,7 +166,9 @@ if [ -d /sys/block/nvme0n1 ]; then
 fi
 
 for dev in /sys/bus/usb/devices/*/power/control; do 
-    [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
+    if [ -f "$dev" ]; then
+        echo "on" > "$dev" 2>/dev/null
+    fi
 done
 
 # Perbaikan jalur file php.ini yang valid
@@ -164,40 +176,54 @@ if [ -f /etc/php.ini ]; then
     sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini 2>/dev/null
 fi
 
-# me909s and dw5821e
-echo "Removing USB modeswitch entries..."
-sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json 2>/dev/null
+# me909s and dw5821e USB Mode Fix
+if [ -f /etc/usb-mode.json ]; then
+    sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json 2>/dev/null
+fi
 
 # xmm-modem
-echo "Disabling XMM-Modem..."
 if uci -q get xmm-modem.@xmm-modem >/dev/null; then
     uci set xmm-modem.@xmm-modem.enable='0'
     uci commit xmm-modem
 fi
 
-echo "Creating application symlinks for TinyFM..."
+echo "[*] Membuat tautan simbolis (Symlinks) untuk TinyFM..."
 mkdir -p /www/tinyfm
-ln -sf / /www/tinyfm/rootfs
-ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null
-ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null
+if [ ! -L /www/tinyfm/rootfs ]; then ln -sf / /www/tinyfm/rootfs; fi
+if [ -d /etc/openclash ]; then ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null; fi
+if [ -d /etc/nikki ]; then ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null; fi
 
-echo "Registering scripts to Startup (rc.local)..."
-sed -i '/start_service.sh/d' /etc/rc.local 2>/dev/null
-sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
+echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
+if [ -f /etc/rc.local ]; then
+    sed -i '/start_service.sh/d' /etc/rc.local 2>/dev/null
+    sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
 
-if [ -f "/sbin/yess" ]; then
-    sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
+    # Memperbaiki urutan: custom_service ditulis dulu agar /sbin/yess berada di baris paling atas di rc.local asli.
+    if [ -f "/etc/custom_service/start_service.sh" ]; then
+        sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
+    fi
+
+    if [ -f "/sbin/yess" ]; then
+        sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
+    fi
+else
+    echo "[!] Peringatan: /etc/rc.local tidak ditemukan."
 fi
 
-if [ -f "/etc/custom_service/start_service.sh" ]; then
-    sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
+echo "[*] Menerapkan perizinan crontabs dan sysctl..."
+if [ -f /etc/crontabs/root ]; then
+    chmod 600 /etc/crontabs/root 2>/dev/null
 fi
 
-echo "Applying permissions and sysctl..."
-chmod 600 /etc/crontabs/root 2>/dev/null
-sysctl -p /etc/sysctl.conf >/dev/null 2>&1
+if [ -f /etc/sysctl.conf ]; then
+    sysctl -p /etc/sysctl.conf >/dev/null 2>&1
+fi
 
-[ -f "/sbin/free.sh" ] && sh /sbin/free.sh >/dev/null 2>&1
+if [ -f "/sbin/free.sh" ]; then
+    sh /sbin/free.sh >/dev/null 2>&1
+fi
 
-echo "Cleaning up, completed setup..."
+echo "================================================="
+echo "   Selesai! Pengaturan x86_64 Sukses Diterapkan. "
+echo "================================================="
 exit 0
