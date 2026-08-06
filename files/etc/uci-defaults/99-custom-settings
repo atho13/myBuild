@@ -111,22 +111,14 @@ done
 
 [ -f /etc/php.ini ] && sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini
 
-if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
-    uci set ttyd.@ttyd[0].command='/bin/bash --login'
-    uci commit ttyd
-    /etc/init.d/ttyd enable
-fi
-
 # me909s and dw5821e
 echo "Removing USB modeswitch entries..."
 sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json
 
 # xmm-modem
-echo "Disabling XMM-Modem and TTYD..."
-uci batch <<EOF
-set xmm-modem.@xmm-modem[0].enable='0'
-
-EOF
+echo "Disabling XMM-Modem..."
+uci set xmm-modem.@xmm-modem[0].enable='0' 2>/dev/null || uci set xmm-modem.@xmm-modem.enable='0' 2>/dev/null
+uci commit xmm-modem
 
 echo "Creating application symlinks for TinyFM..."
 mkdir -p /www/tinyfm
@@ -146,34 +138,14 @@ if [ -f "/etc/custom_service/start_service.sh" ]; then
     sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
 fi
 
-if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
-    uci set ttyd.@ttyd.command='/bin/bash --login'
-    uci commit ttyd
-    /etc/init.d/ttyd enable
-fi
+echo "Applying permissions and sysctl..."
+chmod 600 /etc/crontabs/root 2>/dev/null
+chmod +x /sbin/free.sh 2>/dev/null
+chmod +x /www/vnstati/vnstati.sh 2>/dev/null
 
-echo "Updating System Schedules (Crontab)..."
-cat > /etc/crontabs/root << 'EOF'
-# ============================================================
-# PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
-# ============================================================
-# Automatic Restart your Modem Bro..
-30 3 * * 0 for iface in wan tethering modem; do ubus call network.interface.$iface down; done && sleep 2 && mmcli -m any --reset >/dev/null 2>&1 && sleep 45 && for iface in wan tethering modem; do ubus call network.interface.$iface up; done
-
-# Automatic Maintenance Internal your System Bro..
-0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
-59 23 * * * sync && sh -c "echo 3 > /proc/sys/vm/drop_caches" && rm -rf /tmp/luci*
-*/5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1
-EOF
-
-/etc/init.d/cron enable
-
-echo "Applying sysctl changes..."
 sysctl -p /etc/sysctl.conf >/dev/null 2>&1
 
 [ -f "/sbin/free.sh" ] && sh /sbin/free.sh >/dev/null 2>&1
 
-echo "cleaning up, completed setup..."
-rm -f /etc/uci-defaults/99-custom-settings
-
+echo "Cleaning up, completed setup..."
 exit 0
