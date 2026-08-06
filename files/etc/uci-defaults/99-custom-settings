@@ -25,9 +25,10 @@ done
 
 echo "Configuring UCI settings via batch..."
 uci batch <<EOF
-set system.@system[0].hostname='FRDMX'
-set system.@system[0].timezone='WIB-7'
-set system.@system[0].zonename='Asia/Jakarta'
+# 1. Konfigurasi Sistem & Waktu (NTP)
+set system.@system.hostname='FRDMX'
+set system.@system.timezone='WIB-7'
+set system.@system.zonename='Asia/Jakarta'
 
 delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
@@ -35,14 +36,16 @@ add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
 add_list system.ntp.server='time.google.com'
 
+# 2. Konfigurasi Jaringan LAN (IPv4 + IPv6 Assign)
 delete network.lan
 set network.lan=interface
 set network.lan.device='eth0'
 set network.lan.proto='static'
 set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
-set network.lan.delegate='0'
+set network.lan.ip6assign='64'
 
+# 3. Konfigurasi WAN (Tethering USB & Modem)
 set network.tethering=interface
 set network.tethering.proto='dhcp'
 set network.tethering.device='usb0'
@@ -55,31 +58,66 @@ set network.modem.apn='internet'
 set network.modem.auth='none'
 set network.modem.metric='20'
 
+# 4. Konfigurasi WAN6 Otomatis (IPv6 dari Tethering/Modem)
 delete network.wan6
-set network.globals=globals
-set network.globals.ula_prefix=''
+set network.wan6=interface
+set network.wan6.proto='dhcpv6'
+set network.wan6.device='usb0'
+set network.wan6.reqaddress='try'
+set network.wan6.reqprefix='auto'
+set network.wan6.metric='11'
 
+# 5. Konfigurasi DHCP Server & IPv6 Server Mode (SLAAC)
 delete dhcp.lan
 set dhcp.lan=dhcp
 set dhcp.lan.interface='lan'
 set dhcp.lan.start='100'
 set dhcp.lan.limit='150'
 set dhcp.lan.leasetime='12h'
-set dhcp.lan.ra='disabled'
-set dhcp.lan.dhcpv6='disabled'
-set dhcp.lan.ndp='disabled'
+set dhcp.lan.ra='server'
+set dhcp.lan.dhcpv6='server'
+set dhcp.lan.ra_management='1'
 
+# 6. Konfigurasi uhttpd (Dukungan LuCI, PHP RakitanManager, & IPv6 Safe Bind)
+delete uhttpd.main.listen_http
+delete uhttpd.main.listen_https
+add_list uhttpd.main.listen_http='0.0.0.0:80'
+add_list uhttpd.main.listen_http='[::]:80'
+add_list uhttpd.main.listen_https='0.0.0.0:443'
+add_list uhttpd.main.listen_https='[::]:443'
+set uhttpd.main.redirect_https='0'
+set uhttpd.main.home='/www'
+set uhttpd.main.rfc1918_filter='1'
+set uhttpd.main.max_requests='50'
+set uhttpd.main.max_connections='100'
+set uhttpd.main.cgi_prefix='/cgi-bin'
+del_list uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
+add_list uhttpd.main.interpreter='.php=/usr/bin/php-cgi'
+set uhttpd.main.index_page='index.html, index.php'
+set uhttpd.main.script_timeout='3600'
+set uhttpd.main.network_timeout='30'
+set uhttpd.main.http_keepalive='20'
+set uhttpd.main.tcp_keepalive='1'
+set uhttpd.main.ubus_prefix='/ubus'
+
+# 7. Eksekusi Penyimpanan
 commit system
 commit network
 commit dhcp
+commit uhttpd
 EOF
 
+echo "Configuring Firewall zones..."
 uci -q get firewall.@zone >/dev/null
 if [ $? -eq 0 ]; then
     i=0
-    while [ -n "$(uci -q get firewall.@zone[$i].name)" ]; do
-        if [ "$(uci -q get firewall.@zone[$i].name)" = "wan" ]; then
-            uci delete firewall.@zone[$i].network
+    while :; do
+        zone_name=$(uci -q get firewall.@zone[$i].name)
+        [ -z "$zone_name" ] && break
+        if [ "$zone_name" = "wan" ]; then
+            uci delete firewall.@zone[$i].network 2>/dev/null
+            uci add_list firewall.@zone[$i].network='wan'
+            uci add_list firewall.@zone[$i].network='wan6'
             uci add_list firewall.@zone[$i].network='tethering'
             uci add_list firewall.@zone[$i].network='modem'
             uci commit firewall
@@ -92,6 +130,7 @@ fi
 echo "Applying system optimizations..."
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 
+# Optimal untuk EMMC Box Amlogic
 if [ -d /sys/block/mmcblk0 ]; then
     echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null
 fi
@@ -100,16 +139,20 @@ for dev in /sys/bus/usb/devices/*/power/control; do
     [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
 done
 
-[ -f /etc/php.ini ] && sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini
+if [ -f /etc/php.ini ]; then
+    sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini 2>/dev/null
+fi
 
 # me909s and dw5821e
 echo "Removing USB modeswitch entries..."
-sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json
+sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json 2>/dev/null
 
 # xmm-modem
 echo "Disabling XMM-Modem..."
-uci set xmm-modem.@xmm-modem.enable='0' 2>/dev/null || uci set xmm-modem.@xmm-modem.enable='0' 2>/dev/null
-uci commit xmm-modem
+if uci -q get xmm-modem.@xmm-modem >/dev/null; then
+    uci set xmm-modem.@xmm-modem.enable='0'
+    uci commit xmm-modem
+fi
 
 echo "Creating application symlinks for TinyFM..."
 mkdir -p /www/tinyfm
@@ -118,7 +161,7 @@ ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null
 ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null
 
 echo "Registering scripts to Startup (rc.local)..."
-sed -i '/start_service.sh/d' /etc/rc.local 2>/dev/null
+sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
 sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
 
 if [ -f "/sbin/yess" ]; then
