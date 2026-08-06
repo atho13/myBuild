@@ -150,9 +150,10 @@ commit ttyd
 EOF
 
 echo "Creating application symlinks for TinyFM..."
+mkdir -p /www/tinyfm
 ln -sf / /www/tinyfm/rootfs
 ln -sf /etc/openclash/ /www/tinyfm/openclash
-ln -sf /etc/openclash/ /www/tinyfm/nikki
+ln -sf /etc/nikki/ /www/tinyfm/nikki
 
 echo "Registering scripts to Startup (rc.local)..."
 sed -i '/start_service.sh/d' /etc/rc.local
