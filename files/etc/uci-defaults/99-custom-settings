@@ -176,14 +176,15 @@ if [ -f /etc/rc.local ]; then
     sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
     sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
 
-    # Perbaikan urutan penulisan teks: Pastikan perintah start_service ditulis paling atas 
-    # agar sleep 30 tidak menahan atau menunda jalannya /sbin/yess secara instan.
+    # URUTAN DIPERBAIKI: Masukkan start_service dahulu, baru kemudian /sbin/yess.
+    # Karena sed '/exit 0/i' menumpuk teks ke ATAS, perintah yang dijalankan terakhir di kode bawah 
+    # justru akan berada di posisi paling ATAS di dalam file asli rc.local.
     if [ -f "/etc/custom_service/start_service.sh" ]; then
         sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
     fi
 
     if [ -f "/sbin/yess" ]; then
-        sed -i '/exit 0/i \/sbin\/yess &' /etc/rc.local
+        sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
     fi
 else
     echo "[!] Peringatan: /etc/rc.local tidak ditemukan (Firmware mungkin menggunakan procd init modern)."
