@@ -6,72 +6,61 @@ passwd -d root > /dev/null 2>&1
 echo "Setting file permissions..."
 for file in \
     /usr/bin/huawei.py \
+    /usr/libexec/rpcd/luci-temp \
     /usr/bin/frdmx-andro \
-    /bin/free.sh \
     /bin/frdmx_net \
+    /sbin/free.sh \
     /sbin/yess \
     /etc/rc.local \
+    /etc/custom_service/start_service.sh \
+    /etc/init.d/todong \
     /www/vnstati/vnstati.sh \
-    /etc/hotplug.d/usb/90-frdmx-modem; do
+    /www/cgi-bin/traffic \
+    /etc/hotplug.d/usb/90-frdmx-modem \
+    /etc/hotplug.d/iface/99-frdmx-watchdog; do
     [ -f "$file" ] && chmod +x "$file"
 done
 
 echo "Configuring UCI settings via batch..."
 uci batch <<EOF
-set system.@system[0].hostname='FRDMX'
-set system.@system[0].timezone='WIB-7'
-set system.@system[0].zonename='Asia/Jakarta'
+set system.@system.hostname='FRDMX'
+set system.@system.timezone='WIB-7'
+set system.@system.zonename='Asia/Jakarta'
+
 delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
 add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
-add_list system.ntp.server='time.google.com'
-
-delete network.lan_dev
-set network.lan_dev=device
-set network.lan_dev.name='br-lan'
-set network.lan_dev.type='bridge'
-add_list network.lan_dev.ports='eth0'
-set network.lan_dev.stp='1'
-set network.lan_dev.igmp_snooping='1'
+add_list system.ntp.server='://google.com'
 
 delete network.lan
 set network.lan=interface
-set network.lan.device='br-lan'
+set network.lan.device='eth0'
 set network.lan.proto='static'
 set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
-set network.lan.ip6assign='64'
+set network.lan.delegate='0'
 
-delete network.wan6
-delete network.wan
 set network.wan=interface
 set network.wan.proto='dhcp'
 set network.wan.device='eth1'
 set network.wan.metric='5'
 
-delete network.tethering
 set network.tethering=interface
 set network.tethering.proto='dhcp'
 set network.tethering.device='usb0'
 set network.tethering.metric='10'
 
-delete network.modem
 set network.modem=interface
 set network.modem.proto='modemmanager'
 set network.modem.device='wwan0'
 set network.modem.apn='internet'
 set network.modem.auth='none'
 set network.modem.metric='20'
-add_list network.modem.allowedauth='none'
 
-del_list firewall.@zone[1].network='wan6'
-del_list firewall.@zone[1].network='wan'
-del_list firewall.@zone[1].network='tethering'
-del_list firewall.@zone[1].network='modem'
-add_list firewall.@zone[1].network='wan'
-add_list firewall.@zone[1].network='tethering'
-add_list firewall.@zone[1].network='modem'
+delete network.wan6
+set network.globals=globals
+set network.globals.ula_prefix=''
 
 delete dhcp.lan
 set dhcp.lan=dhcp
@@ -79,100 +68,87 @@ set dhcp.lan.interface='lan'
 set dhcp.lan.start='100'
 set dhcp.lan.limit='150'
 set dhcp.lan.leasetime='12h'
+set dhcp.lan.ra='disabled'
+set dhcp.lan.dhcpv6='disabled'
+set dhcp.lan.ndp='disabled'
 
-commit network
 commit system
-commit firewall
+commit network
 commit dhcp
 EOF
 
-echo "Generating default wireless configuration profile..."
-if [ -x /sbin/wifi ]; then
-    > /etc/config/wireless
-    
-    cat << 'EOF' > /etc/config/wireless
-config wifi-device 'radio0'
-	option type 'mac80211'
-	option path 'platform/soc/ffe00000.crypto'
-	option channel '6'
-	option hwmode '11g'
-	option htmode 'HT20'
-	option country 'CN'
-	option disabled '0'
+# REVISI 1: Solusi fstab aman tanpa menggunakan indeks negatif (Khusus x86 Storage)
+uci set fstab.root_mount=mount
+uci set fstab.root_mount.target='/'
+uci set fstab.root_mount.options='noatime,commit=60'
+uci set fstab.root_mount.enabled='1'
+uci commit fstab
 
-config wifi-iface 'default_radio0'
-	option device 'radio0'
-	option network 'lan'
-	option mode 'ap'
-	option ssid='FRDMX-Wrt'
-	option encryption 'none'
-EOF
+# REVISI 2: Pencarian Zona WAN secara dinamis (Menambahkan interface wan fisik eth1, tethering, dan modem)
+uci -q get firewall.@zone >/dev/null
+if [ $? -eq 0 ]; then
+    i=0
+    while [ -n "$(uci -q get firewall.@zone[$i].name)" ]; do
+        if [ "$(uci -q get firewall.@zone[$i].name)" = "wan" ]; then
+            uci delete firewall.@zone[$i].network
+            uci add_list firewall.@zone[$i].network='wan'
+            uci add_list firewall.@zone[$i].network='tethering'
+            uci add_list firewall.@zone[$i].network='modem'
+            uci commit firewall
+            break
+        fi
+        i=$((i+1))
+    done
 fi
 
 echo "Applying system optimizations..."
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 
+if [ -d /sys/block/mmcblk0 ]; then
+    echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null
+fi
+if [ -d /sys/block/sda ]; then
+    echo bfq > /sys/block/sda/queue/scheduler 2>/dev/null
+fi
+
 for dev in /sys/bus/usb/devices/*/power/control; do 
     [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
 done
 
-[ -f /etc/php.ini ] && sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini 2>/dev/null
-
-# if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
-    # uci set ttyd.@ttyd[0].command='/bin/bash --login'
-    # uci commit ttyd
-    # /etc/init.d/ttyd enable
-fi
+[ -f /etc/php.ini ] && sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini
 
 # me909s and dw5821e
 echo "Removing USB modeswitch entries..."
 sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json
 
 # xmm-modem
-echo "Disabling XMM-Modem and TTYD..."
-uci batch <<EOF
-set xmm-modem.@xmm-modem[0].enable='0'
-set ttyd.@ttyd[0].command='/bin/bash --login'
-commit xmm-modem
-commit ttyd
-EOF
+echo "Disabling XMM-Modem..."
+uci set xmm-modem.@xmm-modem.enable='0' 2>/dev/null || uci set xmm-modem.@xmm-modem.enable='0' 2>/dev/null
+uci commit xmm-modem
 
 echo "Creating application symlinks for TinyFM..."
 mkdir -p /www/tinyfm
 ln -sf / /www/tinyfm/rootfs
-ln -sf /etc/openclash/ /www/tinyfm/openclash
-ln -sf /etc/nikki/ /www/tinyfm/nikki
+ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null
+ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null
 
 echo "Registering scripts to Startup (rc.local)..."
-sed -i '/\/sbin\/yess/d' /etc/rc.local
+sed -i '/start_service.sh/d' /etc/rc.local 2>/dev/null
+sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
 
 if [ -f "/sbin/yess" ]; then
     sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
 fi
 
-echo "Updating System Schedules (Crontab)..."
-cat > /etc/crontabs/root << 'EOF'
-# ============================================================
-# PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
-# ============================================================
-# Automatic Restart your Modem Bro..
-30 3 * * 0 for iface in wan tethering; do ubus call network.interface.$iface down; done && sleep 2 && mmcli -m any --reset >/dev/null 2>&1 && sleep 45 && for iface in wan tethering; do ubus call network.interface.$iface up; done
+if [ -f "/etc/custom_service/start_service.sh" ]; then
+    sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
+fi
 
-# My Trick (Net Detector otomatis berjalan tiap 30 menit)
-*/30 * * * * [ -x /bin/frdmx_net ] && /bin/frdmx_net >/dev/null 2>&1
-
-# Automatic Maintenance Internal your System Bro..
-0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
-59 23 * * * sync && sh -c "echo 3 > /proc/sys/vm/drop_caches" && rm -rf /tmp/luci*
-*/5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1
-EOF
-
-/etc/init.d/cron enable
-
-echo "Applying sysctl changes..."
+echo "Applying permissions and sysctl..."
+chmod 600 /etc/crontabs/root 2>/dev/null
 sysctl -p /etc/sysctl.conf >/dev/null 2>&1
 
-[ -f "/bin/free.sh" ] && sh /bin/free.sh >/dev/null 2>&1
+[ -f "/sbin/free.sh" ] && sh /sbin/free.sh >/dev/null 2>&1
 
-echo "Done! Router FRDM-X x86_64 configuration finished successfully."
+echo "Cleaning up, completed setup..."
 exit 0
