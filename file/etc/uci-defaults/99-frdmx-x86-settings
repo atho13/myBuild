@@ -31,7 +31,7 @@ delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
 add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
-add_list system.ntp.server='://google.com'
+add_list system.ntp.server='time.google.com'
 
 delete network.lan
 set network.lan=interface
