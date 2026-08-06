@@ -1,117 +1,197 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-  <meta charset="utf-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <!-- Add dashboard.js here! -->
-  <script type="text/javascript" src="http://192.168.1.1:19999/dashboard.js"></script>
-  <script>var netdataTheme='white'; // or 'slate' for the dark onevar netdataPrepCallback=function(){// code here // remove all css files - netdata will not load any now NETDATA.requiredCSS=[];};</script>
-<style>.wrap{max-width: 1200px; margin: 0 auto;}h3{margin-bottom: 30px; text-align: center;}.charts{display: flex; flex-flow: row wrap; justify-content: space-around;}.charts > div{margin-bottom: 6rem; position: relative;}</style>
-</head>
-<body>
-  <main class="wrap"><br>
-<center>
-	   <div data-netdata="net.usb0"
-			data-title="Modem"
-			data-chart-library="gauge"
-			data-after="-150"
-			data-width="28%" 
-			data-points="720"
-			data-gauge-generate-gradient="[0,10,60,100]"
-			data-gauge-gradient-percent-color-0="#870115"
-			data-gauge-gradient-percent-color-10="#870115"
-			data-gauge-gradient-percent-color-60="#f5df1d"
-			data-gauge-gradient-percent-color-100="#207305"
-			data-colors="#002b49">
-	   </div>
-	   <div data-netdata="net.br-lan"
-			data-title="LAN"
-			data-chart-library="easypiechart"
-			data-after="-150"
-			data-width="18%" 
-			data-points="720"
-			data-colors="#002b49">
-	   </div>
-	   <div data-netdata="net.eth1"
-			data-title="Client"
-			data-chart-library="gauge"
-			data-after="-150"
-			data-width="28%" 
-			data-points="720"
-			data-gauge-generate-gradient="[0,10,60,100]"
-			data-gauge-gradient-percent-color-0="#870115"
-			data-gauge-gradient-percent-color-10="#870115"
-			data-gauge-gradient-percent-color-60="#f5df1d"
-			data-gauge-gradient-percent-color-100="#207305"
-			data-colors="#002b49">
-	   </div>
-	  <br><br>
-	   <div data-netdata="system.net" 
-			data-dimensions="received" 
-			data-chart-library="easypiechart" 
-			data-title="Net Inbound" 
-			data-width="18%" 
-			data-points="720" 
-			data-common-units="system.net.mainhead"
-			data-colors="#002b49">
-	   </div>
-	   <div data-netdata="system.cpu" 
-			data-chart-library="easypiechart" 
-			data-title="CPU" 
-			data-units="%" 
-			data-easypiechart-max-value="100" 
-			data-width="18%" 
-			data-points="720" 
-			data-colors="#002b49">
-	   </div>
-	   <div data-netdata="system.ram" 
-			data-dimensions="used|buffers|active|wired" 
-			data-append-options="percentage" 
-			data-chart-library="easypiechart" 
-			data-title="Used RAM" 
-			data-units="%" 
-			data-easypiechart-max-value="100" 
-			data-width="18%" 
-			data-points="720"
-			data-colors="#002b49">
-	   </div> 
-	   <div data-netdata="system.net" 
-			data-dimensions="sent" 
-			data-chart-library="easypiechart" 
-			data-title="Net Outbound" 
-			data-width="18%" 
-			data-points="720" 
-			data-common-units="system.net.mainhead"
-			data-colors="#002b49">
-	   </div>
-<!-- <div id="MyClockDisplay" class="clock" onload="showTime()"></div> -->
-<center>
-<script type="text/javascript">function showTime(){var date=new Date(); var h=date.getHours(); var m=date.getMinutes(); var s=date.getSeconds(); var session="AM"; if(h==0){h=12;}if(h > 12){h=h - 12; session="PM";}h=(h < 10) ? "0" + h : h; m=(m < 10) ? "0" + m : m; s=(s < 10) ? "0" + s : s; var time=h + ":" + m + ":" + s + " " + session; document.getElementById("MyClockDisplay").innerText=time; document.getElementById("MyClockDisplay").textContent=time; setTimeout(showTime, 1000);}showTime(); </script>
-<style>body{background: white;}.clock{color: #5bc0de; font-size: 30px; font-family: Franklin Gothic Medium;text-shadow: 1px 1px 0px #000; letter-spacing: 2px;}</style>
-<center><header class="jsx-516063367 hamburger icon-hamburger"></header><div id="wimi-ipv4" class="jsx-1634742381 info-box info-box--ipv4">
-<!-- <div id="cookie-button">IP</div></div> -->
-<script class="jsx-989262791"> (function (){var lazyToSrc=eval(arguments[0]), requestIPv4=eval(arguments[1]); document.getElementById("cookie-button").addEventListener("click", function (){document.querySelector(".main-header__wrapper").classList.toggle("active");}), lazyToSrc("img[data-lazy-src]");})(function (a){fetch("https://iptools-4.top10vpn.com/ip/?genToken=1").then((b)=>{b.json().then((b)=>{(document.getElementById("wimi-ipv4").innerText=b.ip), fetch("/api/jade/",{method: "POST", body: JSON.stringify({ip: b.ip, token: b.token})}).then((b)=>{b.json().then((b)=>{;});});});});});</script></center>
-<style id="__jsx-1634742381"> .info-box.info-box--ipv4.jsx-1634742381{color: #5bc0de; font-size: 30px; font-family: Franklin Gothic Medium;text-shadow: 1px 1px 0px #000; letter-spacing: 2px;}</style>
+<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Statistik OpenWrt (LuCI Statistics)</title><style>:root{--page-padding:1.5rem;--header-margin-bottom:0.5rem;--card-padding:1.25rem;--card-margin:0rem;--grid-gap:1.5rem}body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background-color:#f8fafc;color:#2d3748;margin:0;padding:0;box-sizing:border-box}*,*::before,*::after{box-sizing:border-box}.container{width:100%;margin-left:auto;margin-right:auto;padding-left:var(--page-padding);padding-right:var(--page-padding)}@media (min-width:640px){.container{max-width:640px}}@media (min-width:768px){.container{max-width:768px;padding-left:2rem;padding-right:2rem}}@media (min-width:1024px){.container{max-width:1024px}}@media (min-width:1280px){.container{max-width:1280px}}.header{text-align:center;margin-bottom:var(--header-margin-bottom)}.header h3{font-size:1.5rem;margin-top:1rem;margin-bottom:.5rem;color:#0284c7}.header p{color:#718096;font-size:1rem;margin-top:0;margin-bottom:.6rem}.header-info{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1rem;font-size:1rem;font-weight:500;color:#0369a1}@media (min-width:768px){.header-info{flex-direction:row;gap:3rem}}.info-box{background-color:#e0f2fe;padding:.2rem .6rem;border-radius:.5rem;border:1px solid #bae6fd;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}.menu-flex-container{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.5rem;margin-bottom:.5rem}@media (min-width:640px){.menu-flex-container{flex-direction:row;gap:2rem}}.menu-item{display:flex;align-items:center;background:#fff;padding:.3rem .5rem;border-radius:.75rem;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgb(0 0 0 / .05)}.select-interface{padding:0 1rem;height:26px;border-radius:.375rem;border:1px solid #cbd5e1;background-color:#f8fafc;color:#334155;font-weight:600;outline:none;cursor:pointer;margin-left:.75rem;min-width:140px}.section-title-wrapper{text-align:center;margin:.5rem 0}.section-title{display:inline-block;font-size:1.25rem;font-weight:700;color:#1e293b;border-bottom:3px solid #0284c7;padding-bottom:.35rem;margin:0}.grid-container{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:var(--grid-gap);margin-bottom:1rem}@media (min-width:640px){.grid-container.sm-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (min-width:768px){.grid-container.md-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (min-width:1024px){.grid-container.lg-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-container.lg-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}.card{background-color:#fff;padding:.9rem;margin:var(--card-margin);border-radius:.75rem;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgb(0 0 0 / .05),0 2px 4px -2px rgb(0 0 0 / .05);transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-3px);box-shadow:0 10px 15px -3px rgb(0 0 0 / .1)}.card h3{font-size:.95rem;font-weight:700;color:#1e293b;margin-top:0;margin-bottom:1rem;text-align:left}.card img{width:100%;height:auto;border-radius:.5rem;background:#f8fafc;border:1px solid #e2e8f0}.card p{text-align:center;color:#718096;margin-top:.75rem;margin-bottom:0;font-size:.875rem;font-weight:500}.bar-wrapper{width:100%}.bar-info{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px}.bar-value{font-size:1.25rem;font-weight:700;color:#0f172a;line-height:1}.bar-limit{font-size:.75rem;font-weight:600;color:#64748b}.bar-track{background-color:#f1f5f9;border-radius:9999px;height:12px;overflow:hidden;width:100%;border:1px solid #e2e8f0}.bar-fill{height:100%;width:0%;border-radius:9999px;transition:width .6s cubic-bezier(0.4,0,0.2,1),background .4s ease}.clickable-image{cursor:pointer;transition:opacity .2s}.clickable-image:hover{opacity:.85}.image-modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgb(0 0 0 / .8);backdrop-filter:blur(4px);align-items:center;justify-content:center}.image-modal-content{margin:auto;display:block;max-width:90%;max-height:90%;object-fit:contain;border-radius:.75rem;box-shadow:0 25px 50px -12px rgb(0 0 0 / .25)}.image-modal-close{position:absolute;top:20px;right:35px;color:#f1f1f1;font-size:40px;font-weight:700;cursor:pointer}</style></head><body><main class="container"><header class="header"><div class="section-title-wrapper"><h2 class="section-title">Statistik OpenWrt (LuCI Statistics)</h2></div><p>Pantau trafik jaringan dan performa sistem secara ringan.</p><div class="header-info"><div id="MyClockDisplay" class="info-box">Memuat jam...</div><div id="wimi-ipv4" class="info-box">Memuat IP...</div></div></header><section><div class="menu-flex-container"><div class="menu-item"><label for="interfaceSelect" style="font-weight:600;color:#4a5568;font-size:.85rem;">Interface 1:</label><select id="interfaceSelect" class="select-interface" onchange="changeModemInterface(this.value)"><option value="">Memuat...</option></select></div><div class="menu-item"><label for="clientInterfaceSelect" style="font-weight:600;color:#4a5568;font-size:.85rem;">Interface 2:</label><select id="clientInterfaceSelect" class="select-interface" onchange="changeClientInterface(this.value)"><option value="">Memuat...</option></select></div></div><div class="grid-container sm-cols-2 lg-cols-4"><div class="card"><h3 id="modem-title">Interface 1</h3><div class="bar-wrapper"><div class="bar-info"><span id="modem-val" class="bar-value">0.00 <span style="font-size:.75rem;font-weight:600;color:#64748b;">mbps</span></span><span id="modem-limit-text" class="bar-limit">Max 50</span></div><div class="bar-track"><div id="modem-bar" class="bar-fill" style="background:linear-gradient(90deg,#0284c7,#38bdf8)"></div></div></div></div><div class="card"><h3 id="client-title">Interface 2</h3><div class="bar-wrapper"><div class="bar-info"><span id="client-val" class="bar-value">0.00 <span style="font-size:.75rem;font-weight:600;color:#64748b;">mbps</span></span><span id="client-limit-text" class="bar-limit">Max 50</span></div><div class="bar-track"><div id="client-bar" class="bar-fill" style="background:linear-gradient(90deg,#4f46e5,#818cf8)"></div></div></div></div><div class="card"><h3>CPU Usage</h3><div class="bar-wrapper"><div class="bar-info"><span id="cpu-val" class="bar-value">0%</span><span class="bar-limit">100%</span></div><div class="bar-track"><div id="cpu-bar" class="bar-fill" style="background:linear-gradient(90deg,#10b981,#34d399)"></div></div></div></div><div class="card"><h3>RAM Usage</h3><div class="bar-wrapper"><div class="bar-info"><span id="ram-val" class="bar-value">0%</span><span class="bar-limit">100%</span></div><div class="bar-track"><div id="ram-bar" class="bar-fill" style="background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div></div></div></div></div></section><section><div class="section-title-wrapper"><h2 class="section-title">Laporan Trafik Jaringan (vnstat)</h2></div><div class="grid-container md-cols-2 lg-cols-3"><div class="card"><img src="/vnstati/br-lan_vnstat_s.png" alt="Ringkasan" class="clickable-image" onclick="zoomImage(this.src)"><p>Ringkasan Trafik</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_5.png" alt="5 Menit" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik 5 Menit</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_h.png" alt="Per Jam" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik Per Jam</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_d.png" alt="Harian" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik Harian</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_m.png" alt="Bulanan" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik Bulanan</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_t.png" alt="Top 25" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik Top 25</p></div></div></section></main><div id="imageModal" class="image-modal"><span class="image-modal-close" onclick="closeImageModal()">&times;</span><img class="image-modal-content" id="zoomedImage"></div><script>
+// ===== ANTI-LONJAKAN & CEPAT RESPONSIF =====
+let maxSpeedModem=50, maxSpeedClient=50;
+let isFirstFetch=true;
+let skipFirstCalculation=false;
+let lastRxModem=null, lastTxModem=null;
+let lastRxClient=null, lastTxClient=null;
+let lastTime=Date.now();
 
-<center>
-    <img src="/vnstati/br-lan_vnstat_s.png" border="0" alt="summary">
-    <br>
-    <img src="/vnstati/br-lan_vnstat_5.png" border="0" alt="5 minutes">
-    <br>
-    <img src="/vnstati/br-lan_vnstat_h.png" border="0" alt="hourly">
-    <br>
-    <img src="/vnstati/br-lan_vnstat_d.png" border="0" alt="daily">
-    <br>
-    <img src="/vnstati/br-lan_vnstat_m.png" border="0" alt="monthly">
-    <br>
-    <img src="/vnstati/br-lan_vnstat_y.png" border="0" alt="yearly">
-    <br>
-    <img src="/vnstati/br-lan_vnstat_t.png" border="0" alt="top 25">
-</center>
-</main>
-</body>
-</html>
+function showTime(){
+    const date=new Date();
+    let h=String(date.getHours()).padStart(2,'0');
+    let m=String(date.getMinutes()).padStart(2,'0');
+    let s=String(date.getSeconds()).padStart(2,'0');
+    const clock=document.getElementById("MyClockDisplay");
+    if(clock) clock.innerText=`${h}:${m}:${s}`;
+    setTimeout(showTime,1000);
+}
+function getPublicIP(){
+    fetch("https://api.ipify.org?format=json")
+        .then(res=>res.json())
+        .then(data=>{
+            const ip=document.getElementById("wimi-ipv4");
+            if(ip&&data.ip) ip.innerText=`IP Publik: ${data.ip}`;
+        }).catch(()=>{});
+}
+function zoomImage(src){
+    document.getElementById("zoomedImage").src=src;
+    document.getElementById("imageModal").style.display="flex";
+}
+function closeImageModal(){
+    document.getElementById("imageModal").style.display="none";
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+    showTime();
+    getPublicIP();
+    setupInterfaces();
+    setInterval(fetchOpenWrtStats,1500);
+});
+
+function setupInterfaces(){
+    fetch('/cgi-bin/traffic')
+        .then(res=>res.json())
+        .then(response=>{
+            const interfaces=response.interfaces||["br-lan","eth0"];
+            const modemMenu=document.getElementById("interfaceSelect");
+            const clientMenu=document.getElementById("clientInterfaceSelect");
+            modemMenu.innerHTML="";
+            clientMenu.innerHTML="";
+            const savedModem=localStorage.getItem("savedModemInterface")||"eth0";
+            const savedClient=localStorage.getItem("savedClientInterface")||"br-lan";
+            interfaces.forEach(iface=>{
+                modemMenu.add(new Option(iface,iface,false,iface===savedModem));
+                clientMenu.add(new Option(iface,iface,false,iface===savedClient));
+            });
+            if(!interfaces.includes(savedModem)&&interfaces.length>0){
+                modemMenu.value=interfaces[0];
+                changeModemInterface(interfaces[0]);
+            }else{
+                document.getElementById("modem-title").innerText=`Interface (${savedModem})`;
+                lastRxModem=null; lastTxModem=null;
+            }
+            if(!interfaces.includes(savedClient)&&interfaces.length>0){
+                clientMenu.value=interfaces[1]||interfaces[0];
+                changeClientInterface(clientMenu.value);
+            }else{
+                document.getElementById("client-title").innerText=`Interface (${savedClient})`;
+                lastRxClient=null; lastTxClient=null;
+            }
+        })
+        .catch(()=>{
+            const modemMenu=document.getElementById("interfaceSelect");
+            const clientMenu=document.getElementById("clientInterfaceSelect");
+            modemMenu.innerHTML='<option value="eth0">eth0</option>';
+            clientMenu.innerHTML='<option value="br-lan">br-lan</option>';
+        });
+}
+
+function changeModemInterface(val){
+    localStorage.setItem("savedModemInterface",val);
+    document.getElementById("modem-title").innerText=`Interface (${val})`;
+    maxSpeedModem=50;
+    skipFirstCalculation=true;
+    lastRxModem=null; lastTxModem=null;
+}
+function changeClientInterface(val){
+    localStorage.setItem("savedClientInterface",val);
+    document.getElementById("client-title").innerText=`Interface (${val})`;
+    maxSpeedClient=50;
+    skipFirstCalculation=true;
+    lastRxClient=null; lastTxClient=null;
+}
+
+function fetchOpenWrtStats(){
+    const modemIface=document.getElementById("interfaceSelect").value;
+    const clientIface=document.getElementById("clientInterfaceSelect").value;
+
+    fetch('/cgi-bin/traffic')
+        .then(res=>res.json())
+        .then(response=>{
+            // CPU & RAM
+            if(typeof response.cpu!=='undefined'){
+                let cpuVal=Math.round(response.cpu);
+                document.getElementById("cpu-val").innerText=cpuVal+"%";
+                document.getElementById("cpu-bar").style.width=Math.min(cpuVal,100)+"%";
+                const cpuBar=document.getElementById("cpu-bar");
+                if(cpuVal>85) cpuBar.style.background="linear-gradient(90deg,#ef4444,#f87171)";
+                else if(cpuVal>60) cpuBar.style.background="linear-gradient(90deg,#f59e0b,#fbbf24)";
+                else cpuBar.style.background="linear-gradient(90deg,#10b981,#34d399)";
+            }
+            if(response.ram){
+                let ramPercent=null;
+                if(typeof response.ram.percent==='number') ramPercent=response.ram.percent;
+                else if(typeof response.ram==='number') ramPercent=response.ram;
+                if(ramPercent!==null&&!isNaN(ramPercent)){
+                    let ramVal=Math.round(ramPercent);
+                    document.getElementById("ram-val").innerText=ramVal+"%";
+                    document.getElementById("ram-bar").style.width=Math.min(ramVal,100)+"%";
+                }
+            }
+
+            let data=response.data||response;
+            let now=Date.now();
+            let elapsed=(now-lastTime)/1000;
+            if(elapsed<=0) elapsed=3;
+            lastTime=now;
+
+            // ---- Proses modem ----
+            if(data[modemIface]){
+                let rx=data[modemIface].rx||0;
+                let tx=data[modemIface].tx||0;
+                if(skipFirstCalculation || lastRxModem===null || isFirstFetch){
+                    // simpan data pertama, jangan hitung
+                    lastRxModem=rx;
+                    lastTxModem=tx;
+                } else {
+                    // Cegah lonjakan: jika last total = 0 dan current total > 0, jangan hitung, hanya update last
+                    let totalLast = lastRxModem + lastTxModem;
+                    let totalNow = rx + tx;
+                    if(totalLast === 0 && totalNow > 0){
+                        // Lonjakan dari 0, abaikan hitung, update last
+                        lastRxModem=rx;
+                        lastTxModem=tx;
+                    } else {
+                        // Hitung normal, asal totalNow > 0 (jika 0, diff = 0)
+                        let diffRx=(rx>=lastRxModem)?(rx-lastRxModem):rx;
+                        let diffTx=(tx>=lastTxModem)?(tx-lastTxModem):tx;
+                        let mbps=parseFloat(((((diffRx+diffTx)/elapsed)*8)/1000000).toFixed(2));
+                        if(mbps>maxSpeedModem) maxSpeedModem=Math.ceil(mbps/50)*50;
+                        let percent=Math.min((mbps/maxSpeedModem)*100,100);
+                        document.getElementById("modem-val").innerHTML=`${mbps.toFixed(2)} <span style="font-size:0.75rem; font-weight:600; color:#64748b;">mbps</span>`;
+                        document.getElementById("modem-limit-text").innerText=`Max ${maxSpeedModem}`;
+                        document.getElementById("modem-bar").style.width=percent+"%";
+                        // Update last
+                        lastRxModem=rx;
+                        lastTxModem=tx;
+                    }
+                }
+            }
+
+            // ---- Proses client ----
+            if(data[clientIface]){
+                let rx=data[clientIface].rx||0;
+                let tx=data[clientIface].tx||0;
+                if(skipFirstCalculation || lastRxClient===null || isFirstFetch){
+                    lastRxClient=rx;
+                    lastTxClient=tx;
+                } else {
+                    let totalLast = lastRxClient + lastTxClient;
+                    let totalNow = rx + tx;
+                    if(totalLast === 0 && totalNow > 0){
+                        lastRxClient=rx;
+                        lastTxClient=tx;
+                    } else {
+                        let diffRx=(rx>=lastRxClient)?(rx-lastRxClient):rx;
+                        let diffTx=(tx>=lastTxClient)?(tx-lastTxClient):tx;
+                        let mbps=parseFloat(((((diffRx+diffTx)/elapsed)*8)/1000000).toFixed(2));
+                        if(mbps>maxSpeedClient) maxSpeedClient=Math.ceil(mbps/50)*50;
+                        let percent=Math.min((mbps/maxSpeedClient)*100,100);
+                        document.getElementById("client-val").innerHTML=`${mbps.toFixed(2)} <span style="font-size:0.75rem; font-weight:600; color:#64748b;">mbps</span>`;
+                        document.getElementById("client-limit-text").innerText=`Max ${maxSpeedClient}`;
+                        document.getElementById("client-bar").style.width=percent+"%";
+                        lastRxClient=rx;
+                        lastTxClient=tx;
+                    }
+                }
+            }
+
+            if(skipFirstCalculation || isFirstFetch){
+                skipFirstCalculation=false;
+                isFirstFetch=false;
+            }
+        })
+        .catch(()=>{});
+}
+</script></body></html>

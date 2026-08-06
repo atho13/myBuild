@@ -17,6 +17,7 @@ for file in \
     /etc/custom_service/start_service.sh \
     /etc/init.d/todong \
     /www/vnstati/vnstati.sh \
+    /www/cgi-bin/traffic \
     /etc/hotplug.d/usb/90-frdmx-modem \
     /etc/hotplug.d/iface/99-frdmx-watchdog; do
     [ -f "$file" ] && chmod +x "$file"
@@ -124,9 +125,7 @@ sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json
 echo "Disabling XMM-Modem and TTYD..."
 uci batch <<EOF
 set xmm-modem.@xmm-modem[0].enable='0'
-set ttyd.@ttyd[0].command='/bin/bash --login'
-commit xmm-modem
-commit ttyd
+
 EOF
 
 echo "Creating application symlinks for TinyFM..."
@@ -145,6 +144,12 @@ fi
 
 if [ -f "/etc/custom_service/start_service.sh" ]; then
     sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
+fi
+
+if [ -f /etc/config/ttyd ] && [ -f /bin/bash ]; then
+    uci set ttyd.@ttyd.command='/bin/bash --login'
+    uci commit ttyd
+    /etc/init.d/ttyd enable
 fi
 
 echo "Updating System Schedules (Crontab)..."
