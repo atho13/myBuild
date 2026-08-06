@@ -1,9 +1,17 @@
 #!/bin/sh
 
-echo "Clearing root password..."
+# ====================================================================
+# SKRIP SETUP OTOMATIS OPENWRT - EDISI KOMUNITAS (FRDMX)
+# ====================================================================
+
+echo "================================================="
+echo "   Memulai Konfigurasi Otomatis FRDMX..."
+echo "================================================="
+
+echo "[*] Menghapus password root default (Keamanan Awal)..."
 passwd -d root > /dev/null 2>&1
 
-echo "Setting file permissions..."
+echo "[*] Mengatur izin eksekusi berkas sistem..."
 for file in \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
@@ -20,15 +28,16 @@ for file in \
     /www/cgi-bin/traffic \
     /etc/hotplug.d/usb/90-frdmx-modem \
     /etc/hotplug.d/iface/99-frdmx-watchdog; do
-    [ -f "$file" ] && chmod +x "$file"
+    if [ -f "$file" ]; then
+        chmod +x "$file"
+    fi
 done
 
-echo "Configuring UCI settings via batch..."
+echo "[*] Mengonfigurasi pengaturan UCI secara massal..."
 uci batch <<EOF
-# 1. Konfigurasi Sistem & Waktu (NTP)
-set system.@system.hostname='FRDMX'
-set system.@system.timezone='WIB-7'
-set system.@system.zonename='Asia/Jakarta'
+set system.@system[0].hostname='FRDMX'
+set system.@system[0].timezone='WIB-7'
+set system.@system[0].zonename='Asia/Jakarta'
 
 delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
@@ -36,7 +45,6 @@ add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
 add_list system.ntp.server='time.google.com'
 
-# 2. Konfigurasi Jaringan LAN (IPv4 + IPv6 Assign)
 delete network.lan
 set network.lan=interface
 set network.lan.device='eth0'
@@ -45,7 +53,6 @@ set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
 set network.lan.ip6assign='64'
 
-# 3. Konfigurasi WAN (Tethering USB & Modem)
 set network.tethering=interface
 set network.tethering.proto='dhcp'
 set network.tethering.device='usb0'
@@ -58,7 +65,6 @@ set network.modem.apn='internet'
 set network.modem.auth='none'
 set network.modem.metric='20'
 
-# 4. Konfigurasi WAN6 Otomatis (IPv6 dari Tethering/Modem)
 delete network.wan6
 set network.wan6=interface
 set network.wan6.proto='dhcpv6'
@@ -78,7 +84,6 @@ set dhcp.lan.ra='server'
 set dhcp.lan.dhcpv6='server'
 set dhcp.lan.ra_management='1'
 
-# 6. Konfigurasi uhttpd (Dukungan LuCI, PHP RakitanManager, & IPv6 Safe Bind)
 delete uhttpd.main.listen_http
 delete uhttpd.main.listen_https
 add_list uhttpd.main.listen_http='0.0.0.0:80'
@@ -100,83 +105,102 @@ set uhttpd.main.http_keepalive='20'
 set uhttpd.main.tcp_keepalive='1'
 set uhttpd.main.ubus_prefix='/ubus'
 
-# 7. Eksekusi Penyimpanan
 commit system
 commit network
 commit dhcp
 commit uhttpd
 EOF
 
-echo "Configuring Firewall zones..."
-uci -q get firewall.@zone >/dev/null
-if [ $? -eq 0 ]; then
-    i=0
-    while :; do
-        zone_name=$(uci -q get firewall.@zone[$i].name)
-        [ -z "$zone_name" ] && break
-        if [ "$zone_name" = "wan" ]; then
-            uci delete firewall.@zone[$i].network 2>/dev/null
-            uci add_list firewall.@zone[$i].network='wan'
-            uci add_list firewall.@zone[$i].network='wan6'
-            uci add_list firewall.@zone[$i].network='tethering'
-            uci add_list firewall.@zone[$i].network='modem'
-            uci commit firewall
-            break
-        fi
-        i=$((i+1))
-    done
+echo "[*] Menyinkronkan zona Firewall (WAN, Tethering, Modem)..."
+i=0
+while true; do
+    zone_name=$(uci -q get firewall.@zone[$i].name)
+    if [ -z "$zone_name" ]; then
+        break
+    fi
+    if [ "$zone_name" = "wan" ]; then
+        uci -q delete firewall.@zone[$i].network
+        uci add_list firewall.@zone[$i].network='wan'
+        uci add_list firewall.@zone[$i].network='wan6'
+        uci add_list firewall.@zone[$i].network='tethering'
+        uci add_list firewall.@zone[$i].network='modem'
+        uci commit firewall
+        break
+    fi
+    i=$((i+1))
+done
+
+echo "[*] Menerapkan optimalisasi sistem firmware..."
+if [ -f /etc/opkg.conf ]; then
+    sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 fi
 
-echo "Applying system optimizations..."
-sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
-
-# Optimal untuk EMMC Box Amlogic
+# Optimal untuk EMMC Box Amlogic (Hanya berjalan jika hardware sesuai)
 if [ -d /sys/block/mmcblk0 ]; then
     echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null
+    echo "[+] Penjadwal I/O BFQ diaktifkan untuk EMMC."
 fi
 
+# Manajemen Daya USB (Mencegah modem disconnect karena suspend)
 for dev in /sys/bus/usb/devices/*/power/control; do 
-    [ -e "$dev" ] && echo "on" > "$dev" 2>/dev/null
+    if [ -f "$dev" ]; then
+        echo "on" > "$dev" 2>/dev/null
+    fi
 done
 
 if [ -f /etc/php.ini ]; then
     sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini 2>/dev/null
 fi
 
-# me909s and dw5821e
-echo "Removing USB modeswitch entries..."
-sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json 2>/dev/null
+# me909s and dw5821e USB Mode Fix
+if [ -f /etc/usb-mode.json ]; then
+    echo "[*] Membersihkan entri bentrokan USB modeswitch..."
+    sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json 2>/dev/null
+fi
 
 # xmm-modem
-echo "Disabling XMM-Modem..."
-if uci -q get xmm-modem.@xmm-modem >/dev/null; then
-    uci set xmm-modem.@xmm-modem.enable='0'
+if uci -q get xmm-modem.@xmm-modem[0] >/dev/null; then
+    echo "[*] Menonaktifkan modul XMM-Modem bawaan..."
+    uci set xmm-modem.@xmm-modem[0].enable='0'
     uci commit xmm-modem
 fi
 
-echo "Creating application symlinks for TinyFM..."
+echo "[*] Membuat tautan simbolis (Symlinks) untuk TinyFM..."
 mkdir -p /www/tinyfm
-ln -sf / /www/tinyfm/rootfs
-ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null
-ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null
+if [ ! -L /www/tinyfm/rootfs ]; then ln -sf / /www/tinyfm/rootfs; fi
+if [ -d /etc/openclash ]; then ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null; fi
+if [ -d /etc/nikki ]; then ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null; fi
 
-echo "Registering scripts to Startup (rc.local)..."
-sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
-sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
+echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
+if [ -f /etc/rc.local ]; then
+    sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
+    sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
 
-if [ -f "/sbin/yess" ]; then
-    sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
+    if [ -f "/sbin/yess" ]; then
+        sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
+    fi
+
+    if [ -f "/etc/custom_service/start_service.sh" ]; then
+        sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
+    fi
+else
+    echo "[!] Peringatan: /etc/rc.local tidak ditemukan (Firmware mungkin menggunakan procd init modern)."
 fi
 
-if [ -f "/etc/custom_service/start_service.sh" ]; then
-    sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
+echo "[*] Menerapkan perizinan crontabs dan sysctl..."
+if [ -f /etc/crontabs/root ]; then
+    chmod 600 /etc/crontabs/root 2>/dev/null
 fi
 
-echo "Applying permissions and sysctl..."
-chmod 600 /etc/crontabs/root 2>/dev/null
-sysctl -p /etc/sysctl.conf >/dev/null 2>&1
+if [ -f /etc/sysctl.conf ]; then
+    sysctl -p /etc/sysctl.conf >/dev/null 2>&1
+fi
 
-[ -f "/sbin/free.sh" ] && sh /sbin/free.sh >/dev/null 2>&1
+if [ -f "/sbin/free.sh" ]; then
+    sh /sbin/free.sh >/dev/null 2>&1
+fi
 
-echo "Cleaning up, completed setup..."
+echo "================================================="
+echo "   Selesai! Pengaturan FRDMX Sukses Diterapkan.  "
+echo "================================================="
 exit 0
