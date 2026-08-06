@@ -25,7 +25,7 @@ done
 
 echo "Configuring UCI settings via batch..."
 uci batch <<EOF
-set system.@system[0].hostname='FRDMX'
+set system.@system[0].hostname='FRDMX-AMLOGIC'
 set system.@system[0].timezone='WIB-7'
 set system.@system[0].zonename='Asia/Jakarta'
 
@@ -59,10 +59,6 @@ delete network.wan6
 set network.globals=globals
 set network.globals.ula_prefix=''
 
-delete firewall.@zone[1].network
-add_list firewall.@zone[1].network='tethering'
-add_list firewall.@zone[1].network='modem'
-
 delete dhcp.lan
 set dhcp.lan=dhcp
 set dhcp.lan.interface='lan'
@@ -75,14 +71,27 @@ set dhcp.lan.ndp='disabled'
 
 commit system
 commit network
-commit firewall
 commit dhcp
 EOF
+
+uci -q get firewall.@zone >/dev/null
+if [ $? -eq 0 ]; then
+    i=0
+    while [ -n "$(uci -q get firewall.@zone[$i].name)" ]; do
+        if [ "$(uci -q get firewall.@zone[$i].name)" = "wan" ]; then
+            uci delete firewall.@zone[$i].network
+            uci add_list firewall.@zone[$i].network='tethering'
+            uci add_list firewall.@zone[$i].network='modem'
+            uci commit firewall
+            break
+        fi
+        i=$((i+1))
+    done
+fi
 
 echo "Applying system optimizations..."
 sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 
-# Set BFQ I/O untuk Storage Internal eMMC
 if [ -d /sys/block/mmcblk0 ]; then
     echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null
 fi
@@ -99,7 +108,7 @@ sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json
 
 # xmm-modem
 echo "Disabling XMM-Modem..."
-uci set xmm-modem.@xmm-modem[0].enable='0' 2>/dev/null || uci set xmm-modem.@xmm-modem.enable='0' 2>/dev/null
+uci set xmm-modem.@xmm-modem.enable='0' 2>/dev/null || uci set xmm-modem.@xmm-modem.enable='0' 2>/dev/null
 uci commit xmm-modem
 
 echo "Creating application symlinks for TinyFM..."
