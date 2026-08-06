@@ -169,6 +169,7 @@ sysctl -p /etc/sysctl.conf >/dev/null 2>&1
 [ -f "/sbin/free.sh" ] && sh /sbin/free.sh >/dev/null 2>&1
 
 echo "cleaning up, completed setup..."
-rm -rf /etc/uci-defaults/$(basename "$0")
+# Ganti '99-custom-setup' dengan nama asli file skrip Anda yang ada di folder uci-defaults
+rm -f /etc/uci-defaults/99-custom-settings
 
 exit 0
