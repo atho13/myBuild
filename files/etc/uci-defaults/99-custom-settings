@@ -1,11 +1,7 @@
 #!/bin/sh
 
-# ====================================================================
-# SKRIP SETUP OTOMATIS OPENWRT - EDISI KOMUNITAS FULL IPv4 (FRDMX)
-# ====================================================================
-
 echo "================================================="
-echo "   Memulai Konfigurasi Otomatis FRDMX IPv4..."
+echo "   Memulai Konfigurasi Otomatis FRDMX..."
 echo "================================================="
 
 echo "[*] Menghapus password root default (Keamanan Awal)..."
@@ -27,13 +23,14 @@ for file in \
     /www/vnstati/vnstati.sh \
     /www/cgi-bin/traffic \
     /etc/hotplug.d/usb/90-frdmx-modem \
+    /etc/hotplug.d/iface/90-cake-frdmx \
     /etc/hotplug.d/iface/99-frdmx-watchdog; do
     if [ -f "$file" ]; then
         chmod +x "$file"
     fi
 done
 
-echo "[*] Mengonfigurasi pengaturan UCI secara massal (Fokus IPv4)..."
+echo "[*] Mengonfigurasi pengaturan UCI..."
 uci batch <<EOF
 # 1. Konfigurasi Sistem & Waktu (NTP)
 set system.@system[0].hostname='FRDMX'
@@ -46,7 +43,6 @@ add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
 add_list system.ntp.server='time.google.com'
 
-# 2. Konfigurasi Jaringan LAN (Fokus IPv4 murni)
 delete network.lan
 set network.lan=interface
 set network.lan.device='eth0'
@@ -55,13 +51,6 @@ set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
 set network.lan.ip6assign=''
 
-# 3. Konfigurasi WAN Fisik x86 (eth1)
-set network.wan=interface
-set network.wan.proto='dhcp'
-set network.wan.device='eth1'
-set network.wan.metric='5'
-
-# 4. Konfigurasi Multi-WAN (Tethering USB & Modem)
 set network.tethering=interface
 set network.tethering.proto='dhcp'
 set network.tethering.device='usb0'
@@ -74,10 +63,8 @@ set network.modem.apn='internet'
 set network.modem.auth='none'
 set network.modem.metric='20'
 
-# 5. Hapus total antarmuka WAN6 IPv6
 delete network.wan6
 
-# 6. Konfigurasi DHCP Server IPv4 Only & Matikan DHCPv6 / SLAAC
 delete dhcp.lan
 set dhcp.lan=dhcp
 set dhcp.lan.interface='lan'
@@ -85,7 +72,6 @@ set dhcp.lan.start='100'
 set dhcp.lan.limit='150'
 set dhcp.lan.leasetime='12h'
 
-# 7. Konfigurasi uhttpd (Hanya Bind ke IPv4 untuk Keamanan)
 delete uhttpd.main.listen_http
 delete uhttpd.main.listen_https
 add_list uhttpd.main.listen_http='0.0.0.0:80'
@@ -105,21 +91,19 @@ set uhttpd.main.http_keepalive='20'
 set uhttpd.main.tcp_keepalive='1'
 set uhttpd.main.ubus_prefix='/ubus'
 
-# 8. Eksekusi Penyimpanan
 commit system
 commit network
 commit dhcp
 commit uhttpd
 EOF
 
-# Konfigurasi fstab aman tanpa indeks negatif
 uci set fstab.root_mount=mount
 uci set fstab.root_mount.target='/'
 uci set fstab.root_mount.options='noatime,commit=60'
 uci set fstab.root_mount.enabled='1'
 uci commit fstab
 
-echo "[*] Menyinkronkan zona Firewall (Hanya Multi-WAN IPv4)..."
+echo "[*] Menyinkronkan zona Firewall..."
 i=0
 while true; do
     zone_name=$(uci -q get firewall.@zone[$i].name)
@@ -142,12 +126,10 @@ if [ -f /etc/opkg.conf ]; then
     sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 fi
 
-# Penjadwal I/O Universal (Amlogic eMMC / x86 SATA SSD / x86 NVMe)
 if [ -d /sys/block/mmcblk0 ]; then echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null; fi
 if [ -d /sys/block/sda ]; then echo bfq > /sys/block/sda/queue/scheduler 2>/dev/null; fi
 if [ -d /sys/block/nvme0n1 ]; then echo bfq > /sys/block/nvme0n1/queue/scheduler 2>/dev/null; fi
 
-# Manajemen Daya USB (Mencegah modem putus koneksi)
 for dev in /sys/bus/usb/devices/*/power/control; do 
     if [ -f "$dev" ]; then
         echo "on" > "$dev" 2>/dev/null
@@ -158,12 +140,10 @@ if [ -f /etc/php.ini ]; then
     sed -i 's/^memory_limit.*/memory_limit = 64M/' /etc/php.ini 2>/dev/null
 fi
 
-# Pembersihan entri bentrokan USB modeswitch
 if [ -f /etc/usb-mode.json ]; then
     sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json 2>/dev/null
 fi
 
-# Menonaktifkan modul XMM-Modem bawaan
 if uci -q get xmm-modem.@xmm-modem[0] >/dev/null; then
     uci set xmm-modem.@xmm-modem[0].enable='0'
     uci commit xmm-modem
@@ -196,14 +176,16 @@ if [ -f /etc/crontabs/root ]; then
     chmod 600 /etc/crontabs/root 2>/dev/null
 fi
 
-# Bagian ini tetap dipertahankan untuk memicu agar file sysctl.conf dari repo Anda 
-# langsung dibaca dan diaktifkan oleh kernel saat booting pertama tanpa nunggu restart.
 if [ -f /etc/sysctl.conf ]; then
     sysctl -p /etc/sysctl.conf >/dev/null 2>&1
 fi
 
 if [ -f "/sbin/free.sh" ]; then
     sh /sbin/free.sh >/dev/null 2>&1
+fi
+
+if [ -f "/etc/hotplug.d/iface/90-cake-frdmx" ]; then
+    ACTION=ifup INTERFACE=wan sh /etc/hotplug.d/iface/90-cake-frdmx >/dev/null 2>&1
 fi
 
 echo "================================================="
