@@ -1,18 +1,19 @@
 #!/bin/sh
 # For Frdmx-Wrt Community..
-# Smart Net Detector with Safe Limit Counter
+# Smart Net Detector & Dynamic Tunnel Watchdog
 
 [ "$ACTION" = "ifup" ] || exit 0
 
-[ "$INTERFACE" = "lan" ] || [ "$INTERFACE" = "loopback" ] && exit 0
+[ "$INTERFACE" = "lan" ] || [ "$INTERFACE" = "loopback" ] || [ "$INTERFACE" = "wan6" ] && exit 0
 
-sleep 12
+sleep 10
 
 check_internet() {
     if ping -c 2 -W 3 1.1.1.1 >/dev/null 2>&1 || ping -c 2 -W 3 8.8.8.8 >/dev/null 2>&1; then
         return 0
     fi
     
+    # Metode 2: Cek HTTP jika aplikasi httping terpasang
     if command -v httping >/dev/null 2>&1; then
         if httping -q -c 2 -t 3 -g "http://1.1.1.1" >/dev/null 2>&1 || httping -q -c 2 -t 3 -g "http://google.com" >/dev/null 2>&1; then
             return 0
@@ -28,6 +29,23 @@ check_internet() {
 
 if check_internet; then
     echo "0" > /tmp/.cnt_net 2>/dev/null
+    
+    /etc/init.d/dnsmasq restart >/dev/null 2>&1
+    
+    if [ -f "/etc/init.d/passwall" ] && /etc/init.d/passwall status | grep -q "running"; then
+        /etc/init.d/passwall restart >/dev/null 2>&1
+    fi
+    
+    if [ -f "/etc/init.d/openclash" ] && /etc/init.d/openclash -v >/dev/null 2>&1; then
+        if pidof clash >/dev/null 2>&1; then
+            /etc/init.d/openclash restart >/dev/null 2>&1
+        fi
+    fi
+
+    if [ -f "/etc/init.d/qtun" ] && /etc/init.d/qtun status | grep -q "running"; then
+        /etc/init.d/qtun restart >/dev/null 2>&1
+    fi
+
     exit 0
 fi
 
@@ -36,15 +54,16 @@ CUR_CNT=$(cat /tmp/.cnt_net 2>/dev/null)
 
 if [ "$CUR_CNT" -ge 3 ]; then
     (
-        for usb_dev in /sys/bus/usb/devices/[0-9]*; do
-            [ -e "$usb_dev/product" ] || continue
-            id_bus=$(basename "$usb_dev")
-            
-            echo "$id_bus" > /sys/bus/usb/drivers/usb/unbind 2>/dev/null
-            sleep 2
-            echo "$id_bus" > /sys/bus/usb/drivers/usb/bind 2>/dev/null
-        done
-        
+        if [ -x "/usr/sbin/conntrack" ]; then
+            conntrack -F >/dev/null 2>&1
+        elif [ -e "/proc/net/nf_conntrack" ]; then
+            echo 1 > /proc/sys/net/netfilter/nf_conntrack_max 2>/dev/null
+            sleep 1
+            echo 65536 > /proc/sys/net/netfilter/nf_conntrack_max 2>/dev/null
+        fi
+
+        /etc/init.d/dnsmasq restart >/dev/null 2>&1
+
         echo "0" > /tmp/.cnt_net 2>/dev/null
     ) &
     exit 0
@@ -55,23 +74,7 @@ echo "$CUR_CNT" > /tmp/.cnt_net 2>/dev/null
 
 (
     sleep 2
-    
-    if command -v mmcli >/dev/null 2>&1; then
-        M_IDX=$(mmcli -L 2>/dev/null | grep -oE '/Modem/[0-9]+' | cut -d'/' -f3)
-        if [ -n "$M_IDX" ]; then
-            mmcli -m "$M_IDX" --simple-disconnect >/dev/null 2>&1
-            sleep 2
-        fi
-    fi
-    
-    if command -v gcom >/dev/null 2>&1 && uci -q get network."$INTERFACE".device >/dev/null; then
-        DEV_TTY=$(uci -q get network."$INTERFACE".device)
-        [ -n "$DEV_TTY" ] && gcom -d "$DEV_TTY" >/dev/null 2>&1
-    fi
-
-    ubus call network.interface."$INTERFACE" down >/dev/null 2>&1
-    sleep 3
-    ubus call network.interface."$INTERFACE" up >/dev/null 2>&1
+    ifup "$INTERFACE" >/dev/null 2>&1
 ) &
 
 exit 0
