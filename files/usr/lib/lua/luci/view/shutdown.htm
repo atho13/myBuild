@@ -3,7 +3,7 @@
  Licensed to the public under the Apache License 2.0.
 -%>
 <%+header%>
-<h2 name="content"><%:%></h2>
+<h1 name="content"><%:%></h1>
 <p><%:%></p>
 <%- local c = require("luci.model.uci").cursor():changes(); if c and next(c) then -%>
 	<p class="alert-message warning"><%:Warning: There are unsaved changes that will get lost on shutting down!%></p>
