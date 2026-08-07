@@ -1,0 +1,14 @@
+#!/bin/sh
+# For Frdmx-Wrt Community..
+
+if [ "$ACTION" = "ifup" ]; then
+    REAL_DEV=$(uci -q get network.$INTERFACE.device || echo $DEVICE)
+
+    if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ]; then
+        if tc qdisc show dev $REAL_DEV | grep -q "cake"; then
+            tc qdisc change dev $REAL_DEV root cake bandwidth unlimited diffserv3 triple-isolate nat wash no-ipv6
+        else
+            tc qdisc add dev $REAL_DEV root cake bandwidth unlimited diffserv3 triple-isolate nat wash no-ipv6
+        fi
+    fi
+fi
