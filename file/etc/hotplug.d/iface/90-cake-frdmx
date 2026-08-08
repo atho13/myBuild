@@ -1,0 +1,22 @@
+#!/bin/sh
+# For Frdmx-Wrt Community..
+
+if [ "$ACTION" = "ifup" ]; then
+    REAL_DEV=""
+    if [ -n "${DEVICE:-}" ]; then
+        REAL_DEV="$DEVICE"
+    else
+        REAL_DEV=$(uci -q get network.$INTERFACE.device)
+    fi
+
+    if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
+        
+        case "$REAL_DEV" in
+            usb*|rndis*|wwan*|eth*)
+                tc qdisc del dev $REAL_DEV root >/dev/null 2>&1
+                
+                tc qdisc add dev $REAL_DEV root cake bandwidth 1gbit diffserv3 triple-isolate nat wash
+                ;;
+        esac
+    fi
+fi
