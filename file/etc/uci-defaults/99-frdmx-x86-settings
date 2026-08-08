@@ -1,10 +1,5 @@
 #!/bin/sh
 
-# ====================================================================
-# SKRIP SETUP OTOMATIS OPENWRT - EDISI KOMUNITAS X86_64 IPv4 (FRDMX)
-# JALUR: files/etc/uci-defaults/99-frdmx-setup
-# ====================================================================
-
 echo "================================================="
 echo "   Memulai Konfigurasi Otomatis FRDMX x86_64..."
 echo "================================================="
