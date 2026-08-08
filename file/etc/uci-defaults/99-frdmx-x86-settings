@@ -21,6 +21,7 @@ for file in \
     /www/vnstati/vnstati.sh \
     /www/cgi-bin/traffic \
     /etc/hotplug.d/usb/90-frdmx-modem \
+    /etc/hotplug.d/iface/90-cake-frdmx \
     /etc/hotplug.d/iface/99-frdmx-watchdog; do
     if [ -f "$file" ]; then
         chmod +x "$file"
@@ -78,6 +79,10 @@ set dhcp.lan.interface='lan'
 set dhcp.lan.start='100'
 set dhcp.lan.limit='150'
 set dhcp.lan.leasetime='12h'
+# optimasi
+set dhcp.@dnsmasq[0].dnsforwardmax='1500'
+set dhcp.@dnsmasq[0].cachesize='5000'
+set dhcp.@dnsmasq[0].min_ttl='300'
 
 # 7. Konfigurasi uhttpd (Hanya Bind ke IPv4 untuk Keamanan)
 delete uhttpd.main.listen_http
