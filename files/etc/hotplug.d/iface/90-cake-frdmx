@@ -9,13 +9,20 @@ if [ "$ACTION" = "ifup" ]; then
         REAL_DEV=$(uci -q get network.$INTERFACE.device)
     fi
 
+    if [ -z "$REAL_DEV" ] || [ "$REAL_DEV" = "null" ]; then
+        REAL_DEV=$(uci -q get network.$INTERFACE.ifname)
+    fi
+
+    logger -t CAKE_HOTPLUG "Hotplug terpicu! Interface: $INTERFACE, Device Terdeteksi: $REAL_DEV"
+
     if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
-        
         case "$REAL_DEV" in
-            usb*|rndis*|wwan*|eth*)
-                tc qdisc del dev $REAL_DEV root >/dev/null 2>&1
-                
-                tc qdisc add dev $REAL_DEV root cake bandwidth 1gbit diffserv3 triple-isolate nat wash
+            usb*|rndis*|wwan*|eth*|br*)
+                logger -t CAKE_HOTPLUG "Mengaplikasikan CAKE pada $REAL_DEV"
+                tc qdisc replace dev $REAL_DEV root cake bandwidth 1gbit diffserv3 triple-isolate nat wash 2>&1 | logger -t CAKE_HOTPLUG_ERROR
+                ;;
+            *)
+                logger -t CAKE_HOTPLUG "Device $REAL_DEV tidak masuk dalam kategori case."
                 ;;
         esac
     fi
