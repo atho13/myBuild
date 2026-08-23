@@ -1,5 +1,5 @@
 #!/bin/sh
-# Custom Multi-Modem - frdmx-Wrt Community
+# Custom Multi-Modem - frdmx-Wrt Community (STB LAN Fixed)
 
 APN="internet"
 LOCKFILE="/tmp/pnp-modem.lock"
@@ -47,18 +47,18 @@ if [ -n "$MODEM_PORT" ]; then
 
     IFACE_FOUND=""
     for iface in $(uci -q show network | grep -E "\.proto='(modemmanager|qmi|mbim|3g|ncm)'" | cut -d'.' -f2 | cut -d'=' -f1); do
-        if [ -n "$iface" ] && [ "$iface" != "lan" ]; then
+        if [ -n "$iface" ] && [ "$iface" != "lan" ] && [ "$iface" != "wan" ]; then
             IFACE_FOUND="$iface"
             break
         fi
     done
 
     if [ -n "$IFACE_FOUND" ]; then
-        echo "[PnP-Modem] Mengaktifkan interface: $IFACE_FOUND" > /dev/kmsg
+        echo "[PnP-Modem] Mengaktifkan interface modem: $IFACE_FOUND" > /dev/kmsg
         sleep 2
         ifup "$IFACE_FOUND" 2>/dev/null
     else
-        ifup wan 2>/dev/null
+        echo "[PnP-Modem] Tidak mengganggu port WAN/LAN fisik." > /dev/kmsg
     fi
 fi
 
