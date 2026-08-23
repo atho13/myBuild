@@ -7,5 +7,5 @@
 sysctl -p /etc/sysctl.conf
 bash /etc/custom_service/start_service.sh &
 /usr/sbin/led -r
-/sbin/yess.sh &
+/sbin/yess &
 exit 0
