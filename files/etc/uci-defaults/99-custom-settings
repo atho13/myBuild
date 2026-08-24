@@ -12,6 +12,7 @@ for file in \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
     /usr/bin/frdmx-andro \
+    /usr/bin/wwan-plug.sh \
     /usr/sbin/led \
     /usr/sbin/ledon \
     /bin/frdmx_net \
@@ -22,7 +23,6 @@ for file in \
     /etc/init.d/todong \
     /www/vnstati/vnstati.sh \
     /www/cgi-bin/traffic \
-    /etc/hotplug.d/usb/90-frdmx-modem \
     /etc/hotplug.d/iface/90-cake-frdmx \
     /etc/hotplug.d/iface/99-frdmx-watchdog; do
     if [ -f "$file" ]; then
