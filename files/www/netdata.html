@@ -1,197 +1,517 @@
-<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Statistik OpenWrt (LuCI Statistics)</title><style>:root{--page-padding:1.5rem;--header-margin-bottom:0.5rem;--card-padding:1.25rem;--card-margin:0rem;--grid-gap:1.5rem}body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background-color:#f8fafc;color:#2d3748;margin:0;padding:0;box-sizing:border-box}*,*::before,*::after{box-sizing:border-box}.container{width:100%;margin-left:auto;margin-right:auto;padding-left:var(--page-padding);padding-right:var(--page-padding)}@media (min-width:640px){.container{max-width:640px}}@media (min-width:768px){.container{max-width:768px;padding-left:2rem;padding-right:2rem}}@media (min-width:1024px){.container{max-width:1024px}}@media (min-width:1280px){.container{max-width:1280px}}.header{text-align:center;margin-bottom:var(--header-margin-bottom)}.header h3{font-size:1.5rem;margin-top:1rem;margin-bottom:.5rem;color:#0284c7}.header p{color:#718096;font-size:1rem;margin-top:0;margin-bottom:.6rem}.header-info{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1rem;font-size:1rem;font-weight:500;color:#0369a1}@media (min-width:768px){.header-info{flex-direction:row;gap:3rem}}.info-box{background-color:#e0f2fe;padding:.2rem .6rem;border-radius:.5rem;border:1px solid #bae6fd;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}.menu-flex-container{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.5rem;margin-bottom:.5rem}@media (min-width:640px){.menu-flex-container{flex-direction:row;gap:2rem}}.menu-item{display:flex;align-items:center;background:#fff;padding:.3rem .5rem;border-radius:.75rem;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgb(0 0 0 / .05)}.select-interface{padding:0 1rem;height:26px;border-radius:.375rem;border:1px solid #cbd5e1;background-color:#f8fafc;color:#334155;font-weight:600;outline:none;cursor:pointer;margin-left:.75rem;min-width:140px}.section-title-wrapper{text-align:center;margin:.5rem 0}.section-title{display:inline-block;font-size:1.25rem;font-weight:700;color:#1e293b;border-bottom:3px solid #0284c7;padding-bottom:.35rem;margin:0}.grid-container{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:var(--grid-gap);margin-bottom:1rem}@media (min-width:640px){.grid-container.sm-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (min-width:768px){.grid-container.md-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (min-width:1024px){.grid-container.lg-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-container.lg-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}.card{background-color:#fff;padding:.9rem;margin:var(--card-margin);border-radius:.75rem;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgb(0 0 0 / .05),0 2px 4px -2px rgb(0 0 0 / .05);transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-3px);box-shadow:0 10px 15px -3px rgb(0 0 0 / .1)}.card h3{font-size:.95rem;font-weight:700;color:#1e293b;margin-top:0;margin-bottom:1rem;text-align:left}.card img{width:100%;height:auto;border-radius:.5rem;background:#f8fafc;border:1px solid #e2e8f0}.card p{text-align:center;color:#718096;margin-top:.75rem;margin-bottom:0;font-size:.875rem;font-weight:500}.bar-wrapper{width:100%}.bar-info{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px}.bar-value{font-size:1.25rem;font-weight:700;color:#0f172a;line-height:1}.bar-limit{font-size:.75rem;font-weight:600;color:#64748b}.bar-track{background-color:#f1f5f9;border-radius:9999px;height:12px;overflow:hidden;width:100%;border:1px solid #e2e8f0}.bar-fill{height:100%;width:0%;border-radius:9999px;transition:width .6s cubic-bezier(0.4,0,0.2,1),background .4s ease}.clickable-image{cursor:pointer;transition:opacity .2s}.clickable-image:hover{opacity:.85}.image-modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgb(0 0 0 / .8);backdrop-filter:blur(4px);align-items:center;justify-content:center}.image-modal-content{margin:auto;display:block;max-width:90%;max-height:90%;object-fit:contain;border-radius:.75rem;box-shadow:0 25px 50px -12px rgb(0 0 0 / .25)}.image-modal-close{position:absolute;top:20px;right:35px;color:#f1f1f1;font-size:40px;font-weight:700;cursor:pointer}</style></head><body><main class="container"><header class="header"><div class="section-title-wrapper"><h2 class="section-title">Statistik OpenWrt (LuCI Statistics)</h2></div><p>Pantau trafik jaringan dan performa sistem secara ringan.</p><div class="header-info"><div id="MyClockDisplay" class="info-box">Memuat jam...</div><div id="wimi-ipv4" class="info-box">Memuat IP...</div></div></header><section><div class="menu-flex-container"><div class="menu-item"><label for="interfaceSelect" style="font-weight:600;color:#4a5568;font-size:.85rem;">Interface 1:</label><select id="interfaceSelect" class="select-interface" onchange="changeModemInterface(this.value)"><option value="">Memuat...</option></select></div><div class="menu-item"><label for="clientInterfaceSelect" style="font-weight:600;color:#4a5568;font-size:.85rem;">Interface 2:</label><select id="clientInterfaceSelect" class="select-interface" onchange="changeClientInterface(this.value)"><option value="">Memuat...</option></select></div></div><div class="grid-container sm-cols-2 lg-cols-4"><div class="card"><h3 id="modem-title">Interface 1</h3><div class="bar-wrapper"><div class="bar-info"><span id="modem-val" class="bar-value">0.00 <span style="font-size:.75rem;font-weight:600;color:#64748b;">mbps</span></span><span id="modem-limit-text" class="bar-limit">Max 50</span></div><div class="bar-track"><div id="modem-bar" class="bar-fill" style="background:linear-gradient(90deg,#0284c7,#38bdf8)"></div></div></div></div><div class="card"><h3 id="client-title">Interface 2</h3><div class="bar-wrapper"><div class="bar-info"><span id="client-val" class="bar-value">0.00 <span style="font-size:.75rem;font-weight:600;color:#64748b;">mbps</span></span><span id="client-limit-text" class="bar-limit">Max 50</span></div><div class="bar-track"><div id="client-bar" class="bar-fill" style="background:linear-gradient(90deg,#4f46e5,#818cf8)"></div></div></div></div><div class="card"><h3>CPU Usage</h3><div class="bar-wrapper"><div class="bar-info"><span id="cpu-val" class="bar-value">0%</span><span class="bar-limit">100%</span></div><div class="bar-track"><div id="cpu-bar" class="bar-fill" style="background:linear-gradient(90deg,#10b981,#34d399)"></div></div></div></div><div class="card"><h3>RAM Usage</h3><div class="bar-wrapper"><div class="bar-info"><span id="ram-val" class="bar-value">0%</span><span class="bar-limit">100%</span></div><div class="bar-track"><div id="ram-bar" class="bar-fill" style="background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div></div></div></div></div></section><section><div class="section-title-wrapper"><h2 class="section-title">Laporan Trafik Jaringan (vnstat)</h2></div><div class="grid-container md-cols-2 lg-cols-3"><div class="card"><img src="/vnstati/br-lan_vnstat_s.png" alt="Ringkasan" class="clickable-image" onclick="zoomImage(this.src)"><p>Ringkasan Trafik</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_5.png" alt="5 Menit" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik 5 Menit</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_h.png" alt="Per Jam" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik Per Jam</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_d.png" alt="Harian" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik Harian</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_m.png" alt="Bulanan" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik Bulanan</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_t.png" alt="Top 25" class="clickable-image" onclick="zoomImage(this.src)"><p>Trafik Top 25</p></div></div></section></main><div id="imageModal" class="image-modal"><span class="image-modal-close" onclick="closeImageModal()">&times;</span><img class="image-modal-content" id="zoomedImage"></div><script>
-// ===== ANTI-LONJAKAN & CEPAT RESPONSIF =====
-let maxSpeedModem=50, maxSpeedClient=50;
-let isFirstFetch=true;
-let skipFirstCalculation=false;
+<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><meta http-equiv="X-UA-Compatible" content="IE=edge"><title>Statistik OpenWrt (LuCI Statistics)</title><style>:root{--page-padding:1.5rem;--header-margin-bottom:0.5rem;--card-padding:1.25rem;--card-margin:0rem;--grid-gap:1.5rem}body{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background-color:#f8fafc;color:#2d3748;margin:0;padding:0;box-sizing:border-box}*,*::before,*::after{box-sizing:border-box}.container{width:100%;margin-left:auto;margin-right:auto;padding-left:var(--page-padding);padding-right:var(--page-padding)}@media (min-width:640px){.container{max-width:640px}}@media (min-width:768px){.container{max-width:768px;padding-left:2rem;padding-right:2rem}}@media (min-width:1024px){.container{max-width:1024px}}@media (min-width:1280px){.container{max-width:1280px}}.header{text-align:center;margin-bottom:var(--header-margin-bottom)}.header h3{font-size:1.5rem;margin-top:1rem;margin-bottom:.5rem;color:#0284c7}.header p{color:#718096;font-size:1rem;margin-top:0;margin-bottom:.6rem}.header-info{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:1rem;font-size:1rem;font-weight:500;color:#0369a1}@media (min-width:768px){.header-info{flex-direction:row;gap:3rem}}.info-box{background-color:#e0f2fe;padding:.2rem .6rem;border-radius:.5rem;border:1px solid #bae6fd;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}.menu-flex-container{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:.5rem;margin-bottom:.5rem}@media (min-width:640px){.menu-flex-container{flex-direction:row;gap:2rem}}.menu-item{display:flex;align-items:center;background:#fff;padding:.3rem .5rem;border-radius:.75rem;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgb(0 0 0 / .05)}.select-interface{padding:0 1rem;height:26px;border-radius:.375rem;border:1px solid #cbd5e1;background-color:#f8fafc;color:#334155;font-weight:600;outline:none;cursor:pointer;margin-left:.75rem;min-width:140px}.section-title-wrapper{text-align:center;margin:.5rem 0}.section-title{display:inline-block;font-size:1.25rem;font-weight:700;color:#1e293b;border-bottom:3px solid #0284c7;padding-bottom:.35rem;margin:0}.grid-container{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:var(--grid-gap);margin-bottom:1rem}@media (min-width:640px){.grid-container.sm-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (min-width:768px){.grid-container.md-cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (min-width:1024px){.grid-container.lg-cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}.grid-container.lg-cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}}.card{background-color:#fff;padding:.9rem;margin:var(--card-margin);border-radius:.75rem;border:1px solid #e2e8f0;box-shadow:0 4px 6px -1px rgb(0 0 0 / .05),0 2px 4px -2px rgb(0 0 0 / .05);transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-3px);box-shadow:0 10px 15px -3px rgb(0 0 0 / .1)}.card h3{font-size:.95rem;font-weight:700;color:#1e293b;margin-top:0;margin-bottom:1rem;text-align:left}.card img{width:100%;height:auto;border-radius:.5rem;background:#f8fafc;border:1px solid #e2e8f0}.card p{text-align:center;color:#718096;margin-top:.75rem;margin-bottom:0;font-size:.875rem;font-weight:500}.bar-wrapper{width:100%}.bar-info{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px}.bar-value{font-size:1.25rem;font-weight:700;color:#0f172a;line-height:1}.bar-limit{font-size:.75rem;font-weight:600;color:#64748b}.bar-track{background-color:#f1f5f9;border-radius:9999px;height:12px;overflow:hidden;width:100%;border:1px solid #e2e8f0}.bar-fill{height:100%;width:0%;border-radius:9999px;transition:width .6s cubic-bezier(0.4,0,0.2,1),background .4s ease}.clickable-image{cursor:pointer;transition:opacity .2s}.clickable-image:hover{opacity:.85}.image-modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgb(0 0 0 / .8);backdrop-filter:blur(4px);align-items:center;justify-content:center}.image-modal-content{margin:auto;display:block;max-width:90%;max-height:90%;object-fit:contain;border-radius:.75rem;box-shadow:0 25px 50px -12px rgb(0 0 0 / .25)}.image-modal-close{position:absolute;top:20px;right:35px;color:#f1f1f1;font-size:40px;font-weight:700;cursor:pointer}
+.chart-wrapper{width:100%;margin-top:8px}
+.chart-wrapper canvas{width:100%!important;height:45px!important;border-radius:6px;background:#f8fafc;border:1px solid #e2e8f0}
+.chart-legend{display:flex;justify-content:center;gap:12px;margin-top:3px;font-size:.6rem;font-weight:600;color:#64748b}
+.chart-legend span{display:flex;align-items:center;gap:3px}
+.chart-legend .dot{display:inline-block;width:8px;height:2px;border-radius:1px}
+.chart-legend .dot.network-download{background:#0284c7}
+.chart-legend .dot.network-upload{background:#4f46e5}
+.chart-legend .dot.cpu{background:#10b981}
+.chart-legend .dot.ram{background:#f59e0b}
+.iface-icon{font-size:.85rem;margin-right:2px}
+.iface-name{font-weight:700;color:#0f172a}
+.card-icon{font-size:.9rem;margin-right:4px;display:inline-block}
+.section-icon{font-size:1rem;margin-right:4px}
+.header-icon{font-size:1.2rem}
+.small-icon{font-size:.7rem}
+</style></head><body><main class="container"><header class="header"><div class="section-title-wrapper"><h2 class="section-title"><span class="header-icon">📊</span> Statistik OpenWrt</h2></div><p>Info Trafik & Performa System</p><div class="header-info"><div id="MyClockDisplay" class="info-box"><span class="small-icon">🕐</span> Memuat jam...</div><div id="wimi-ipv4" class="info-box"><span class="small-icon">🌍</span> Memuat IP...</div></div></header><section><div class="menu-flex-container"><div class="menu-item"><label for="interfaceSelect" style="font-weight:600;color:#4a5568;font-size:.85rem;"><span class="small-icon">📡</span> Iface 1:</label><select id="interfaceSelect" class="select-interface" onchange="changeModemInterface(this.value)"><option value="">Memuat...</option></select></div><div class="menu-item"><label for="clientInterfaceSelect" style="font-weight:600;color:#4a5568;font-size:.85rem;"><span class="small-icon">📡</span> Iface 2:</label><select id="clientInterfaceSelect" class="select-interface" onchange="changeClientInterface(this.value)"><option value="">Memuat...</option></select></div></div><div class="grid-container sm-cols-2 lg-cols-4"><div class="card"><h3><span class="iface-icon">📡</span> <span class="iface-name" id="modem-title">eth1</span></h3><div class="bar-wrapper"><div class="bar-info"><span id="modem-val" class="bar-value">0.00 <span style="font-size:.75rem;font-weight:600;color:#64748b;">Kbps</span></span><span id="modem-limit-text" class="bar-limit">Max 0 Kbps</span></div><div class="bar-track"><div id="modem-bar" class="bar-fill" style="background:linear-gradient(90deg,#0284c7,#38bdf8)"></div></div></div><div class="chart-wrapper"><canvas id="modem-chart"></canvas><div class="chart-legend"><span><span class="dot network-download"></span>Down</span><span><span class="dot network-upload"></span>Up</span></div></div></div><div class="card"><h3><span class="iface-icon">📡</span> <span class="iface-name" id="client-title">wwan</span></h3><div class="bar-wrapper"><div class="bar-info"><span id="client-val" class="bar-value">0.00 <span style="font-size:.75rem;font-weight:600;color:#64748b;">Kbps</span></span><span id="client-limit-text" class="bar-limit">Max 0 Kbps</span></div><div class="bar-track"><div id="client-bar" class="bar-fill" style="background:linear-gradient(90deg,#4f46e5,#818cf8)"></div></div></div><div class="chart-wrapper"><canvas id="client-chart"></canvas><div class="chart-legend"><span><span class="dot network-download"></span>Down</span><span><span class="dot network-upload"></span>Up</span></div></div></div><div class="card"><h3><span class="card-icon">⚡</span> CPU</h3><div class="bar-wrapper"><div class="bar-info"><span id="cpu-val" class="bar-value">0%</span><span class="bar-limit">100%</span></div><div class="bar-track"><div id="cpu-bar" class="bar-fill" style="background:linear-gradient(90deg,#10b981,#34d399)"></div></div></div><div class="chart-wrapper"><canvas id="cpu-chart"></canvas><div class="chart-legend"><span><span class="dot cpu"></span>CPU</span></div></div></div><div class="card"><h3><span class="card-icon">💾</span> RAM</h3><div class="bar-wrapper"><div class="bar-info"><span id="ram-val" class="bar-value">0%</span><span class="bar-limit">100%</span></div><div class="bar-track"><div id="ram-bar" class="bar-fill" style="background:linear-gradient(90deg,#f59e0b,#fbbf24)"></div></div></div><div class="chart-wrapper"><canvas id="ram-chart"></canvas><div class="chart-legend"><span><span class="dot ram"></span>RAM</span></div></div></div></div></section>
+
+<section><div class="section-title-wrapper"><h2 class="section-title"><span class="section-icon">📈</span> Laporan Trafik</h2></div><div class="grid-container md-cols-2 lg-cols-3"><div class="card"><img src="/vnstati/br-lan_vnstat_s.png" alt="Ringkasan" class="clickable-image" onclick="zoomImage(this.src)"><p><span class="small-icon">📊</span> Ringkasan</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_5.png" alt="5 Menit" class="clickable-image" onclick="zoomImage(this.src)"><p><span class="small-icon">⏱️</span> 5 Menit</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_h.png" alt="Per Jam" class="clickable-image" onclick="zoomImage(this.src)"><p><span class="small-icon">🕐</span> Per Jam</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_d.png" alt="Harian" class="clickable-image" onclick="zoomImage(this.src)"><p><span class="small-icon">📅</span> Harian</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_m.png" alt="Bulanan" class="clickable-image" onclick="zoomImage(this.src)"><p><span class="small-icon">📆</span> Bulanan</p></div><div class="card"><img src="/vnstati/br-lan_vnstat_t.png" alt="Top 25" class="clickable-image" onclick="zoomImage(this.src)"><p><span class="small-icon">🏆</span> Top 25</p></div></div></section></main><div id="imageModal" class="image-modal"><span class="image-modal-close" onclick="closeImageModal()">&times;</span><img class="image-modal-content" id="zoomedImage"></div><script>
+
+const FETCH_INTERVAL = 2000;
+const CHART_INTERVAL = 1500;
+const MAX_POINTS = 15;
+const THRESHOLD = 2;
+
+let maxSpeedModem=0, maxSpeedClient=0;
+let isFirstFetch=true, skipFirst=false;
 let lastRxModem=null, lastTxModem=null;
 let lastRxClient=null, lastTxClient=null;
 let lastTime=Date.now();
 
-function showTime(){
-    const date=new Date();
-    let h=String(date.getHours()).padStart(2,'0');
-    let m=String(date.getMinutes()).padStart(2,'0');
-    let s=String(date.getSeconds()).padStart(2,'0');
-    const clock=document.getElementById("MyClockDisplay");
-    if(clock) clock.innerText=`${h}:${m}:${s}`;
-    setTimeout(showTime,1000);
-}
-function getPublicIP(){
-    fetch("https://api.ipify.org?format=json")
-        .then(res=>res.json())
-        .then(data=>{
-            const ip=document.getElementById("wimi-ipv4");
-            if(ip&&data.ip) ip.innerText=`IP Publik: ${data.ip}`;
-        }).catch(()=>{});
-}
-function zoomImage(src){
-    document.getElementById("zoomedImage").src=src;
-    document.getElementById("imageModal").style.display="flex";
-}
-function closeImageModal(){
-    document.getElementById("imageModal").style.display="none";
+let chartData = {
+    modem: { rx: [], tx: [] },
+    client: { rx: [], tx: [] },
+    cpu: [],
+    ram: []
+};
+
+const canvas = {};
+const ctx = {};
+
+let drawPending = false;
+
+function formatSpeed(mbps) {
+    if (mbps >= 1000) return { value: (mbps/1000).toFixed(1), unit: 'Gbps' };
+    if (mbps >= 1) return { value: mbps.toFixed(1), unit: 'Mbps' };
+    if (mbps > 0) return { value: (mbps*1000).toFixed(0), unit: 'Kbps' };
+    return { value: '0', unit: 'Kbps' };
 }
 
-document.addEventListener('DOMContentLoaded',function(){
-    showTime();
-    getPublicIP();
-    setupInterfaces();
-    setInterval(fetchOpenWrtStats,1500);
-});
+function formatSpeedWithUnit(mbps) {
+    if (mbps >= 1000) return (mbps/1000).toFixed(1) + ' Gbps';
+    if (mbps >= 1) return mbps.toFixed(1) + ' Mbps';
+    if (mbps > 0) return (mbps*1000).toFixed(0) + ' Kbps';
+    return '0 Kbps';
+}
 
-function setupInterfaces(){
-    fetch('/cgi-bin/traffic')
-        .then(res=>res.json())
-        .then(response=>{
-            const interfaces=response.interfaces||["br-lan","eth0"];
-            const modemMenu=document.getElementById("interfaceSelect");
-            const clientMenu=document.getElementById("clientInterfaceSelect");
-            modemMenu.innerHTML="";
-            clientMenu.innerHTML="";
-            const savedModem=localStorage.getItem("savedModemInterface")||"eth0";
-            const savedClient=localStorage.getItem("savedClientInterface")||"br-lan";
-            interfaces.forEach(iface=>{
-                modemMenu.add(new Option(iface,iface,false,iface===savedModem));
-                clientMenu.add(new Option(iface,iface,false,iface===savedClient));
-            });
-            if(!interfaces.includes(savedModem)&&interfaces.length>0){
-                modemMenu.value=interfaces[0];
-                changeModemInterface(interfaces[0]);
-            }else{
-                document.getElementById("modem-title").innerText=`Interface (${savedModem})`;
-                lastRxModem=null; lastTxModem=null;
-            }
-            if(!interfaces.includes(savedClient)&&interfaces.length>0){
-                clientMenu.value=interfaces[1]||interfaces[0];
-                changeClientInterface(clientMenu.value);
-            }else{
-                document.getElementById("client-title").innerText=`Interface (${savedClient})`;
-                lastRxClient=null; lastTxClient=null;
-            }
+function maskIP(ip) {
+    if (!ip) return 'Tidak tersedia';
+    const parts = ip.split('.');
+    if (parts.length !== 4) return ip;
+    return parts[0]+'.'+parts[1]+'.xx.xx';
+}
+
+function initCanvas(id) {
+    if (!canvas[id]) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        canvas[id] = el;
+        ctx[id] = el.getContext('2d');
+        const w = el.parentElement.clientWidth - 2;
+        const h = 45;
+        el.width = w * devicePixelRatio;
+        el.height = h * devicePixelRatio;
+        el.style.width = w + 'px';
+        el.style.height = h + 'px';
+        el._w = w;
+        el._h = h;
+        ctx[id].scale(devicePixelRatio, devicePixelRatio);
+    }
+    return canvas[id];
+}
+
+function drawChart(id, data, color, isPct) {
+    const c = initCanvas(id);
+    if (!c) return;
+    const d = ctx[id];
+    const w = c._w, h = c._h;
+    const len = data.length;
+    
+    d.clearRect(0, 0, w, h);
+    
+    if (len < 2) {
+        d.fillStyle = '#94a3b8';
+        d.font = '9px sans-serif';
+        d.textAlign = 'center';
+        d.fillText('⏳', w/2, h/2 + 3);
+        return;
+    }
+    
+    const pad = { t: 4, b: 4, l: 3, r: 3 };
+    const cw = w - pad.l - pad.r;
+    const ch = h - pad.t - pad.b;
+    
+    const maxPts = Math.min(len, MAX_POINTS);
+    const slice = data.slice(-maxPts);
+    
+    let maxVal = isPct ? 100 : 100;
+    if (!isPct) {
+        for (let i = 0; i < slice.length; i++) {
+            if (slice[i] > maxVal) maxVal = slice[i];
+        }
+        if (maxVal < 1) maxVal = 1;
+    }
+    
+    d.strokeStyle = '#e2e8f0';
+    d.lineWidth = 0.5;
+    for (let i = 0; i <= 3; i++) {
+        const y = pad.t + (i/3) * ch;
+        d.beginPath();
+        d.moveTo(pad.l, y);
+        d.lineTo(w - pad.r, y);
+        d.stroke();
+    }
+    
+    d.beginPath();
+    const firstX = pad.l;
+    const firstY = pad.t + ch - (Math.min(slice[0], maxVal)/maxVal) * ch;
+    d.moveTo(firstX, firstY);
+    
+    for (let i = 1; i < slice.length; i++) {
+        const x = pad.l + (i/(slice.length-1)) * cw;
+        const y = pad.t + ch - (Math.min(slice[i], maxVal)/maxVal) * ch;
+        d.lineTo(x, y);
+    }
+    
+    d.strokeStyle = color;
+    d.lineWidth = 1.5;
+    d.stroke();
+    
+    const lastX = pad.l + ((slice.length-1)/(slice.length-1)) * cw;
+    d.lineTo(lastX, pad.t + ch);
+    d.lineTo(firstX, pad.t + ch);
+    d.closePath();
+    d.fillStyle = color + '20';
+    d.fill();
+    
+    d.fillStyle = '#94a3b8';
+    d.font = '6px sans-serif';
+    d.textAlign = 'right';
+    d.fillText(isPct ? maxVal+'%' : maxVal.toFixed(0)+'%', w - pad.r, pad.t + 6);
+}
+
+function drawNetworkChart(id, data) {
+    const c = initCanvas(id);
+    if (!c) return;
+    const d = ctx[id];
+    const w = c._w, h = c._h;
+    const rxData = data.rx || [];
+    const txData = data.tx || [];
+    const len = Math.min(rxData.length, MAX_POINTS);
+    
+    d.clearRect(0, 0, w, h);
+    
+    if (len < 2) {
+        d.fillStyle = '#94a3b8';
+        d.font = '9px sans-serif';
+        d.textAlign = 'center';
+        d.fillText('⏳', w/2, h/2 + 3);
+        return;
+    }
+    
+    const pad = { t: 4, b: 4, l: 3, r: 3 };
+    const cw = w - pad.l - pad.r;
+    const ch = h - pad.t - pad.b;
+    
+    const rxSlice = rxData.slice(-len);
+    const txSlice = txData.slice(-len);
+    
+    let maxVal = 0;
+    for (let i = 0; i < len; i++) {
+        if (rxSlice[i] > maxVal) maxVal = rxSlice[i];
+        if (txSlice[i] > maxVal) maxVal = txSlice[i];
+    }
+    if (maxVal < 0.1) maxVal = 0.1;
+    
+    // Grid
+    d.strokeStyle = '#e2e8f0';
+    d.lineWidth = 0.5;
+    for (let i = 0; i <= 3; i++) {
+        const y = pad.t + (i/3) * ch;
+        d.beginPath();
+        d.moveTo(pad.l, y);
+        d.lineTo(w - pad.r, y);
+        d.stroke();
+    }
+    
+    function drawLine(dataArr, stroke, fill) {
+        d.beginPath();
+        const firstX = pad.l;
+        const firstY = pad.t + ch - (Math.min(dataArr[0], maxVal)/maxVal) * ch;
+        d.moveTo(firstX, firstY);
+        
+        for (let i = 1; i < dataArr.length; i++) {
+            const x = pad.l + (i/(dataArr.length-1)) * cw;
+            const y = pad.t + ch - (Math.min(dataArr[i], maxVal)/maxVal) * ch;
+            d.lineTo(x, y);
+        }
+        
+        d.strokeStyle = stroke;
+        d.lineWidth = 1.5;
+        d.stroke();
+        
+        const lastX = pad.l + ((dataArr.length-1)/(dataArr.length-1)) * cw;
+        d.lineTo(lastX, pad.t + ch);
+        d.lineTo(firstX, pad.t + ch);
+        d.closePath();
+        d.fillStyle = fill;
+        d.fill();
+    }
+    
+    drawLine(rxSlice, '#0284c7', 'rgba(2,132,199,0.1)');
+    drawLine(txSlice, '#4f46e5', 'rgba(79,70,229,0.1)');
+    
+    d.fillStyle = '#94a3b8';
+    d.font = '6px sans-serif';
+    d.textAlign = 'right';
+    let label = '';
+    if (maxVal >= 1000) label = (maxVal/1000).toFixed(1)+'G';
+    else if (maxVal >= 1) label = maxVal.toFixed(1)+'M';
+    else label = (maxVal*1000).toFixed(0)+'K';
+    d.fillText(label, w - pad.r, pad.t + 6);
+}
+
+function updateData(id, rx, tx) {
+    const data = id === 'modem' ? chartData.modem : chartData.client;
+    data.rx.push(rx);
+    data.tx.push(tx);
+    if (data.rx.length > MAX_POINTS * 2) {
+        data.rx = data.rx.slice(-MAX_POINTS * 1.5);
+        data.tx = data.tx.slice(-MAX_POINTS * 1.5);
+    }
+}
+
+function scheduleDraw() {
+    if (!drawPending) {
+        drawPending = true;
+        requestAnimationFrame(() => {
+            drawPending = false;
+            drawNetworkChart('modem-chart', chartData.modem);
+            drawNetworkChart('client-chart', chartData.client);
+            drawChart('cpu-chart', chartData.cpu, '#10b981', true);
+            drawChart('ram-chart', chartData.ram, '#f59e0b', true);
+        });
+    }
+}
+
+function showTime() {
+    const d = new Date();
+    const h = String(d.getHours()).padStart(2,'0');
+    const m = String(d.getMinutes()).padStart(2,'0');
+    const s = String(d.getSeconds()).padStart(2,'0');
+    document.getElementById('MyClockDisplay').innerHTML = 
+        `<span class="small-icon">🕐</span> ${h}:${m}:${s}`;
+    setTimeout(showTime, 1000);
+}
+
+function getPublicIP() {
+    fetch('https://api.ipify.org?format=json')
+        .then(r => r.json())
+        .then(d => {
+            const el = document.getElementById('wimi-ipv4');
+            if (el && d.ip) el.innerHTML = `<span class="small-icon">🌍</span> IP: ${maskIP(d.ip)}`;
         })
-        .catch(()=>{
-            const modemMenu=document.getElementById("interfaceSelect");
-            const clientMenu=document.getElementById("clientInterfaceSelect");
-            modemMenu.innerHTML='<option value="eth0">eth0</option>';
-            clientMenu.innerHTML='<option value="br-lan">br-lan</option>';
+        .catch(() => {
+            const el = document.getElementById('wimi-ipv4');
+            if (el) el.innerHTML = '<span class="small-icon">🌍</span> IP: Tidak tersedia';
         });
 }
 
-function changeModemInterface(val){
-    localStorage.setItem("savedModemInterface",val);
-    document.getElementById("modem-title").innerText=`Interface (${val})`;
-    maxSpeedModem=50;
-    skipFirstCalculation=true;
-    lastRxModem=null; lastTxModem=null;
-}
-function changeClientInterface(val){
-    localStorage.setItem("savedClientInterface",val);
-    document.getElementById("client-title").innerText=`Interface (${val})`;
-    maxSpeedClient=50;
-    skipFirstCalculation=true;
-    lastRxClient=null; lastTxClient=null;
+function zoomImage(src) {
+    document.getElementById('zoomedImage').src = src;
+    document.getElementById('imageModal').style.display = 'flex';
 }
 
-function fetchOpenWrtStats(){
-    const modemIface=document.getElementById("interfaceSelect").value;
-    const clientIface=document.getElementById("clientInterfaceSelect").value;
+function closeImageModal() {
+    document.getElementById('imageModal').style.display = 'none';
+}
 
+function setupInterfaces() {
     fetch('/cgi-bin/traffic')
-        .then(res=>res.json())
-        .then(response=>{
-            // CPU & RAM
-            if(typeof response.cpu!=='undefined'){
-                let cpuVal=Math.round(response.cpu);
-                document.getElementById("cpu-val").innerText=cpuVal+"%";
-                document.getElementById("cpu-bar").style.width=Math.min(cpuVal,100)+"%";
-                const cpuBar=document.getElementById("cpu-bar");
-                if(cpuVal>85) cpuBar.style.background="linear-gradient(90deg,#ef4444,#f87171)";
-                else if(cpuVal>60) cpuBar.style.background="linear-gradient(90deg,#f59e0b,#fbbf24)";
-                else cpuBar.style.background="linear-gradient(90deg,#10b981,#34d399)";
+        .then(r => r.json())
+        .then(res => {
+            const ifaces = res.interfaces || ['br-lan','eth0','wwan','eth1'];
+            const modemMenu = document.getElementById('interfaceSelect');
+            const clientMenu = document.getElementById('clientInterfaceSelect');
+            const savedModem = localStorage.getItem('savedModemInterface') || 'eth1';
+            const savedClient = localStorage.getItem('savedClientInterface') || 'wwan';
+            
+            modemMenu.innerHTML = '';
+            clientMenu.innerHTML = '';
+            
+            ifaces.forEach(iface => {
+                modemMenu.add(new Option(iface, iface, false, iface === savedModem));
+                clientMenu.add(new Option(iface, iface, false, iface === savedClient));
+            });
+            
+            if (!ifaces.includes(savedModem) && ifaces.length) {
+                modemMenu.value = ifaces[0];
+                changeModemInterface(ifaces[0]);
+            } else {
+                document.getElementById('modem-title').innerText = savedModem;
             }
-            if(response.ram){
-                let ramPercent=null;
-                if(typeof response.ram.percent==='number') ramPercent=response.ram.percent;
-                else if(typeof response.ram==='number') ramPercent=response.ram;
-                if(ramPercent!==null&&!isNaN(ramPercent)){
-                    let ramVal=Math.round(ramPercent);
-                    document.getElementById("ram-val").innerText=ramVal+"%";
-                    document.getElementById("ram-bar").style.width=Math.min(ramVal,100)+"%";
-                }
-            }
-
-            let data=response.data||response;
-            let now=Date.now();
-            let elapsed=(now-lastTime)/1000;
-            if(elapsed<=0) elapsed=3;
-            lastTime=now;
-
-            // ---- Proses modem ----
-            if(data[modemIface]){
-                let rx=data[modemIface].rx||0;
-                let tx=data[modemIface].tx||0;
-                if(skipFirstCalculation || lastRxModem===null || isFirstFetch){
-                    // simpan data pertama, jangan hitung
-                    lastRxModem=rx;
-                    lastTxModem=tx;
-                } else {
-                    // Cegah lonjakan: jika last total = 0 dan current total > 0, jangan hitung, hanya update last
-                    let totalLast = lastRxModem + lastTxModem;
-                    let totalNow = rx + tx;
-                    if(totalLast === 0 && totalNow > 0){
-                        // Lonjakan dari 0, abaikan hitung, update last
-                        lastRxModem=rx;
-                        lastTxModem=tx;
-                    } else {
-                        // Hitung normal, asal totalNow > 0 (jika 0, diff = 0)
-                        let diffRx=(rx>=lastRxModem)?(rx-lastRxModem):rx;
-                        let diffTx=(tx>=lastTxModem)?(tx-lastTxModem):tx;
-                        let mbps=parseFloat(((((diffRx+diffTx)/elapsed)*8)/1000000).toFixed(2));
-                        if(mbps>maxSpeedModem) maxSpeedModem=Math.ceil(mbps/50)*50;
-                        let percent=Math.min((mbps/maxSpeedModem)*100,100);
-                        document.getElementById("modem-val").innerHTML=`${mbps.toFixed(2)} <span style="font-size:0.75rem; font-weight:600; color:#64748b;">mbps</span>`;
-                        document.getElementById("modem-limit-text").innerText=`Max ${maxSpeedModem}`;
-                        document.getElementById("modem-bar").style.width=percent+"%";
-                        // Update last
-                        lastRxModem=rx;
-                        lastTxModem=tx;
-                    }
-                }
-            }
-
-            // ---- Proses client ----
-            if(data[clientIface]){
-                let rx=data[clientIface].rx||0;
-                let tx=data[clientIface].tx||0;
-                if(skipFirstCalculation || lastRxClient===null || isFirstFetch){
-                    lastRxClient=rx;
-                    lastTxClient=tx;
-                } else {
-                    let totalLast = lastRxClient + lastTxClient;
-                    let totalNow = rx + tx;
-                    if(totalLast === 0 && totalNow > 0){
-                        lastRxClient=rx;
-                        lastTxClient=tx;
-                    } else {
-                        let diffRx=(rx>=lastRxClient)?(rx-lastRxClient):rx;
-                        let diffTx=(tx>=lastTxClient)?(tx-lastTxClient):tx;
-                        let mbps=parseFloat(((((diffRx+diffTx)/elapsed)*8)/1000000).toFixed(2));
-                        if(mbps>maxSpeedClient) maxSpeedClient=Math.ceil(mbps/50)*50;
-                        let percent=Math.min((mbps/maxSpeedClient)*100,100);
-                        document.getElementById("client-val").innerHTML=`${mbps.toFixed(2)} <span style="font-size:0.75rem; font-weight:600; color:#64748b;">mbps</span>`;
-                        document.getElementById("client-limit-text").innerText=`Max ${maxSpeedClient}`;
-                        document.getElementById("client-bar").style.width=percent+"%";
-                        lastRxClient=rx;
-                        lastTxClient=tx;
-                    }
-                }
-            }
-
-            if(skipFirstCalculation || isFirstFetch){
-                skipFirstCalculation=false;
-                isFirstFetch=false;
+            
+            if (!ifaces.includes(savedClient) && ifaces.length) {
+                clientMenu.value = ifaces[1] || ifaces[0];
+                changeClientInterface(clientMenu.value);
+            } else {
+                document.getElementById('client-title').innerText = savedClient;
             }
         })
-        .catch(()=>{});
+        .catch(() => {
+            document.getElementById('interfaceSelect').innerHTML = 
+                '<option value="eth0">eth0</option><option value="eth1">eth1</option><option value="wwan">wwan</option><option value="br-lan">br-lan</option>';
+            document.getElementById('clientInterfaceSelect').innerHTML = 
+                '<option value="eth0">eth0</option><option value="eth1">eth1</option><option value="wwan">wwan</option><option value="br-lan">br-lan</option>';
+        });
 }
+
+function changeModemInterface(val) {
+    localStorage.setItem('savedModemInterface', val);
+    document.getElementById('modem-title').innerText = val;
+    maxSpeedModem = 0;
+    chartData.modem = { rx: [], tx: [] };
+    lastRxModem = null;
+    lastTxModem = null;
+    document.getElementById('modem-limit-text').innerText = 'Max 0 Kbps';
+    document.getElementById('modem-bar').style.width = '0%';
+}
+
+function changeClientInterface(val) {
+    localStorage.setItem('savedClientInterface', val);
+    document.getElementById('client-title').innerText = val;
+    maxSpeedClient = 0;
+    chartData.client = { rx: [], tx: [] };
+    lastRxClient = null;
+    lastTxClient = null;
+    document.getElementById('client-limit-text').innerText = 'Max 0 Kbps';
+    document.getElementById('client-bar').style.width = '0%';
+}
+
+function fetchStats() {
+    const modemIface = document.getElementById('interfaceSelect').value;
+    const clientIface = document.getElementById('clientInterfaceSelect').value;
+    
+    fetch('/cgi-bin/traffic')
+        .then(r => r.json())
+        .then(res => {
+            // CPU
+            if (typeof res.cpu !== 'undefined') {
+                const val = Math.round(res.cpu);
+                document.getElementById('cpu-val').innerText = val + '%';
+                document.getElementById('cpu-bar').style.width = Math.min(val, 100) + '%';
+                
+                const bar = document.getElementById('cpu-bar');
+                if (val > 85) bar.style.background = 'linear-gradient(90deg,#ef4444,#f87171)';
+                else if (val > 60) bar.style.background = 'linear-gradient(90deg,#f59e0b,#fbbf24)';
+                else bar.style.background = 'linear-gradient(90deg,#10b981,#34d399)';
+                
+                chartData.cpu.push(val);
+                if (chartData.cpu.length > MAX_POINTS * 2) {
+                    chartData.cpu = chartData.cpu.slice(-MAX_POINTS * 1.5);
+                }
+            }
+            
+            if (res.ram) {
+                let pct = null;
+                if (typeof res.ram.percent === 'number') pct = res.ram.percent;
+                else if (typeof res.ram === 'number') pct = res.ram;
+                if (pct !== null && !isNaN(pct)) {
+                    const val = Math.round(pct);
+                    document.getElementById('ram-val').innerText = val + '%';
+                    document.getElementById('ram-bar').style.width = Math.min(val, 100) + '%';
+                    
+                    chartData.ram.push(val);
+                    if (chartData.ram.length > MAX_POINTS * 2) {
+                        chartData.ram = chartData.ram.slice(-MAX_POINTS * 1.5);
+                    }
+                }
+            }
+            
+            const data = res.data || res;
+            const now = Date.now();
+            let elapsed = (now - lastTime) / 1000;
+            if (elapsed <= 0) elapsed = 2;
+            lastTime = now;
+            
+            if (data[modemIface]) {
+                const rx = data[modemIface].rx || 0;
+                const tx = data[modemIface].tx || 0;
+                
+                if (skipFirst || lastRxModem === null || isFirstFetch) {
+                    lastRxModem = rx;
+                    lastTxModem = tx;
+                } else {
+                    const totalLast = lastRxModem + lastTxModem;
+                    const totalNow = rx + tx;
+                    if (totalLast === 0 && totalNow > 0) {
+                        lastRxModem = rx;
+                        lastTxModem = tx;
+                    } else {
+                        const diffRx = (rx >= lastRxModem) ? (rx - lastRxModem) : rx;
+                        const diffTx = (tx >= lastTxModem) ? (tx - lastTxModem) : tx;
+                        const mbps = parseFloat(((((diffRx + diffTx) / elapsed) * 8) / 1000000).toFixed(2));
+                        
+                        const rxMbps = parseFloat((((diffRx / elapsed) * 8) / 1000000).toFixed(2));
+                        const txMbps = parseFloat((((diffTx / elapsed) * 8) / 1000000).toFixed(2));
+                        updateData('modem', rxMbps, txMbps);
+                        
+                        const fmt = formatSpeed(mbps);
+                        document.getElementById('modem-val').innerHTML = 
+                            `${fmt.value} <span style="font-size:.75rem;font-weight:600;color:#64748b;">${fmt.unit}</span>`;
+                        
+                        // Max
+                        if (mbps > maxSpeedModem) {
+                            maxSpeedModem = mbps;
+                            document.getElementById('modem-limit-text').innerText = `Max ${formatSpeedWithUnit(maxSpeedModem)}`;
+                        }
+                        
+                        const pct = maxSpeedModem > 0 ? Math.min((mbps / maxSpeedModem) * 100, 100) : 0;
+                        document.getElementById('modem-bar').style.width = pct + '%';
+                        lastRxModem = rx;
+                        lastTxModem = tx;
+                    }
+                }
+            }
+            
+            if (data[clientIface]) {
+                const rx = data[clientIface].rx || 0;
+                const tx = data[clientIface].tx || 0;
+                
+                if (skipFirst || lastRxClient === null || isFirstFetch) {
+                    lastRxClient = rx;
+                    lastTxClient = tx;
+                } else {
+                    const totalLast = lastRxClient + lastTxClient;
+                    const totalNow = rx + tx;
+                    if (totalLast === 0 && totalNow > 0) {
+                        lastRxClient = rx;
+                        lastTxClient = tx;
+                    } else {
+                        const diffRx = (rx >= lastRxClient) ? (rx - lastRxClient) : rx;
+                        const diffTx = (tx >= lastTxClient) ? (tx - lastTxClient) : tx;
+                        const mbps = parseFloat(((((diffRx + diffTx) / elapsed) * 8) / 1000000).toFixed(2));
+                        
+                        const rxMbps = parseFloat((((diffRx / elapsed) * 8) / 1000000).toFixed(2));
+                        const txMbps = parseFloat((((diffTx / elapsed) * 8) / 1000000).toFixed(2));
+                        updateData('client', rxMbps, txMbps);
+                        
+                        const fmt = formatSpeed(mbps);
+                        document.getElementById('client-val').innerHTML = 
+                            `${fmt.value} <span style="font-size:.75rem;font-weight:600;color:#64748b;">${fmt.unit}</span>`;
+                        
+                        if (mbps > maxSpeedClient) {
+                            maxSpeedClient = mbps;
+                            document.getElementById('client-limit-text').innerText = `Max ${formatSpeedWithUnit(maxSpeedClient)}`;
+                        }
+                        
+                        const pct = maxSpeedClient > 0 ? Math.min((mbps / maxSpeedClient) * 100, 100) : 0;
+                        document.getElementById('client-bar').style.width = pct + '%';
+                        lastRxClient = rx;
+                        lastTxClient = tx;
+                    }
+                }
+            }
+            
+            if (skipFirst || isFirstFetch) {
+                skipFirst = false;
+                isFirstFetch = false;
+            }
+            
+            scheduleDraw();
+        })
+        .catch(() => {});
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    showTime();
+    getPublicIP();
+    setupInterfaces();
+    
+    setInterval(fetchStats, FETCH_INTERVAL);
+    setInterval(scheduleDraw, CHART_INTERVAL);
+    
+    window.addEventListener('resize', () => {
+        Object.keys(canvas).forEach(key => {
+            const el = canvas[key];
+            if (el) {
+                const w = el.parentElement.clientWidth - 2;
+                const h = 45;
+                if (el._w !== w || el._h !== h) {
+                    el.width = w * devicePixelRatio;
+                    el.height = h * devicePixelRatio;
+                    el.style.width = w + 'px';
+                    el.style.height = h + 'px';
+                    el._w = w;
+                    el._h = h;
+                    ctx[key].scale(devicePixelRatio, devicePixelRatio);
+                }
+            }
+        });
+        scheduleDraw();
+    });
+    
+    setTimeout(fetchStats, 500);
+});
 </script></body></html>
