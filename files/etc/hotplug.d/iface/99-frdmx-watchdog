@@ -1,6 +1,6 @@
 #!/bin/sh
 # For Frdmx-Wrt Community..
-# Smart Net Detector - Universal WAN Zone Watchdog
+# Smart Net Detector - Universal
 # Author: Frdmx-Wrt
 
 [ "$ACTION" = "ifup" ] || exit 0
@@ -13,7 +13,19 @@ fi
 
 [ -z "$IS_WAN" ] && exit 0
 
+PID_FILE="/var/run/frdmx_watchdog_${INTERFACE}.pid"
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE" 2>/dev/null)
+    if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+        logger -t "Frdmx-Watchdog" "Membunuh proses pengawasan lama (PID: $OLD_PID) untuk $INTERFACE agar tidak duplikasi."
+        kill "$OLD_PID" 2>/dev/null
+        sleep 1
+    fi
+fi
+
 (
+    echo "$$" > "$PID_FILE"
+
     sleep 30
 
     TARGET_PRIMARY_1="http://1.1.1.1"
@@ -40,25 +52,24 @@ fi
         return 1
     }
 
-    logger -t "Frdmx-Watchdog" "Memulai pengawasan internet pada interface: $INTERFACE"
+    logger -t "Frdmx-Watchdog" "Memulai pengawasan internet pada interface: $INTERFACE (PID: $$)"
 
     while true; do
     
         if ! uci -q show network."$INTERFACE" >/dev/null; then
-            rm -f "$COUNTER_FILE" 2>/dev/null
-            logger -t "Frdmx-Watchdog" "Antarmuka $INTERFACE tidak aktif, menghentikan pengawasan."
+            logger -t "Frdmx-Watchdog" "Antarmuka $INTERFACE dihapus dari sistem, menghentikan pengawasan."
             break
         fi
 
         if check_http "$TARGET_PRIMARY_1" || check_http "$TARGET_PRIMARY_2"; then
             echo "0" > "$COUNTER_FILE"
-            sleep 180
+            sleep 120  # Waktu tunggu berkala saat internet normal
             continue
         fi
 
         if check_http "$TARGET_BACKUP_1" || check_http "$TARGET_BACKUP_2"; then
             echo "0" > "$COUNTER_FILE"
-            sleep 180
+            sleep 120
             continue
         fi
 
@@ -66,8 +77,8 @@ fi
         [ -z "$CURRENT_COUNT" ] && CURRENT_COUNT=0
 
         if [ "$CURRENT_COUNT" -ge "$MAX_RESETS" ]; then
-            logger -t "Frdmx-Watchdog" "PERINGATAN: Batas maksimal reset ($MAX_RESETS kali) terpenuhi pada $INTERFACE. Mengistirahatkan modem 10 menit."
-            sleep 600 
+            logger -t "Frdmx-Watchdog" "PERINGATAN: Batas maksimal reset ($MAX_RESETS kali) terpenuhi pada $INTERFACE. Mengistirahatkan modem 5 menit."
+            sleep 300 
             echo "0" > "$COUNTER_FILE"
             continue
         fi
@@ -80,14 +91,16 @@ fi
             MODEM_INDEX=$(mmcli -L 2>/dev/null | grep -oE '/Modem/[0-9]+' | cut -d'/' -f3)
             if [ -n "$MODEM_INDEX" ]; then
                 mmcli -m "$MODEM_INDEX" --simple-disconnect >/dev/null 2>&1
-                sleep 2
+                sleep 3
             fi
         fi
         
         ifup "$INTERFACE" 2>/dev/null
 
-        exit 0
+        sleep 40
     done
+
+    rm -f "$COUNTER_FILE" "$PID_FILE" 2>/dev/null
 ) &
 
 exit 0

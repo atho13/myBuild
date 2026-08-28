@@ -1,0 +1,47 @@
+
+config interface 'loopback'
+	option device 'lo'
+	option proto 'static'
+	option ipaddr '127.0.0.1'
+	option netmask '255.0.0.0'
+
+config globals 'globals'
+	option ula_prefix ''
+	option packet_steering '2'
+
+config device
+	option name 'br-lan'
+	option type 'bridge'
+	list ports 'eth0'
+	option mtu '1500'
+
+config interface 'lan'
+	option device 'br-lan'
+	option proto 'static'
+	option ipaddr '192.168.1.1'
+	option netmask '255.255.255.0'
+
+config interface 'tethering'
+	option proto 'dhcp'
+	option device 'usb0'
+	option metric '10'
+
+config interface 'tailscale'
+	option proto 'none'
+	option device 'tailscale0'
+
+config interface 'wan'
+	option proto 'dhcp'
+	option device 'eth1'
+	option metric '5'
+
+config interface 'modem'
+	option proto 'modemmanager'
+	option device 'auto'
+	option apn 'internet'
+	option auth 'none'
+	option metric '20'
+	list allowedauth 'none'
+	option iptype 'ipv4v6'
+	option loglevel 'ERR'
+
