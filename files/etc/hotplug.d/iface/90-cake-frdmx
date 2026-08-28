@@ -1,70 +1,62 @@
 #!/bin/sh
-# For Frdmx-Wrt Community..
+# Universal Smart Queue Management for Community Firmware
 
-if [ "$ACTION" = "ifup" ]; then
-    REAL_DEV=""
-    if [ -n "${DEVICE:-}" ]; then
-        REAL_DEV="$DEVICE"
-    else
-        REAL_DEV=$(uci -q get network.$INTERFACE.device)
+[ "$ACTION" = "ifup" ] || exit 0
+
+REAL_DEV=""
+if [ -n "${DEVICE:-}" ]; then
+    REAL_DEV="$DEVICE"
+else
+    REAL_DEV=$(uci -q get network.$INTERFACE.device)
+fi
+
+[ -z "$REAL_DEV" ] || [ "$REAL_DEV" = "null" ] && REAL_DEV=$(uci -q get network.$INTERFACE.ifname)
+
+if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
+
+    if echo "$REAL_DEV" | grep -qE 'upx|tun|clash|utun|sing|v2ray|xray|wireguard|wg'; then
+        exit 0
     fi
 
-    if [ -z "$REAL_DEV" ] || [ "$REAL_DEV" = "null" ]; then
-        REAL_DEV=$(uci -q get network.$INTERFACE.ifname)
+    IS_WAN_ZONE=0
+    IS_LAN_ZONE=0
+
+    FW_ZONE=$(fw3 -q zone "$INTERFACE" 2>/dev/null)
+    if [ "$FW_ZONE" = "wan" ]; then
+        XYZ_WAN=1
+    elif [ "$FW_ZONE" = "lan" ]; then
+        XYZ_LAN=1
     fi
 
-    if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
-        
-        IS_VALID_INTERFACE=$(uci -q get network.$INTERFACE)
-        
-        if [ -n "$IS_VALID_INTERFACE" ]; then
-            BW_LIMIT="1gbit"
-            
-            CHECK_DEV="$REAL_DEV"
-            IS_LAN_ZONE=0
-            
-            if echo "$REAL_DEV" | grep -q '^br' || echo "$INTERFACE" | grep -q 'lan'; then
-                IS_LAN_ZONE=1
-                if echo "$REAL_DEV" | grep -q '^br'; then
-                    FIRST_PORT=$(ls "/sys/class/net/$REAL_DEV/brif/" 2>/dev/null | head -n 1)
-                    if [ -n "$FIRST_PORT" ] && [ -d "/sys/class/net/$FIRST_PORT" ]; then
-                        CHECK_DEV="$FIRST_PORT"
-                    elif [ -d "/sys/class/net/eth0" ]; then
-                        CHECK_DEV="eth0"
-                    fi
-                fi
-            fi
-            
-            if [ -f "/sys/class/net/$CHECK_DEV/speed" ]; then
-                INTERFACE_SPEED=$(cat "/sys/class/net/$CHECK_DEV/speed" 2>/dev/null)
-                
-                if echo "$INTERFACE_SPEED" | grep -q '^[0-9]\+$' && [ "$INTERFACE_SPEED" -gt 0 ]; then
-                    CALC_SPEED=$((INTERFACE_SPEED * 100 / 100))
-                    BW_LIMIT="${CALC_SPEED}mbit"
-                else
-                    if [ "$IS_LAN_ZONE" = "1" ]; then
-                        if [ "$CHECK_DEV" = "eth0" ]; then
-                            BW_LIMIT="100mbit"
-                        else
-                            BW_LIMIT="1000mbit"
-                        fi
-                    fi
-                fi
-            else
-                if [ "$IS_LAN_ZONE" = "1" ]; then
-                    if [ "$CHECK_DEV" = "eth0" ]; then
-                        BW_LIMIT="100mbit"
-                    else
-                        BW_LIMIT="1000mbit"
-                    fi
-                fi
-            fi
-            
-            if echo "$INTERFACE" | grep -q 'wan' || echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan'; then
-                tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate nat wash >/dev/null 2>&1
-            else
-                tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate >/dev/null 2>&1
-            fi
+    if [ "$XYZ_WAN" != "1" ] && [ "$XYZ_LAN" != "1" ]; then
+        if echo "$INTERFACE" | grep -qE 'wan|wwan|modem|tether' || echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|lte'; then
+            XYZ_WAN=1
+        elif echo "$INTERFACE" | grep -q 'lan' || echo "$REAL_DEV" | grep -q '^br'; then
+            XYZ_LAN=1
         fi
+    fi
+
+    BW_LIMIT="1gbit"
+    CHECK_DEV="$REAL_DEV"
+    
+    if echo "$REAL_DEV" | grep -q '^br'; then
+        FIRST_PORT=$(ls "/sys/class/net/$REAL_DEV/brif/" 2>/dev/null | head -n 1)
+        [ -n "$FIRST_PORT" ] && [ -d "/sys/class/net/$FIRST_PORT" ] && CHECK_DEV="$FIRST_PORT"
+    fi
+
+    if [ -f "/sys/class/net/$CHECK_DEV/speed" ]; then
+        INTERFACE_SPEED=$(cat "/sys/class/net/$CHECK_DEV/speed" 2>/dev/null)
+        if echo "$INTERFACE_SPEED" | grep -q '^[0-9]\+$' && [ "$INTERFACE_SPEED" -gt 0 ]; then
+            CALC_SPEED=$((INTERFACE_SPEED * 95 / 100))
+            BW_LIMIT="${CALC_SPEED}mbit"
+        fi
+    fi
+
+    if [ "$XYZ_WAN" = "1" ]; then
+        tc qdisc del dev $REAL_DEV root >/dev/null 2>&1
+        tc qdisc add dev $REAL_DEV root fq >/dev/null 2>&1
+    elif [ "$XYZ_LAN" = "1" ]; then
+        tc qdisc del dev $REAL_DEV root >/dev/null 2>&1
+        tc qdisc add dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate nonat nowash no-ack-filter split-gso rtt 100ms >/dev/null 2>&1
     fi
 fi
