@@ -1,5 +1,5 @@
 #!/bin/sh
-# Universal Smart Queue Management for Community Firmware
+# Universal Smart Queue Management
 
 [ "$ACTION" = "ifup" ] || exit 0
 
@@ -14,12 +14,13 @@ fi
 
 if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
 
+    # Lewati interface VPN / Tunneling agar tidak enkapsulasi ganda
     if echo "$REAL_DEV" | grep -qE 'upx|tun|clash|utun|sing|v2ray|xray|wireguard|wg'; then
         exit 0
     fi
 
-    IS_WAN_ZONE=0
-    IS_LAN_ZONE=0
+    XYZ_WAN=0
+    XYZ_LAN=0
 
     FW_ZONE=$(fw3 -q zone "$INTERFACE" 2>/dev/null)
     if [ "$FW_ZONE" = "wan" ]; then
@@ -36,27 +37,72 @@ if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_D
         fi
     fi
 
-    BW_LIMIT="1gbit"
-    CHECK_DEV="$REAL_DEV"
-    
-    if echo "$REAL_DEV" | grep -q '^br'; then
-        FIRST_PORT=$(ls "/sys/class/net/$REAL_DEV/brif/" 2>/dev/null | head -n 1)
-        [ -n "$FIRST_PORT" ] && [ -d "/sys/class/net/$FIRST_PORT" ] && CHECK_DEV="$FIRST_PORT"
-    fi
+    DL_LIMIT="0"
+    UL_LIMIT="0"
 
-    if [ -f "/sys/class/net/$CHECK_DEV/speed" ]; then
-        INTERFACE_SPEED=$(cat "/sys/class/net/$CHECK_DEV/speed" 2>/dev/null)
-        if echo "$INTERFACE_SPEED" | grep -q '^[0-9]\+$' && [ "$INTERFACE_SPEED" -gt 0 ]; then
-            CALC_SPEED=$((INTERFACE_SPEED * 95 / 100))
-            BW_LIMIT="${CALC_SPEED}mbit"
+    if echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|lte|wlan'; then
+        
+        TX_BYTES_1=$(cat /sys/class/net/$REAL_DEV/statistics/tx_bytes)
+        RX_BYTES_1=$(cat /sys/class/net/$REAL_DEV/statistics/rx_bytes)
+        sleep 1
+        TX_BYTES_2=$(cat /sys/class/net/$REAL_DEV/statistics/tx_bytes)
+        RX_BYTES_2=$(cat /sys/class/net/$REAL_DEV/statistics/rx_bytes)
+
+        REAL_UL=$(( (TX_BYTES_2 - TX_BYTES_1) * 8 / 1024 ))
+        REAL_DL=$(( (RX_BYTES_2 - RX_BYTES_1) * 8 / 1024 ))
+
+        if [ "$REAL_DL" -gt 2000 ]; then
+            CALC_DL=$(( REAL_DL * 90 / 100 ))
+            CALC_UL=$(( REAL_UL * 90 / 100 ))
+
+            # Proteksi CPU S905X jika menembus 100 Mbps
+            if [ "$REAL_DL" -gt 100000 ]; then
+                DL_LIMIT="0" 
+                UL_LIMIT="0"
+            else
+                DL_LIMIT="${CALC_DL}kbit"
+                UL_LIMIT="${CALC_UL}kbit"
+            fi
+        else
+            DL_LIMIT="60mbit"
+            UL_LIMIT="30mbit"
+        fi
+    else
+        CHECK_DEV="$REAL_DEV"
+        if echo "$REAL_DEV" | grep -q '^br'; then
+            FIRST_PORT=$(ls "/sys/class/net/$REAL_DEV/brif/" 2>/dev/null | head -n 1)
+            [ -n "$FIRST_PORT" ] && [ -d "/sys/class/net/$FIRST_PORT" ] && CHECK_DEV="$FIRST_PORT"
+        fi
+
+        if [ -f "/sys/class/net/$CHECK_DEV/speed" ]; then
+            INTERFACE_SPEED=$(cat "/sys/class/net/$CHECK_DEV/speed" 2>/dev/null)
+            if echo "$INTERFACE_SPEED" | grep -q '^[0-9]\+$' && [ "$INTERFACE_SPEED" -gt 0 ]; then
+                if [ "$INTERFACE_SPEED" -ge 100 ]; then
+                    DL_LIMIT="0" # Unlimited untuk FTTH / LAN Gigabit
+                    UL_LIMIT="0"
+                else
+                    CALC_SPEED=$((INTERFACE_SPEED * 95 / 100))
+                    DL_LIMIT="${CALC_SPEED}mbit"
+                    UL_LIMIT="${CALC_SPEED}mbit"
+                fi
+            fi
         fi
     fi
 
     if [ "$XYZ_WAN" = "1" ]; then
         tc qdisc del dev $REAL_DEV root >/dev/null 2>&1
-        tc qdisc add dev $REAL_DEV root fq >/dev/null 2>&1
+        if [ "$UL_LIMIT" = "0" ] || [ "$UL_LIMIT" = "0kbit" ]; then
+            tc qdisc add dev $REAL_DEV root cake diffserv3 triple-isolate nat ack-filter >/dev/null 2>&1
+        else
+            tc qdisc add dev $REAL_DEV root cake bandwidth $UL_LIMIT diffserv3 triple-isolate nat ack-filter >/dev/null 2>&1
+        fi
+
     elif [ "$XYZ_LAN" = "1" ]; then
         tc qdisc del dev $REAL_DEV root >/dev/null 2>&1
-        tc qdisc add dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate nonat nowash no-ack-filter split-gso rtt 100ms >/dev/null 2>&1
+        if [ "$DL_LIMIT" = "0" ] || [ "$DL_LIMIT" = "0kbit" ]; then
+            tc qdisc add dev $REAL_DEV root cake diffserv3 triple-isolate nonat nowash no-ack-filter split-gso >/dev/null 2>&1
+        else
+            tc qdisc add dev $REAL_DEV root cake bandwidth $DL_LIMIT diffserv3 triple-isolate nonat nowash no-ack-filter split-gso >/dev/null 2>&1
+        fi
     fi
 fi
