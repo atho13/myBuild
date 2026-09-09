@@ -1,7 +1,7 @@
 #!/bin/bash
 
+# B860H v1/v2 GPIO
 # by Lutfa Ilham
-# Combined & Auto-detect
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
@@ -10,112 +10,63 @@ fi
 
 GPIO="/sys/class/gpio"
 
-STB_MODEL=$(cat /proc/device-tree/model 2>/dev/null)
-
-if [[ "$STB_MODEL" == *"HG680"* ]]; then
-  # HG680P
-  PIN_POWER_ON="521"
-  PIN_POWER_OFF="517"
-  PIN_LAN_ON="547"
-  PIN_LAN_OFF="548"
-  PIN_USB="505"
-  HAS_POWER_LED=true
-elif [[ "$STB_MODEL" == *"B860H"* || "$STB_MODEL" == *"b860h"* ]]; then
-  # B860H v1/v2
-  PIN_POWER_ON=""
-  PIN_POWER_OFF=""
-  PIN_LAN_ON="598"
-  PIN_LAN_OFF="596"
-  PIN_USB="505"
-  HAS_POWER_LED=false
-else
-
-  PIN_POWER_ON=""
-  PIN_POWER_OFF=""
-  PIN_LAN_ON="598"
-  PIN_LAN_OFF="596"
-  PIN_USB="505"
-  HAS_POWER_LED=false
-fi
-
 function dual_general() {
   pin_on="${2}"
   pin_off="${3}"
-  
-  if [ -z "${pin_on}" ] || [ -z "${pin_off}" ]; then
-    echo "Fitur ini tidak didukung pada model STB Anda."
-    return 1
-  fi
-
-  [ ! -d "${GPIO}/gpio${pin_on}" ] && echo "${pin_on}" > "${GPIO}/export" 2>/dev/null
-  [ ! -d "${GPIO}/gpio${pin_off}" ] && echo "${pin_off}" > "${GPIO}/export" 2>/dev/null
-  
-  echo out > "${GPIO}/gpio${pin_on}/direction" 2>/dev/null
-  echo out > "${GPIO}/gpio${pin_off}/direction" 2>/dev/null
-  
+  # initialize gpio
+  echo "${pin_on}" > "${GPIO}/export"
+  echo "${pin_off}" > "${GPIO}/export"
+  echo out > "${GPIO}/gpio${pin_on}/direction"
+  echo out > "${GPIO}/gpio${pin_off}/direction"
   case "${1}" in
     "on")
-      echo 0 > "${GPIO}/gpio${pin_off}/value" 2>/dev/null
-      echo 1 > "${GPIO}/gpio${pin_on}/value" 2>/dev/null
+      echo 0 > "${GPIO}/gpio${pin_off}/value"
+      echo 1 > "${GPIO}/gpio${pin_on}/value"
       ;;
     "off")
-      echo 0 > "${GPIO}/gpio${pin_on}/value" 2>/dev/null
-      echo 1 > "${GPIO}/gpio${pin_off}/value" 2>/dev/null
+      echo 0 > "${GPIO}/gpio${pin_on}/value"
+      echo 1 > "${GPIO}/gpio${pin_off}/value"
       ;;
     "warn")
-      echo 1 > "${GPIO}/gpio${pin_on}/value" 2>/dev/null
-      echo 1 > "${GPIO}/gpio${pin_off}/value" 2>/dev/null
+      echo 1 > "${GPIO}/gpio${pin_on}/value"
+      echo 1 > "${GPIO}/gpio${pin_off}/value"
       ;;
     "dis")
-      echo 0 > "${GPIO}/gpio${pin_on}/value" 2>/dev/null
-      echo 0 > "${GPIO}/gpio${pin_off}/value" 2>/dev/null
+      echo 0 > "${GPIO}/gpio${pin_on}/value"
+      echo 0 > "${GPIO}/gpio${pin_off}/value"
       ;;
   esac
 }
 
-function power() {
-  dual_general "${1}" "${PIN_POWER_ON}" "${PIN_POWER_OFF}"
-}
-
 function lan() {
-  dual_general "${1}" "${PIN_LAN_ON}" "${PIN_LAN_OFF}"
+  pin_on="598"
+  pin_off="596"
+  dual_general "${1}" "${pin_on}" "${pin_off}"
 }
 
 function usb() {
-  [ ! -d "${GPIO}/gpio${PIN_USB}" ] && echo "${PIN_USB}" > "${GPIO}/export" 2>/dev/null
-  echo out > "${GPIO}/gpio${PIN_USB}/direction" 2>/dev/null
+  pin_usb="505"
+  # initialize gpio
+  echo "${pin_usb}" > "${GPIO}/export"
+  echo out > "${GPIO}/gpio${pin_usb}/direction"
   case "${1}" in
     "reset")
-      echo 0 > "${GPIO}/gpio${PIN_USB}/value" 2>/dev/null
+      echo 0 > "${GPIO}/gpio${pin_usb}/value"
       sleep 1
-      echo 1 > "${GPIO}/gpio${PIN_USB}/value" 2>/dev/null
+      echo 1 > "${GPIO}/gpio${pin_usb}/value"
       ;;
   esac
 }
 
 function usage() {
-  if [ "$HAS_POWER_LED" = true ]; then
-    cat <<EOF
-Detected Model: HG680P
-Usage:
-  -power  [on, off, warn, dis]
-  -lan    [on, off, warn, dis]
-  -usb    [reset]
-EOF
-  else
-    cat <<EOF
-Detected Model: B860H v1/v2
+  cat <<EOF
 Usage:
   -lan    [on, off, warn, dis]
   -usb    [reset]
 EOF
-  fi
 }
 
 case "${1}" in
-  -power)
-    power "${2}"
-    ;;
   -lan)
     lan "${2}"
     ;;
