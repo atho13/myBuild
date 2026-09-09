@@ -1,7 +1,7 @@
 {
 	"model": {
 		"id": "zte,b860h",
-		"name": "ZTE B860H"
+		"name": "ZTE ✶ B860H"
 	},
 	"network": {
 		"lan": {
@@ -9,7 +9,7 @@
 				"eth0",
 				"eth1",
 				"usb0",
-				"mm"
+				"wwan0"
 			],
 			"protocol": "static"
 		}
