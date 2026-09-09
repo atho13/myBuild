@@ -1,0 +1,38 @@
+#!/bin/sh
+# For Frdmx-Wrt Community..
+
+[ "$ACTION" = "add" ] || exit 0
+
+VID=$(echo "$PRODUCT" | cut -d'/' -f1 | tr 'A-Z' 'a-z')
+PID=$(echo "$PRODUCT" | cut -d'/' -f2 | tr 'A-Z' 'a-z')
+
+case "$VID" in
+    "2c7c"|"1199"|"2cb7"|"12d1"|"05c6"|"1e0e"|"413c"|"03f0"|"19d2"|"0b3c"|"1546"|"2b7c"|"0489")
+
+        sleep 2
+        
+        if [ -d "/sys/bus/usb/devices/$DEVICENAME" ]; then
+            VID_FINAL=$(cat "/sys/bus/usb/devices/$DEVICENAME/idVendor" 2>/dev/null | tr 'A-Z' 'a-z')
+            PID_FINAL=$(cat "/sys/bus/usb/devices/$DEVICENAME/idProduct" 2>/dev/null | tr 'A-Z' 'a-z')
+            [ -n "$VID_FINAL" ] && VID=$VID_FINAL
+            [ -n "$PID_FINAL" ] && PID=$PID_FINAL
+        fi
+
+        if [ -d "/sys/bus/usb-serial/drivers/option1" ]; then
+
+            if ! grep -q "$VID.*$PID" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
+                echo "$VID $PID" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
+                sleep 2
+            fi
+            
+            PORTS=$(ls /dev/ | grep -E "ttyUSB[0-9]|cdc-wdm[0-9]" | tr '\n' ' ')
+            
+            logger -t "MODEM_RAKITAN" "[+] Terdeteksi USB VID:$VID PID:$PID. Driver diaktifkan pada port: [ $PORTS]"
+        else
+            logger -t "MODEM_RAKITAN" "[-] Gagal mengaktifkan port. Modul kmod-usb-serial-option tidak ditemukan!"
+        fi
+        ;;
+    *)
+        exit 0
+        ;;
+esac

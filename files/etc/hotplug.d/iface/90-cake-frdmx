@@ -1,5 +1,5 @@
 #!/bin/sh
-# # For Frdmx-Wrt Community..
+# For Frdmx-Wrt Community..
 
 if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ]; then
     REAL_DEV=""
