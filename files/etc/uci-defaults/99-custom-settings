@@ -12,6 +12,7 @@ for file in \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
     /usr/bin/frdmx-andro \
+    /usr/bin/modem-lock \
     /usr/sbin/led \
     /usr/sbin/ledon \
     /sbin/free.sh \
@@ -19,6 +20,7 @@ for file in \
     /etc/rc.local \
     /etc/custom_service/start_service.sh \
     /etc/init.d/todong \
+    /etc/init.d/modem-lock \
     /www/vnstati/vnstati.sh \
     /www/cgi-bin/traffic \
     /etc/hotplug.d/usb/10-frdmx-modem-inject

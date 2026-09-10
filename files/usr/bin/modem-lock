@@ -1,0 +1,42 @@
+#!/bin/sh
+# For Frdmx-Wrt Community..
+
+sleep 20
+
+REAL_PATH=""
+for i in 1 2 3 4 5 6; do
+    if mmcli -L >/dev/null 2>&1; then
+        REAL_PATH=$(mmcli -m any 2>/dev/null | grep "device: " | grep -Eo '/sys/devices/[^ ]*')
+        [ -n "$REAL_PATH" ] && break
+    fi
+    sleep 5
+done
+
+if [ -n "$REAL_PATH" ]; then
+    interfaces=$(uci -q show network | grep -E "proto='modemmanager'|proto='qmi'|proto='mbim'" | cut -d'.' -f2 | cut -d'=' -f1 | uniq)
+    NEED_RELOAD=0
+
+    for iface in $interfaces; do
+        current_device=$(uci -q get network."$iface".device)
+        if [ "$current_device" != "$REAL_PATH" ]; then
+            uci set network."$iface".device="$REAL_PATH"
+            NEED_RELOAD=1
+        fi
+    done
+
+    if [ "$NEED_RELOAD" -eq 1 ]; then
+        uci commit network
+        /etc/init.d/network reload
+        logger -t "FRDMX_LOCK" "[+] Berhasil mengunci modem ke path: $REAL_PATH"
+        
+        sleep 5
+        if [ -x /etc/init.d/mwan3 ]; then
+            /etc/init.d/mwan3 restart
+            logger -t "FRDMX_LOCK" "[+] MWAN3 berhasil dimuat ulang."
+        fi
+    fi
+else
+    logger -t "FRDMX_LOCK" "[-] Gagal mendapatkan sysfs path modem lewat mmcli."
+fi
+
+exit 0
