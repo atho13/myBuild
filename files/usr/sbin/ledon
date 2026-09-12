@@ -95,7 +95,7 @@ case "${1}" in
     if [ "$STB_TYPE" = "HG680P" ]; then
       dual_general "${2}" "521" "517"
     else
-      echo "Info: Fitur -power diabaikan (B860H Not Support)"
+      echo "Info: Fitur -power diabaikan (B860H Not Supported)"
     fi
     ;;
   -lan)
