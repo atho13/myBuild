@@ -9,7 +9,6 @@ fi
 
 GPIO="/sys/class/gpio"
 
-# Cek Device 
 MODEL_INFO=""
 if [ -f /sys/firmware/devicetree/base/model ]; then
   MODEL_INFO=$(tr -d '\0' < /sys/firmware/devicetree/base/model | tr '[:upper:]' '[:lower:]')
@@ -17,7 +16,6 @@ elif [ -f /proc/device-tree/model ]; then
   MODEL_INFO=$(tr -d '\0' < /proc/device-tree/model | tr '[:upper:]' '[:lower:]')
 fi
 
-# Tentukan Type
 if [[ "$MODEL_INFO" == *"hg680"* ]]; then
   STB_TYPE="HG680P"
 elif [[ "$MODEL_INFO" == *"b860"* ]]; then
@@ -32,8 +30,6 @@ else
   fi
 fi
 
-
-# FUNGSI 
 function export_gpio() {
   if [ ! -d "${GPIO}/gpio${1}" ]; then
     echo "${1}" > "${GPIO}/export" 2>/dev/null
@@ -94,7 +90,6 @@ Usage:
 EOF
 }
 
-# Routing PIN 
 case "${1}" in
   -power)
     if [ "$STB_TYPE" = "HG680P" ]; then
