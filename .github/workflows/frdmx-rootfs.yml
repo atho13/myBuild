@@ -103,7 +103,6 @@ jobs:
           
       - name: Kumpulkan Hasil
         run: |
-          # Melakukan pencarian file rootfs secara global di dalam folder bin/targets/ (Anti-Gagal)
           BASE_TARGET_DIR="${{ env.WORKING_DIR }}/bin/targets"
           
           if [ -d "$BASE_TARGET_DIR" ]; then
