@@ -8,12 +8,23 @@ case "$1" in
     call)
         case "$2" in
             get_temp)
+                RAW=0
+                
                 if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
                     RAW=$(cat /sys/class/thermal/thermal_zone0/temp)
-                    json_init
-                    json_add_int "raw" "$RAW"
-                    json_dump
+                
+                elif [ -d /sys/class/hwmon ]; then
+                    for hwmon in /sys/class/hwmon/hwmon*; do
+                        if [ -f "$hwmon/temp1_input" ]; then
+                            RAW=$(cat "$hwmon/temp1_input")
+                            break
+                        fi
+                    done
                 fi
+                
+                json_init
+                json_add_int "raw" "${RAW:-0}"
+                json_dump
             ;;
             get_cpu)
                 if [ -f /proc/stat ]; then
