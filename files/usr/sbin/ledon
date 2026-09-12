@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# B860H v1/v2 GPIO
-# by Lutfa Ilham
+# Script GPIO Universal - Frdmx-Wrt Community
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
@@ -10,14 +9,47 @@ fi
 
 GPIO="/sys/class/gpio"
 
+# Cek Device 
+MODEL_INFO=""
+if [ -f /sys/firmware/devicetree/base/model ]; then
+  MODEL_INFO=$(tr -d '\0' < /sys/firmware/devicetree/base/model | tr '[:upper:]' '[:lower:]')
+elif [ -f /proc/device-tree/model ]; then
+  MODEL_INFO=$(tr -d '\0' < /proc/device-tree/model | tr '[:upper:]' '[:lower:]')
+fi
+
+# Tentukan Type
+if [[ "$MODEL_INFO" == *"hg680"* ]]; then
+  STB_TYPE="HG680P"
+elif [[ "$MODEL_INFO" == *"b860"* ]]; then
+  STB_TYPE="B860H"
+else
+ 
+  TOTAL_MEM=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+  if [ "$TOTAL_MEM" -lt 1500000 ]; then
+    STB_TYPE="B860H"
+  else
+    STB_TYPE="HG680P"
+  fi
+fi
+
+
+# FUNGSI 
+function export_gpio() {
+  if [ ! -d "${GPIO}/gpio${1}" ]; then
+    echo "${1}" > "${GPIO}/export" 2>/dev/null
+  fi
+}
+
 function dual_general() {
   pin_on="${2}"
   pin_off="${3}"
-  # initialize gpio
-  echo "${pin_on}" > "${GPIO}/export"
-  echo "${pin_off}" > "${GPIO}/export"
+  
+  export_gpio "${pin_on}"
+  export_gpio "${pin_off}"
+  
   echo out > "${GPIO}/gpio${pin_on}/direction"
   echo out > "${GPIO}/gpio${pin_off}/direction"
+  
   case "${1}" in
     "on")
       echo 0 > "${GPIO}/gpio${pin_off}/value"
@@ -38,17 +70,12 @@ function dual_general() {
   esac
 }
 
-function lan() {
-  pin_on="598"
-  pin_off="596"
-  dual_general "${1}" "${pin_on}" "${pin_off}"
-}
-
-function usb() {
-  pin_usb="505"
-  # initialize gpio
-  echo "${pin_usb}" > "${GPIO}/export"
+function usb_general() {
+  pin_usb="${2}"
+  
+  export_gpio "${pin_usb}"
   echo out > "${GPIO}/gpio${pin_usb}/direction"
+  
   case "${1}" in
     "reset")
       echo 0 > "${GPIO}/gpio${pin_usb}/value"
@@ -61,17 +88,31 @@ function usb() {
 function usage() {
   cat <<EOF
 Usage:
-  -lan    [on, off, warn, dis]
-  -usb    [reset]
+  $0 -power [on, off, warn, dis]  (HG680P Only)
+  $0 -lan   [on, off, warn, dis]  (Auto-Pin)
+  $0 -usb   [reset]               (Auto-Pin)
 EOF
 }
 
+# Routing PIN 
 case "${1}" in
+  -power)
+    if [ "$STB_TYPE" = "HG680P" ]; then
+      dual_general "${2}" "521" "517"
+    else
+      echo "Info: Fitur -power diabaikan (B860H Not Support)"
+    fi
+    ;;
   -lan)
-    lan "${2}"
+    if [ "$STB_TYPE" = "HG680P" ]; then
+      dual_general "${2}" "547" "548"
+    else
+      dual_general "${2}" "598" "596"
+    fi
     ;;
   -usb)
-    usb "${2}"
+
+    usb_general "${2}" "505"
     ;;
   *)
     usage
