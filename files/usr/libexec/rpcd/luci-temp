@@ -25,12 +25,36 @@ case "$1" in
             ;;
             get_traffic)
                 if [ -f /proc/net/dev ]; then
-                    NET_DATA=$(awk 'NR>2 {if($1 != "lo:") print $1, $2, $10}' /proc/net/dev | sort -rnk2 | head -n1 | sed 's/://')
-                    RX=$(echo "$NET_DATA" | awk '{print $2}')
-                    TX=$(echo "$NET_DATA" | awk '{print $3}')
+                    TOTAL_RX=0
+                    TOTAL_TX=0
+                    
+                    while read -r line; do
+                        case "$line" in
+                            *Inter-*|*bytes*) continue ;;
+                        esac
+                        
+                        case "$line" in
+                            *:*)
+                                IFACE="${line%%:*}"
+                                IFACE=$(echo $IFACE)
+                                
+                                [ "$IFACE" = "lo" ] || [ -z "$IFACE" ] && continue
+                                
+                                DATA_PART="${line#*:}"
+                                
+                                set -- $DATA_PART
+                                RX_BYTES=$1
+                                TX_BYTES=$9
+                                
+                                TOTAL_RX=$((TOTAL_RX + ${RX_BYTES:-0}))
+                                TOTAL_TX=$((TOTAL_TX + ${TX_BYTES:-0}))
+                                ;;
+                        esac
+                    done < /proc/net/dev
+                    
                     json_init
-                    json_add_int "rx" "${RX:-0}"
-                    json_add_int "tx" "${TX:-0}"
+                    json_add_int "rx" "$TOTAL_RX"
+                    json_add_int "tx" "$TOTAL_TX"
                     json_dump
                 fi
             ;;
