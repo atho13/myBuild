@@ -1,13 +1,13 @@
 #!/bin/sh
 
 echo "================================================="
-echo "   Memulai Konfigurasi Otomatis FRDMX..."
+echo "   Memulai Konfigurasi Otomatis FRDMX-Wrt"
 echo "================================================="
 
-echo "[*] Menghapus password root default (Keamanan Awal)..."
+echo "[*] Menghapus password root default (Keamanan Awal)"
 passwd -d root > /dev/null 2>&1
 
-echo "[*] Mengatur izin eksekusi berkas sistem..."
+echo "[*] Mengatur izin eksekusi berkas sistem"
 for file in \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
@@ -32,7 +32,7 @@ for file in \
     fi
 done
 
-echo "[*] Mengonfigurasi pengaturan UCI..."
+echo "[*] Mengonfigurasi pengaturan UCI"
 uci batch <<EOF
 # 1. Konfigurasi Sistem & Waktu (NTP)
 set system.@system[0].hostname='FRDMX'
@@ -109,7 +109,7 @@ uci set fstab.root_mount.options='noatime,commit=60'
 uci set fstab.root_mount.enabled='1'
 uci commit fstab
 
-echo "[*] Menyinkronkan zona Firewall..."
+echo "[*] Menyinkronkan zona Firewall"
 i=0
 while true; do
     zone_name=$(uci -q get firewall.@zone[$i].name)
@@ -127,7 +127,7 @@ while true; do
     i=$((i+1))
 done
 
-echo "[*] Menerapkan optimalisasi sistem firmware..."
+echo "[*] Menerapkan optimalisasi sistem firmware"
 if [ -f /etc/opkg.conf ]; then
     sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 fi
