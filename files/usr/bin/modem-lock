@@ -3,6 +3,11 @@
 
 sleep 20
 
+modprobe option 2>/dev/null
+echo "1bc7 1900" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
+modprobe cdc_mbim 2>/dev/null
+echo "1bc7 1900" > /sys/bus/usb-net/drivers/cdc_mbim/new_id 2>/dev/null
+
 vids="2cb7 1199 8087 413c 1bc7 03f0 1e2d"
 REAL_PATH=""
 
