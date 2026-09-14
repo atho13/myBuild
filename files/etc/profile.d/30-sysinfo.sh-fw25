@@ -30,13 +30,48 @@ print_info() {
 
 MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "Generic Device")
 KERNEL=$(uname -r)
-CPU_TEMP="N/A"
-[ -f /sys/class/thermal/thermal_zone0/temp ] && CPU_TEMP=$(awk '{printf "%.1f°C", $1/1000}' /sys/class/thermal/thermal_zone0/temp)
 
-if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
+CPU_TEMP="N/A"
+if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+    RAW_TEMP=$(cat /sys/class/thermal/thermal_zone0/temp)
+    CPU_TEMP=$(awk -v t="$RAW_TEMP" 'BEGIN {printf "%.1f°C", t/1000}')
+elif [ -d /sys/class/hwmon ]; then
+    for hwmon in /sys/class/hwmon/hwmon*; do
+        if [ -f "$hwmon/temp1_input" ]; then
+            RAW_TEMP=$(cat "$hwmon/temp1_input")
+            CPU_TEMP=$(awk -v t="$RAW_TEMP" 'BEGIN {printf "%.1f°C", t/1000}')
+            break
+        fi
+    done
+fi
+
+if ip route | grep -q '^default'; then
+    NET_STATUS="${C_GREEN}Connected"
+elif ping -4 -c 1 -W 1 1.1.1.1 >/dev/null 2>&1; then
     NET_STATUS="${C_GREEN}Connected"
 else
     NET_STATUS="${C_RED}Disconnected"
+fi
+
+TOTAL_RX=0
+TOTAL_TX=0
+if [ -f /proc/net/dev ]; then
+    while read -r line; do
+        case "$line" in *Inter-*|*bytes*) continue ;; esac
+        case "$line" in
+            *:*)
+                IFACE="${line%%:*}"
+                IFACE=$(echo $IFACE)
+                [ "$IFACE" = "lo" ] || [ -z "$IFACE" ] && continue
+                
+                DATA_PART="${line#*:}"
+                set -- $DATA_PART
+                
+                TOTAL_RX=$((TOTAL_RX + ${1:-0}))
+                TOTAL_TX=$((TOTAL_TX + ${9:-0}))
+                ;;
+        esac
+    done < /proc/net/dev
 fi
 
 eval $(awk '/^MemTotal:/ {t=$2} /^MemAvailable:/ {a=$2} END {printf "MEM_T=%d; MEM_A=%d", t*1024, a*1024}' /proc/meminfo)
@@ -52,10 +87,11 @@ print_info "CPU Temp"   "$CPU_TEMP"
 print_info "Uptime"     "$(up_str) | $(date +'%H:%M:%S')"
 print_info "Memory"     "$(hr $((MEM_T-MEM_A))) / $(hr $MEM_T)"
 print_info "Storage"    "$(hr $ST_U) / $(hr $ST_T) ($ST_P)"
+print_info "Total B/W" "⬇️ $(hr $TOTAL_RX) | ⬆️ $(hr $TOTAL_TX)"
 print_info "Net Status" "$NET_STATUS"
 
 echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
-echo -e "${C_YELLOW}Install : ${C_CYAN}apk add --allow-untrusted ./*.apk${C_RESET}"
+echo -e "${C_YELLOW}Install: ${C_CYAN}apk add --allow-untrusted ./*.apk${C_RESET}"
 echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"
 printf "${C_WHITE}%-17s ${C_WHITE}%s${C_RESET}\n" "COMMAND" "DESCRIPTION"
 printf "${C_CYAN}%-17s ${C_RESET}%s\n" "apk add" "Install a package"
