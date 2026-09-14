@@ -66,7 +66,14 @@ jobs:
           fi
         
           if [ -d "${{ github.workspace }}/files/etc/uci-defaults" ]; then
+            echo "Memperbaiki format EOL (CRLF ke LF) dan memberikan izin eksekusi..."
+            sudo apt-get install -y dos2unix
+            dos2unix ${{ github.workspace }}/files/etc/uci-defaults/*
             chmod +x ${{ github.workspace }}/files/etc/uci-defaults/*
+            
+            mkdir -p build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults
+            cp -r ${{ github.workspace }}/files/etc/uci-defaults/* build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/
+            chmod +x build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/*
           fi
         
           PACKAGES="-dnsmasq dnsmasq-full base-files dropbear e2fsprogs firewall4 fstools tc-full \
