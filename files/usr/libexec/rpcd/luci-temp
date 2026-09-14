@@ -48,6 +48,7 @@ case "$1" in
             ;;
             get_traffic)
                 if [ -f /proc/net/dev ]; then
+
                     NET_DATA=$(sed 's/:/ : /g' /proc/net/dev | awk 'NR>2 {if($1 != "lo") print $1, $3, $11}' | sort -rnk2 | head -n1)
                     
                     RX=$(echo "$NET_DATA" | awk '{print $2}')
