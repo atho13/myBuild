@@ -8,7 +8,6 @@ echo "[*] Menghapus password root default (Keamanan Awal)"
 passwd -d root > /dev/null 2>&1
 
 echo "[*] Mengatur izin eksekusi berkas sistem"
-# Format dirapikan menggunakan spasi agar tidak rawan patah/error sintaksis
 for file in \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
@@ -35,7 +34,6 @@ done
 
 echo "[*] Mengonfigurasi pengaturan UCI"
 uci batch <<EOF
-# 1. Konfigurasi Sistem & Waktu (NTP)
 set system.@system[0].hostname='FRDMX'
 set system.@system[0].timezone='WIB-7'
 set system.@system[0].zonename='Asia/Jakarta'
