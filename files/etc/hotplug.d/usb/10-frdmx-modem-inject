@@ -22,6 +22,7 @@ case "$VID" in
         fi
 
         if [ -d "/sys/bus/usb-serial/drivers/option1" ]; then
+            # Daftarkan secara dinamis jika VID/PID belum dikenali driver
             if ! grep -q "$VID.*$PID" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
                 echo "$VID $PID" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
                 sleep 2
