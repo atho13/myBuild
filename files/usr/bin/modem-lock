@@ -1,5 +1,5 @@
 #!/bin/sh
-# For Frdmx-Wrt Community..
+# For Frdmx-Wrt Community
 
 sleep 20
 
@@ -12,39 +12,34 @@ if [ -d /sys/bus/usb-serial/drivers/option1 ]; then
     echo "1bc7 1900" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
 fi
 
-if [ -d /sys/bus/usb-net/drivers/cdc_mbim ]; then
-    echo "1bc7 1900" > /sys/bus/usb-net/drivers/cdc_mbim/new_id 2>/dev/null
-fi
-
-if [ -d /sys/bus/usb/drivers/qmi_wwan ]; then
-    echo "1bc7 1900" > /sys/bus/usb/drivers/qmi_wwan/new_id 2>/dev/null
-fi
-
-vids="1bc7 2cb7 2c7c 12d1 1199 8087 413c 03f0 1e2d"
+vids="2c7c 2cb7 1508 1199 12d1 1bc7 1e0e 05c6 413c 03f0 19d2 9025 8087 1e2d"
 REAL_PATH=""
 
 for vid in $vids; do
-    device_file=$(find /sys/bus/usb/devices/ -maxdepth 3 -name idVendor -exec grep -l "$vid" {} + 2>/dev/null | head -n 1)
+    device_file=$(find /sys/bus/usb/devices/ -maxdepth 3 -name idVendor -exec grep -li "$vid" {} + 2>/dev/null | head -n 1)
     
     if [ -n "$device_file" ]; then
         base_dir=$(dirname "$device_file")
         REAL_PATH=$(readlink -f "$base_dir")
-        logger -t "Modem Finder.." "[+] Perangkat dengan VID $vid ditemukan di: $REAL_PATH"
+        logger -t "Modem Finder" "[+] Perangkat dengan VID $vid ditemukan via sysfs: $REAL_PATH"
         break
     fi
 done
 
 if [ -z "$REAL_PATH" ]; then
     for i in 1 2 3; do
-        if command -v mmcli >/dev/null 2>&1 && mmcli -L >/dev/null 2>&1; then
-            REAL_PATH=$(mmcli -m any 2>/dev/null | grep "device: " | awk '{print $NF}' | grep -o '/sys/devices/[^ ]*')
-            [ -n "$REAL_PATH" ] && break
+        if command -v mmcli >/dev/null 2>&1 && mmcli -L | grep -q "Modem"; then
+            MM_DEVICE=$(mmcli -m any 2>/dev/null | grep -i "device:" | awk '{print $NF}')
+            if [ -n "$MM_DEVICE" ]; then
+                REAL_PATH=$(readlink -f "$MM_DEVICE")
+                [ -n "$REAL_PATH" ] && logger -t "Modem Finder" "[+] Modem ditemukan via mmcli: $REAL_PATH" && break
+            fi
         fi
         sleep 5
     done
 fi
 
-if [ -n "$REAL_PATH" ]; then
+if [ -n "$REAL_PATH" ] && [ -d "$REAL_PATH" ]; then
     interfaces=$(uci -q show network | grep -E "proto='modemmanager'|proto='qmi'|proto='mbim'" | cut -d'.' -f2 | cut -d'=' -f1 | uniq)
     NEED_RELOAD=0
 
@@ -59,16 +54,18 @@ if [ -n "$REAL_PATH" ]; then
     if [ "$NEED_RELOAD" -eq 1 ]; then
         uci commit network
         /etc/init.d/network reload
-        logger -t "Modem Finder.." "[+] Berhasil mengunci modem ke path baru: $REAL_PATH"
+        logger -t "Modem Finder" "[+] Sukses mengunci modem ke parameter baru: $REAL_PATH"
         
         sleep 5
         if [ -x /etc/init.d/mwan3 ]; then
             /etc/init.d/mwan3 restart
-            logger -t "Modem Finder.." "[+] MWAN3 berhasil dimuat ulang."
+            logger -t "Modem Finder" "[+] Multi-WAN (MWAN3) dimuat ulang."
         fi
+    else
+        logger -t "Modem Finder" "[*] Info: Path modem tetap ($REAL_PATH). Jaringan stabil."
     fi
 else
-    logger -t "Modem Finder.." "[-] Gagal mendapatkan sysfs path modem lewat USB VID maupun mmcli."
+     logger -t "Modem Finder" "[*] Sistem siap. Menunggu modem rakitan/modul dicolokkan..."
 fi
 
 exit 0

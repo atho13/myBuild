@@ -17,7 +17,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
 
     if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
         
-        CURRENT_QDISC=$(tc qdisc show dev $REAL_DEV | head -n1 | awk '{print $2}')
+        CURRENT_QDISC=$(tc qdisc show dev $REAL_DEV 2>/dev/null | head -n1 | awk '{print $2}')
         if [ "$CURRENT_QDISC" = "cake" ] && [ "$ACTION" != "ifup" ]; then
             exit 0
         fi
@@ -33,7 +33,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
             CHECK_DEV="$REAL_DEV"
             
             if echo "$REAL_DEV" | grep -q '^br'; then
-                FIRST_PORT=$(ls "/sys/class/net/$REAL_DEV/brif/" 2>/dev/null | head -n 1)
+                FIRST_PORT=$(ls -1 "/sys/class/net/$REAL_DEV/brif/" 2>/dev/null | head -n 1)
                 [ -n "$FIRST_PORT" ] && CHECK_DEV="$FIRST_PORT"
             fi
             
@@ -62,11 +62,13 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
                 fi
             fi
             
+            # Aktifkan Algoritma TCP BBR (Bottleneck Bandwidth and RTT) jika didukung kernel
             if [ -d "/sys/module/tcp_bbr" ] || modprobe tcp_bbr >/dev/null 2>&1; then
                 sysctl -w net.ipv4.tcp_congestion_control=bbr >/dev/null 2>&1
                 sysctl -w net.ipv4.tcp_notsent_lowat=16384 >/dev/null 2>&1
             fi
             
+            logger -t "Frdmx-Optimizer" "Sukses menerapkan CAKE ($BW_LIMIT) & TCP BBR pada $REAL_DEV"
         fi
     fi
 fi

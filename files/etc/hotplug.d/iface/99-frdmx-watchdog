@@ -42,7 +42,7 @@ fi
     logger -t "Frdmx-Watchdog" "Memulai pengawasan internet pada interface: $INTERFACE"
 
     while true; do
-    
+
         if ! uci -q show network."$INTERFACE" >/dev/null; then
             rm -f "$COUNTER_FILE" 2>/dev/null
             logger -t "Frdmx-Watchdog" "Antarmuka $INTERFACE tidak aktif, menghentikan pengawasan."
@@ -76,7 +76,7 @@ fi
         logger -t "Frdmx-Watchdog" "Koneksi terputus pada $INTERFACE. Melakukan pemulihan jaringan (Percobaan $CURRENT_COUNT/$MAX_RESETS)..."
 
         if command -v mmcli >/dev/null 2>&1; then
-            MODEM_INDEX=$(mmcli -L 2>/dev/null | grep -oE '/Modem/[0-9]+' | cut -d'/' -f3)
+            MODEM_INDEX=$(mmcli -L 2>/dev/null | grep -oE '/Modem/[0-9]+' | head -n 1 | cut -d'/' -f3)
             if [ -n "$MODEM_INDEX" ]; then
                 mmcli -m "$MODEM_INDEX" --simple-disconnect >/dev/null 2>&1
                 sleep 2
@@ -84,8 +84,8 @@ fi
         fi
         
         ifup "$INTERFACE" 2>/dev/null
-
-        exit 0
+        
+        break
     done
 ) &
 
