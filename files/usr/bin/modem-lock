@@ -65,7 +65,7 @@ if [ -n "$REAL_PATH" ] && [ -d "$REAL_PATH" ]; then
         logger -t "Modem Finder" "[*] Info: Path modem tetap ($REAL_PATH). Jaringan stabil."
     fi
 else
-     logger -t "Modem Finder" "[*] Sistem siap. Menunggu modem rakitan/modul dicolokkan..."
+     logger -t "Modem Finder" "[*] Sistem siap. Menunggu modem rakitan/modul terhubung..."
 fi
 
 exit 0
