@@ -1,37 +1,35 @@
 #!/bin/sh
-# For Frdmx-Wrt Community
+# For Frdmx-Wrt Community..
 
 [ "$ACTION" = "add" ] || exit 0
 
-VID_RAW=$(echo "$PRODUCT" | cut -d'/' -f1 | tr 'A-Z' 'a-z')
-PID_RAW=$(echo "$PRODUCT" | cut -d'/' -f2 | tr 'A-Z' 'a-z')
-
-VID=$(printf "%04x" "0x$VID_RAW" 2>/dev/null)
-PID=$(printf "%04x" "0x$PID_RAW" 2>/dev/null)
+VID=$(echo "$PRODUCT" | cut -d'/' -f1 | tr 'A-Z' 'a-z')
+PID=$(echo "$PRODUCT" | cut -d'/' -f2 | tr 'A-Z' 'a-z')
 
 case "$VID" in
-    "2c7c"|"2cb7"|"1508"|"1199"|"12d1"|"1bc7"|"1e0e"|"05c6"|"413c"|"03f0"|"19d2"|"0b3c"|"1546"|"2b7c"|"0489"|"9025"|"8087"|"1e2d")
+    "2c7c"|"1199"|"2cb7"|"12d1"|"05c6"|"1e0e"|"413c"|"03f0"|"19d2"|"0b3c"|"1546"|"2b7c"|"0489")
 
-        sleep 3
+        sleep 2
         
-        if [ -d "/sys/bus/usb/devices/$DEVNAME" ]; then
-            VID_FINAL=$(cat "/sys/bus/usb/devices/$DEVNAME/idVendor" 2>/dev/null | tr 'A-Z' 'a-z')
-            PID_FINAL=$(cat "/sys/bus/usb/devices/$DEVNAME/idProduct" 2>/dev/null | tr 'A-Z' 'a-z')
-            [ -n "$VID_FINAL" ] && VID=$(printf "%04x" "0x$VID_FINAL" 2>/dev/null)
-            [ -n "$PID_FINAL" ] && PID=$(printf "%04x" "0x$PID_FINAL" 2>/dev/null)
+        if [ -d "/sys/bus/usb/devices/$DEVICENAME" ]; then
+            VID_FINAL=$(cat "/sys/bus/usb/devices/$DEVICENAME/idVendor" 2>/dev/null | tr 'A-Z' 'a-z')
+            PID_FINAL=$(cat "/sys/bus/usb/devices/$DEVICENAME/idProduct" 2>/dev/null | tr 'A-Z' 'a-z')
+            [ -n "$VID_FINAL" ] && VID=$VID_FINAL
+            [ -n "$PID_FINAL" ] && PID=$PID_FINAL
         fi
 
         if [ -d "/sys/bus/usb-serial/drivers/option1" ]; then
-            # Daftarkan secara dinamis jika VID/PID belum dikenali driver
+
             if ! grep -q "$VID.*$PID" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
                 echo "$VID $PID" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
                 sleep 2
             fi
             
             PORTS=$(ls /dev/ | grep -E "ttyUSB[0-9]|cdc-wdm[0-9]" | tr '\n' ' ')
-            logger -t "MODEM_HOTPLUG" "[+] Terdeteksi USB VID:$VID PID:$PID. Port aktif: [ $PORTS]"
+            
+            logger -t "MODEM_RAKITAN" "[+] Terdeteksi USB VID:$VID PID:$PID. Driver diaktifkan pada port: [ $PORTS]"
         else
-            logger -t "MODEM_HOTPLUG" "[-] Gagal! Modul kmod-usb-serial-option tidak terpasang di sistem."
+            logger -t "MODEM_RAKITAN" "[-] Gagal mengaktifkan port. Modul kmod-usb-serial-option tidak ditemukan!"
         fi
         ;;
     *)
