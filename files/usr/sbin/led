@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Internet Indicator
-# by Lutfa Ilham
+# by Lutfa Ilham (Modified)
 
 if [ "$(id -u)" != "0" ]; then
   echo "This script must be run as root" 1>&2
@@ -13,7 +13,7 @@ SERVICE_NAME="Internet Indicator"
 function loop() {
   while true; do
     ledon -lan dis
-    if curl -X "HEAD" --connect-timeout 3 -so /dev/null "http://bing.com"; then
+    if ping -c 1 -W 2 8.8.8.8 > /dev/null 2>&1; then
       ledon -lan on
     else
       ledon -lan off
@@ -29,7 +29,10 @@ function start() {
 
 function stop() {
   echo -e "Stopping ${SERVICE_NAME} service ..."
-  kill $(screen -list | grep internet-indicator | awk -F '[.]' {'print $1'})
+  PID=$(screen -list | grep internet-indicator | awk -F '[.]' '{print $1}' | xargs)
+  if [ -n "$PID" ]; then
+    kill $PID
+  fi
 }
 
 function usage() {
@@ -54,3 +57,4 @@ case "${1}" in
     usage
     ;;
 esac
+
