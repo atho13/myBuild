@@ -24,7 +24,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
 
         IS_VALID_INTERFACE=$(uci -q get network.$INTERFACE)
         
-        if [ -n "$IS_VALID_INTERFACE" ] || echo "$REAL_DEV" | grep -qE 'br-lan|usb0|eth'; then
+        if [ -n "$IS_VALID_INTERFACE" ] || echo "$REAL_DEV" | grep -qE 'br-lan|usb|eth|wwan|rmnet|rndis'; then
             
             ARCH_X86=$(uname -m | grep -qE 'x86_64|i386|i686' && echo 1 || echo 0)
             IS_MIPS=$(uname -m | grep -q 'mips' && echo 1 || echo 0)
@@ -48,24 +48,22 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
                 BW_LIMIT="250mbit"
             fi
 
-            if [ "$ARCH_X86" = "1" ]; then
-                if echo "$INTERFACE" | grep -q 'wan' || echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet'; then
-                    tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate nat wash rtt 100ms >/dev/null 2>&1
-                else
-                    tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate rtt 100ms >/dev/null 2>&1
-                fi
+            if echo "$INTERFACE" | grep -q 'wan' || echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet'; then
+                BW_LIMIT="0"
+            fi
+
+            if [ "$BW_LIMIT" = "0" ]; then
+                tc qdisc replace dev $REAL_DEV root cake diffserv3 triple-isolate nat wash rtt 100ms >/dev/null 2>&1
+                BW_LOG="Unlimited (GSM Optimized)"
             else
-                if echo "$INTERFACE" | grep -q 'wan' || echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet'; then
-                    tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate nat wash >/dev/null 2>&1
-                else
-                    tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate >/dev/null 2>&1
-                fi
+                tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate rtt 100ms >/dev/null 2>&1
+                BW_LOG="$BW_LIMIT"
             fi
             
             sysctl -w vm.dirty_background_ratio=5 >/dev/null 2>&1
             sysctl -w vm.dirty_ratio=10 >/dev/null 2>&1
             
-            logger -t "Frdmx-Optimizer" "Sukses menerapkan CAKE ($BW_LIMIT), TCP BBR, & Modifikasi VM pada $REAL_DEV"
+            logger -t "Frdmx-Optimizer" "Sukses menerapkan CAKE ($BW_LOG), TCP BBR, & Modifikasi VM pada $REAL_DEV"
         fi
     fi
 fi
