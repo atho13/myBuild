@@ -34,9 +34,9 @@ if [ "$ARCH" = "x86_64" ]; then
     done
 elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
     CPUS=$(nproc 2>/dev/null || echo 4)
+    
     ETH_MASK="2"
     [ "$CPUS" -le 1 ] && ETH_MASK="1"
-    
     for eth_irq in $(awk -F: '/(eth|enp|eth0|dwmac|ethernet)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do
         if [ -n "$eth_irq" ] && [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
             echo "$ETH_MASK" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null
@@ -57,6 +57,7 @@ elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
     done
 fi
 
+# 4. ANTI-DISCONNECT MODEM (Mematikan Fitur Autosuspend USB secara Permanen)
 for usb_node in /sys/bus/usb/devices/*; do
     if [ -d "$usb_node/power" ]; then
         [ -f "$usb_node/power/control" ] && echo "on" > "$usb_node/power/control" 2>/dev/null
@@ -64,5 +65,5 @@ for usb_node in /sys/bus/usb/devices/*; do
     fi
 done
 
-echo "1" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null
-echo "1" > /proc/sys/net/ipv4/tcp_sack 2>/dev/null
+logger -t "Frdmx-Hw-Mod" "[+] Akselerasi CPU, USB Power, & IRQ Affinity sukses diterapkan."
+exit 0
