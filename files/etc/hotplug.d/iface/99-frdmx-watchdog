@@ -1,6 +1,5 @@
 #!/bin/sh
 # For Frdmx-Wrt Community..
-# Smart Net Detector
 
 [ "$ACTION" = "ifup" ] || exit 0
 [ -z "$INTERFACE" ] && exit 0
@@ -13,11 +12,11 @@ fi
 [ -z "$IS_WAN" ] && exit 0
 
 (
-    sleep 30
+    sleep 45
 
     TARGET_PRIMARY_1="http://1.1.1.1"
     TARGET_PRIMARY_2="http://google.com"
-    TARGET_BACKUP_1="http://biznet.id"
+    TARGET_BACKUP_1="http://biznetnetworks.com"
     TARGET_BACKUP_2="http://kompas.com"
 
     TIMEOUT_MS=5000
@@ -45,19 +44,19 @@ fi
 
         if ! uci -q show network."$INTERFACE" >/dev/null; then
             rm -f "$COUNTER_FILE" 2>/dev/null
-            logger -t "Frdmx-Watchdog" "Antarmuka $INTERFACE tidak aktif, menghentikan pengawasan."
+            logger -t "Frdmx-Watchdog" "Antarmuka $INTERFACE dicopot, menghentikan pengawasan."
             break
         fi
 
         if check_http "$TARGET_PRIMARY_1" || check_http "$TARGET_PRIMARY_2"; then
             echo "0" > "$COUNTER_FILE"
-            sleep 180
+            sleep 60  # Dioptimalkan ke 60 detik agar lebih responsif memantau drop seluler
             continue
         fi
 
         if check_http "$TARGET_BACKUP_1" || check_http "$TARGET_BACKUP_2"; then
             echo "0" > "$COUNTER_FILE"
-            sleep 180
+            sleep 60
             continue
         fi
 
@@ -65,7 +64,7 @@ fi
         [ -z "$CURRENT_COUNT" ] && CURRENT_COUNT=0
 
         if [ "$CURRENT_COUNT" -ge "$MAX_RESETS" ]; then
-            logger -t "Frdmx-Watchdog" "PERINGATAN: Batas maksimal reset ($MAX_RESETS kali) terpenuhi pada $INTERFACE. Mengistirahatkan modem 10 menit."
+            logger -t "Frdmx-Watchdog" "PERINGATAN: Batas maksimal reset ($MAX_RESETS kali) terpenuhi pada $INTERFACE. Mengistirahatkan pemulihan 10 menit."
             sleep 600 
             echo "0" > "$COUNTER_FILE"
             continue
@@ -79,13 +78,13 @@ fi
             MODEM_INDEX=$(mmcli -L 2>/dev/null | grep -oE '/Modem/[0-9]+' | head -n 1 | cut -d'/' -f3)
             if [ -n "$MODEM_INDEX" ]; then
                 mmcli -m "$MODEM_INDEX" --simple-disconnect >/dev/null 2>&1
-                sleep 2
+                sleep 3
             fi
         fi
         
         ifup "$INTERFACE" 2>/dev/null
         
-        break
+        sleep 45
     done
 ) &
 
