@@ -12,12 +12,11 @@ if [ -d /sys/bus/usb-serial/drivers/option1 ]; then
     echo "1bc7 1900" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
 fi
 
-vids="2c7c 2cb7 1508 1199 12d1 1bc7 1e0e 05c6 413c 03f0 19d2 9025 8087 1e2d"
+vids="2c7c 2cb7 1508 1199 12d1 1bc7 1e0e 05c6 413c 03f0 19d2 9025 8087 1e2d 2b7c 0489 1c9e"
 REAL_PATH=""
 
 for vid in $vids; do
     device_file=$(find /sys/bus/usb/devices/ -maxdepth 3 -name idVendor -exec grep -li "$vid" {} + 2>/dev/null | head -n 1)
-    
     if [ -n "$device_file" ]; then
         base_dir=$(dirname "$device_file")
         REAL_PATH=$(readlink -f "$base_dir")
@@ -32,7 +31,10 @@ if [ -z "$REAL_PATH" ]; then
             MM_DEVICE=$(mmcli -m any 2>/dev/null | grep -i "device:" | awk '{print $NF}')
             if [ -n "$MM_DEVICE" ]; then
                 REAL_PATH=$(readlink -f "$MM_DEVICE")
-                [ -n "$REAL_PATH" ] && logger -t "Modem Finder" "[+] Modem ditemukan via mmcli: $REAL_PATH" && break
+                if [ -n "$REAL_PATH" ]; then
+                    logger -t "Modem Finder" "[+] Modem ditemukan via mmcli: $REAL_PATH"
+                    break
+                fi
             fi
         fi
         sleep 5
@@ -51,7 +53,7 @@ if [ -n "$REAL_PATH" ] && [ -d "$REAL_PATH" ]; then
         fi
     done
 
-    if [ "$NEED_RELOAD" -eq 1 ]; then
+    if [ "$NEED_RELOAD" = "1" ]; then
         uci commit network
         /etc/init.d/network reload
         logger -t "Modem Finder" "[+] Sukses mengunci modem ke parameter baru: $REAL_PATH"
