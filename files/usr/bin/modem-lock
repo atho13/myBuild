@@ -1,5 +1,5 @@
 #!/bin/sh
-# For Frdmx-Wrt Community
+# For Frdmx-Wrt Community..
 
 sleep 20
 
@@ -9,45 +9,52 @@ modprobe qmi_wwan 2>/dev/null
 sleep 2
 
 if [ -d /sys/bus/usb-serial/drivers/option1 ]; then
-    echo "1bc7 1900" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
+    if ! grep -q "1bc7.*1900" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
+        echo "0x1bc7 0x1900" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
+        sleep 2
+    fi
 fi
 
-vids="2c7c 2cb7 1508 1199 12d1 1bc7 1e0e 05c6 413c 03f0 19d2 9025 8087 1e2d 2b7c 0489 1c9e"
+vids="2c7c|2cb7|1508|1199|12d1|1bc7|1e0e|05c6|413c|03f0|19d2|9025|8087|1e2d|2b7c|0489|1c9e"
 REAL_PATH=""
 
-for vid in $vids; do
-    device_file=$(find /sys/bus/usb/devices/ -maxdepth 3 -name idVendor -exec grep -li "$vid" {} + 2>/dev/null | head -n 1)
-    if [ -n "$device_file" ]; then
-        base_dir=$(dirname "$device_file")
-        REAL_PATH=$(readlink -f "$base_dir")
-        logger -t "Modem Finder" "[+] Perangkat dengan VID $vid ditemukan via sysfs: $REAL_PATH"
-        break
-    fi
-done
+logger -t "Modem Finder" "[*] Memulai pemindaian perangkat seluler via sysfs..."
+device_file=$(find /sys/bus/usb/devices/ -maxdepth 4 -name idVendor -exec grep -lEi "$vids" {} + 2>/dev/null | head -n 1)
+
+if [ -n "$device_file" ]; then
+    base_dir=$(dirname "$device_file")
+    REAL_PATH=$(readlink -f "$base_dir")
+    DETECTED_VID=$(cat "$device_file" 2>/dev/null)
+    logger -t "Modem Finder" "[+] Perangkat VID [$DETECTED_VID] ditemukan di path: $REAL_PATH"
+fi
 
 if [ -z "$REAL_PATH" ]; then
     for i in 1 2 3; do
-        if command -v mmcli >/dev/null 2>&1 && mmcli -L | grep -q "Modem"; then
-            MM_DEVICE=$(mmcli -m any 2>/dev/null | grep -i "device:" | awk '{print $NF}')
-            if [ -n "$MM_DEVICE" ]; then
-                REAL_PATH=$(readlink -f "$MM_DEVICE")
-                if [ -n "$REAL_PATH" ]; then
-                    logger -t "Modem Finder" "[+] Modem ditemukan via mmcli: $REAL_PATH"
-                    break
+        if command -v mmcli >/dev/null 2>&1 && mmcli -L 2>/dev/null | grep -q "Modem"; then
+            local mm_idx=$(mmcli -L 2>/dev/null | grep -oE '/Modem/[0-9]+' | head -n 1 | cut -d'/' -f3)
+            if [ -n "$mm_idx" ]; then
+                MM_DEVICE=$(mmcli -m "$mm_idx" 2>/dev/null | grep -i "device:" | awk '{print $NF}')
+                if [ -n "$MM_DEVICE" ]; then
+                    REAL_PATH=$(readlink -f "$MM_DEVICE")
+                    if [ -n "$REAL_PATH" ] && [ -d "$REAL_PATH" ]; then
+                        logger -t "Modem Finder" "[+] Modem rakitan terdeteksi via mmcli di path: $REAL_PATH"
+                        break
+                    fi
                 fi
             fi
         fi
-        sleep 5
+        sleep 4
     done
 fi
 
 if [ -n "$REAL_PATH" ] && [ -d "$REAL_PATH" ]; then
+    # Cari semua interface wan/seluler yang menggunakan protokol seluler tingkat tinggi
     interfaces=$(uci -q show network | grep -E "proto='modemmanager'|proto='qmi'|proto='mbim'" | cut -d'.' -f2 | cut -d'=' -f1 | uniq)
     NEED_RELOAD=0
 
     for iface in $interfaces; do
         current_device=$(uci -q get network."$iface".device)
-        if [ "$current_device" != "$REAL_PATH" ]; then
+        if [ "$current_device" != "$REAL_DEV" ] && [ "$current_device" != "$REAL_PATH" ]; then
             uci set network."$iface".device="$REAL_PATH"
             NEED_RELOAD=1
         fi
@@ -55,19 +62,20 @@ if [ -n "$REAL_PATH" ] && [ -d "$REAL_PATH" ]; then
 
     if [ "$NEED_RELOAD" = "1" ]; then
         uci commit network
-        /etc/init.d/network reload
-        logger -t "Modem Finder" "[+] Sukses mengunci modem ke parameter baru: $REAL_PATH"
+        logger -t "Modem Finder" "[+] Menyerasikan konfigurasi uci network ke path baru..."
+        /etc/init.d/network reload 2>/dev/null
         
-        sleep 5
+        sleep 4
         if [ -x /etc/init.d/mwan3 ]; then
-            /etc/init.d/mwan3 restart
-            logger -t "Modem Finder" "[+] Multi-WAN (MWAN3) dimuat ulang."
+            /etc/init.d/mwan3 restart >/dev/null 2>&1
+            logger -t "Modem Finder" "[+] Sinkronisasi Multi-WAN (MWAN3) sukses dilakukan."
         fi
+        logger -t "Modem Finder" "[+] SUKSES: Sistem modem rakitan terkunci penuh pada parameter: $REAL_PATH"
     else
-        logger -t "Modem Finder" "[*] Info: Path modem tetap ($REAL_PATH). Jaringan stabil."
+        logger -t "Modem Finder" "[*] Info: Path modem tetap aman terikat ($REAL_PATH). Jaringan stabil."
     fi
 else
-     logger -t "Modem Finder" "[*] Sistem siap. Menunggu modem rakitan/modul terhubung..."
+     logger -t "Modem Finder" "[!] Peringatan: Tidak ada hardware modem cocok ditemukan. Menunggu interkoneksi..."
 fi
 
 exit 0
