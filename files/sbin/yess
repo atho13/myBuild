@@ -1,5 +1,7 @@
-#!/bin/bash
-# Smart Hybrid Optimization Script for Community by Frdmx-Wrt
+#!/bin/sh
+# For Frdmx-Wrt Community..
+
+sleep 5
 
 for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
     if [ -f "$i" ]; then
@@ -17,9 +19,18 @@ if [ -f /proc/sys/net/core/gro_normal_batch ]; then
 fi
 
 ARCH=$(uname -m)
-if [ "$ARCH" = "x86_64" ]; then
-    CPUS=$(nproc 2>/dev/null || echo 2)
-    RPS_MASK=$(printf '%x' $(( (1 << CPUS) - 1 )))
+CPUS=$(nproc 2>/dev/null)
+[ -z "$CPUS" ] && CPUS=$(grep -c "^processor" /proc/cpuinfo 2>/dev/null)
+[ -z "$CPUS" ] && CPUS=2
+
+if [ "$ARCH" = "x86_64" ] || echo "$ARCH" | grep -qE 'i386|i686'; then
+    RPS_MASK="f"
+    if [ "$CPUS" -gt 4 ] && [ "$CPUS" -le 8 ]; then
+        RPS_MASK="ff"
+    elif [ "$CPUS" -gt 8 ]; then
+        RPS_MASK="ffff"
+    fi
+
     for dev in /sys/class/net/*; do
         IFACE=$(basename "$dev")
         [ "$IFACE" = "lo" ] && continue
@@ -32,14 +43,16 @@ if [ "$ARCH" = "x86_64" ]; then
             done
         fi
     done
-elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
-    CPUS=$(nproc 2>/dev/null || echo 4)
+
+elif echo "$ARCH" | grep -qE 'aarch64|arm|mips'; then
     
     ETH_MASK="2"
     [ "$CPUS" -le 1 ] && ETH_MASK="1"
-    for eth_irq in $(awk -F: '/(eth|enp|eth0|dwmac|ethernet)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do
-        if [ -n "$eth_irq" ] && [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
-            echo "$ETH_MASK" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null
+    for eth_irq in $(awk -F: '/(eth|enp|eth0|dwmac|ethernet)/ {print $1}' /proc/interrupts 2>/dev/null | sed 's/ //g'); do
+        if echo "$eth_irq" | grep -q '^[0-9]\+$'; then
+            if [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
+                echo "$ETH_MASK" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null
+            fi
         fi
     done
 
@@ -50,18 +63,20 @@ elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
     else
         USB_MASK="1"
     fi
-    for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do
-        if [ -n "$usb_irq" ] && [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
-            echo "$USB_MASK" > "/proc/irq/$usb_irq/smp_affinity" 2>/dev/null
+    for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | sed 's/ //g'); do
+        if echo "$usb_irq" | grep -q '^[0-9]\+$'; then
+            if [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
+                echo "$USB_MASK" > "/proc/irq/$usb_irq/smp_affinity" 2>/dev/null
+            fi
         fi
     done
 fi
 
-# 4. ANTI-DISCONNECT MODEM (Mematikan Fitur Autosuspend USB secara Permanen)
 for usb_node in /sys/bus/usb/devices/*; do
     if [ -d "$usb_node/power" ]; then
         [ -f "$usb_node/power/control" ] && echo "on" > "$usb_node/power/control" 2>/dev/null
         [ -f "$usb_node/power/autosuspend" ] && echo "-1" > "$usb_node/power/autosuspend" 2>/dev/null
+        [ -f "$usb_node/power/autosuspend_delay_ms" ] && echo "-1" > "$usb_node/power/autosuspend_delay_ms" 2>/dev/null
     fi
 done
 
