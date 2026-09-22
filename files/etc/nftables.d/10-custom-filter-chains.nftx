@@ -36,9 +36,28 @@
 #     type filter hook output priority 1; policy accept;
 #     ct state new log prefix "Firewall4 accepted egress: "
 # }
+#chain user_mangle_postrouting {
+#  type route hook postrouting priority 300; policy accept;
+#  counter
+#  ip ttl set 65
+#  ip6 hoplimit set 65
+#}
+
+# 1. MANGLE TTL 65 - KHUSUS UNTUK INTERNET KELUAR (KE MODEM SELULER / WAN)
+# Silahkan tambahkan interface pada oifname jika interface modem kamu belum tersedia (Zona WAN yah Sob..)
 chain user_mangle_postrouting {
   type route hook postrouting priority 300; policy accept;
   counter
-  ip ttl set 65
-  ip6 hoplimit set 65
+  oifname { "wan", "usb0", "usb1", "rndis0", "rndis1", "wwan0", "wwan1", "rmnet_data0" } ip ttl set 65
+  oifname { "wan", "usb0", "usb1", "rndis0", "rndis1", "wwan0", "wwan1", "rmnet_data0" } ip6 hoplimit set 65
 }
+
+# 2. MANGLE TTL 1 - KHUSUS UNTUK INTERNET MASUK (KE KLIEN LAN / WI-FI)
+# Memaksa paket ke arah br-lan bernilai TTL 1 supaya klien tidak bisa membagikan koneksi lagi.
+#chain user_mangle_lan_anti_share {
+#  type route hook postrouting priority 305; policy accept;
+#  counter
+#  oifname "br-lan" ip ttl set 1
+#  oifname "br-lan" ip6 hoplimit set 1
+#}
+
