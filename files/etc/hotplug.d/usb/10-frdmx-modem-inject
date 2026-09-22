@@ -19,21 +19,24 @@ case "$VID" in
         fi
 
         if [ -d "/sys/bus/usb-serial/drivers/option1" ]; then
+            VID=$(echo "$VID" | sed 's/^0*//')
+            PID=$(echo "$PID" | sed 's/^0*//')
 
-            if ! grep -q "$VID.*$PID" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
-                echo "$VID $PID" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
-                # Berikan jeda waktu bagi kernel Linux untuk menciptakan file device /dev/ttyUSB*
-                sleep 3
+            if ! grep -qEi "$VID.*$PID|$PID.*$VID" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
+                echo "0x$VID 0x$PID" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
+                sleep 4 # Jeda 4 detik memberikan waktu bagi kernel untuk menciptakan simpul device /dev/
             fi
             
             PORTS=""
             if [ -d "/sys/bus/usb/devices/$DEVICENAME" ]; then
-                PORTS=$(find "/sys/bus/usb/devices/$DEVICENAME/" -name "ttyUSB*" -o -name "cdc-wdm*" 2>/dev/null | xargs -I {} basename {} | tr '\n' ' ')
+                PORTS=$(find "/sys/bus/usb/devices/$DEVICENAME/" -name "ttyUSB*" -o -name "cdc-wdm*" -o -name "ttyACM*" 2>/dev/null | xargs -I {} basename {} | tr '\n' ' ')
             fi
             
-            [ -z "$PORTS" ] && PORTS=$(ls /dev/ | grep -E "ttyUSB[0-9]|cdc-wdm[0-9]" | tr '\n' ' ')
+            if [ -z "$PORTS" ]; then
+                PORTS=$(ls -d /sys/class/net/* /sys/class/tty/* 2>/dev/null | grep "$DEVICENAME" | xargs -I {} basename {} | grep -E 'ttyUSB|cdc-wdm|ttyACM' | tr '\n' ' ')
+            fi
             
-            logger -t "MODEM_RAKITAN" "[+] Sukses menyuntikkan USB VID:$VID PID:$PID. Port aktif: [ $PORTS]"
+            logger -t "MODEM_RAKITAN" "[+] Sukses menyuntikkan USB VID:$VID PID:$PID. Port terikat: [ ${PORTS:-Menunggu Inisialisasi} ]"
         else
             logger -t "MODEM_RAKITAN" "[-] Gagal mengaktifkan port serial. Modul kmod-usb-serial-option belum termuat!"
         fi
