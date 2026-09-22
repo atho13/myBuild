@@ -102,11 +102,43 @@ commit dhcp
 commit uhttpd
 EOF
 
-uci set fstab.root_mount=mount
-uci set fstab.root_mount.target='/'
-uci set fstab.root_mount.options='noatime,commit=60'
-uci set fstab.root_mount.enabled='1'
-uci commit fstab
+# =========================================================
+# TAMBAHAN: OTOMATISASI DAN OPTIMALISASI STORAGE (HDD)
+# =========================================================
+echo "[*] Mengonfigurasi otomatisasi block-mount (fstab)"
+uci batch <<EOF
+set fstab.global=global
+set fstab.global.anon_swap='0'
+set fstab.global.anon_mount='1'
+set fstab.global.auto_swap='1'
+set fstab.global.auto_mount='1'
+set fstab.global.check_fs='0'
+
+set fstab.root_mount=mount
+set fstab.root_mount.target='/'
+set fstab.root_mount.options='noatime,commit=60'
+set fstab.root_mount.enabled='1'
+commit fstab
+EOF
+
+# Otomatisasi pembuatan konfigurasi mount point saat booting awal
+if [ -x /sbin/block ]; then
+    /sbin/block mount
+fi
+
+# Konfigurasi hd-idle agar HDD otomatis standby/istirahat setelah 10 menit diam (menghemat daya)
+if [ -f /etc/config/hd-idle ]; then
+    echo "[*] Mengaktifkan otomatisasi standby HDD (hd-idle)"
+    uci batch <<EOF
+set hd-idle.[0]=hd-idle
+set hd-idle.[0].enabled='1'
+set hd-idle.[0].idle_time='10'
+set hd-idle.[0].unit='minutes'
+commit hd-idle
+EOF
+    /etc/init.d/hd-idle enable >/dev/null 2>&1
+fi
+# =========================================================
 
 echo "[*] Menyinkronkan zona Firewall"
 i=0
@@ -159,6 +191,9 @@ mkdir -p /www/tinyfm
 if [ ! -L /www/tinyfm/rootfs ]; then ln -sf / /www/tinyfm/rootfs; fi
 if [ -d /etc/openclash ]; then ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null; fi
 if [ -d /etc/nikki ]; then ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null; fi
+
+# Tautan pintas otomatis ke direktori Harddisk (/mnt/sda1) di TinyFM agar user gampang buka file
+if [ ! -L /www/tinyfm/storage ]; then ln -sf /mnt/ /www/tinyfm/storage 2>/dev/null; fi
 
 echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
 if [ -f /etc/rc.local ]; then
