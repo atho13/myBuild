@@ -38,6 +38,54 @@ fi
         return 1
     }
 
+    fast_trigger_modem() {
+        logger -t "Frdmx-Watchdog" "[${INTERFACE}] Memeriksa jenis driver hardware..."
+        
+        local dev_name=$(uci -q get network."$INTERFACE".device)
+        [ -z "$dev_name" ] && dev_name=$(uci -q get network."$INTERFACE".ifname)
+        [ -z "$dev_name" ] && return 0
+
+        local kernel_driver=""
+        if [ -d "/sys/class/net/${dev_name}/device/driver" ]; then
+            kernel_driver=$(basename $(readlink /sys/class/net/${dev_name}/device/driver))
+        fi
+
+        if echo "$kernel_driver" | grep -qEi 'cdc_ether|rndis_host|ppp'; then
+            logger -t "Frdmx-Watchdog" "[${INTERFACE}] Driver lawas terdeteksi (${kernel_driver}). Menjalankan trigger fast-boot..."
+            
+            local at_port=""
+            for port in /dev/ttyUSB2 /dev/ttyUSB1 /dev/ttyUSB0 /dev/ttyACM0 /dev/ttyACM1; do
+                if [ -c "$port" ]; then
+                    at_port="$port"
+                    break
+                fi
+            done
+
+            if [ -n "$at_port" ]; then
+                logger -t "Frdmx-Watchdog" "[${INTERFACE}] Mengirimkan sinyal refresh jaringan ke ${at_port}..."
+                echo -e "AT+CFUN=4\r" > "$at_port" 2>/dev/null
+                sleep 2
+                echo -e "AT+CFUN=1\r" > "$at_port" 2>/dev/null
+                sleep 3
+            else
+                if command -v usbreset >/dev/null 2>&1; then
+                    local usb_devs=$(lsusb | grep -iE 'midol|lte|cdcecm|rndis' | awk '{print $6}')
+                    for dev in $usb_devs; do
+                        logger -t "Frdmx-Watchdog" "[${INTERFACE}] Memaksa hardware usbreset pada perangkat lawas: ${dev}"
+                        usbreset "$dev" >/dev/null 2>&1
+                        sleep 4
+                    done
+                fi
+            fi
+            
+            ifdown "$INTERFACE" 2>/dev/null
+            /etc/init.d/network reload 2>/dev/null
+            sleep 2
+        else
+            logger -t "Frdmx-Watchdog" "[${INTERFACE}] Driver terdeteksi sebagai ${kernel_driver:-unknown}. Melewati trigger lawas."
+        fi
+    }
+
     logger -t "Frdmx-Watchdog" "Memulai pengawasan internet pada interface: $INTERFACE"
 
     while true; do
@@ -50,7 +98,7 @@ fi
 
         if check_http "$TARGET_PRIMARY_1" || check_http "$TARGET_PRIMARY_2"; then
             echo "0" > "$COUNTER_FILE"
-            sleep 60  # Dioptimalkan ke 60 detik agar lebih responsif memantau drop seluler
+            sleep 60  
             continue
         fi
 
@@ -82,7 +130,15 @@ fi
             fi
         fi
         
+        fast_trigger_modem
+        
         ifup "$INTERFACE" 2>/dev/null
+        
+        local dev_name=$(uci -q get network."$INTERFACE".device)
+        [ -z "$dev_name" ] && dev_name=$(uci -q get network."$INTERFACE".ifname)
+        if [ -n "$dev_name" ] && command -v ubus >/dev/null 2>&1; then
+            ubus call network.interface."$INTERFACE" renew >/dev/null 2>&1
+        fi
         
         sleep 45
     done
