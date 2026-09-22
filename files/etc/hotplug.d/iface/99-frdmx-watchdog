@@ -80,7 +80,7 @@ fi
             
             ifdown "$INTERFACE" 2>/dev/null
             /etc/init.d/network reload 2>/dev/null
-            sleep 2
+            sleep 4
         else
             logger -t "Frdmx-Watchdog" "[${INTERFACE}] Driver terdeteksi sebagai ${kernel_driver:-unknown}. Melewati trigger lawas."
         fi
