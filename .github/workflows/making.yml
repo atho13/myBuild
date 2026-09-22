@@ -39,7 +39,7 @@ on:
       rootfs_size:
         description: 'Select Rootfs Size'
         required: true
-        default: '512'
+        default: '1024'
         type: choice
         options:
           - 256
