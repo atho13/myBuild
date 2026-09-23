@@ -1,6 +1,5 @@
 #!/bin/sh
 # For Frdmx-Wrt Community..
-# Version: 3.8-Final (100% Sync Multi-WAN & Firewall Zones)
 
 echo "================================================="
 echo "   Memulai Konfigurasi Otomatis FRDMX-Wrt"
