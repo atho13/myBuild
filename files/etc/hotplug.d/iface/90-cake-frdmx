@@ -16,13 +16,25 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
     [ -z "$REAL_DEV" ] && REAL_DEV="$DEVICENAME"
 
     if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
+        
+        if echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet|utun'; then
+
+            if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ]; then
+                tc qdisc replace dev "$REAL_DEV" root cake diffserv3 triple-isolate nat wash rtt 100ms >/dev/null 2>&1
+                logger -t "Frdmx-Optimizer" "Inisialisasi GSM Maksimal pada $REAL_DEV sukses."
+                exit 0
+            else
+                exit 0
+            fi
+        fi
+
         if tc qdisc show dev "$REAL_DEV" 2>/dev/null | grep -q 'nat wash' && [ "$ACTION" != "ifup" ]; then
             exit 0
         fi
 
         IS_VALID_INTERFACE=$(uci -q get network."$INTERFACE")
         
-        if [ -n "$IS_VALID_INTERFACE" ] || echo "$REAL_DEV" | grep -qE 'br-lan|usb|eth|wwan|rmnet|rndis'; then
+        if [ -n "$IS_VALID_INTERFACE" ] || echo "$REAL_DEV" | grep -qE 'br-lan|eth'; then
             
             IS_MIPS=$(uname -m | grep -q 'mips' && echo 1 || echo 0)
             
@@ -45,10 +57,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
                 BW_LIMIT="250mbit"
             fi
 
-            if echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet'; then
-                BW_LIMIT="0"
-                BW_LOG_MODE="Unlimited (GSM Optimized)"
-            elif echo "$INTERFACE" | grep -q 'wan' && echo "$REAL_DEV" | grep -qE 'eth|enp'; then
+            if echo "$INTERFACE" | grep -q 'wan' && echo "$REAL_DEV" | grep -qE 'eth|enp'; then
                 if [ "$BW_LIMIT" != "1000mbit" ]; then
                     BW_LOG_MODE="ISP Cable Mode ($BW_LIMIT)"
                 else
