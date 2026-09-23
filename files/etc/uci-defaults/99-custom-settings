@@ -121,25 +121,29 @@ set fstab.global.anon_mount='1'
 set fstab.global.auto_swap='1'
 set fstab.global.auto_mount='1'
 set fstab.global.check_fs='0'
-
-set fstab.root_mount=mount
-set fstab.root_mount.target='/'
-set fstab.root_mount.options='noatime,commit=60'
-set fstab.root_mount.enabled='1'
 commit fstab
 EOF
 
-if [ -x /sbin/block ]; then
-    /sbin/block mount
+# Mengaktifkan fstab service agar berjalan otomatis setiap kali boot
+if [ -f /etc/init.d/fstab ]; then
+    /etc/init.d/fstab enable >/dev/null 2>&1
 fi
+
+# Memicu deteksi ulang perangkat dengan jeda waktu di latar belakang
+(
+    sleep 15
+    if [ -x /sbin/block ]; then
+        /sbin/block mount
+    fi
+) &
 
 if [ -f /etc/config/hd-idle ]; then
     echo "[*] Mengaktifkan otomatisasi standby HDD (hd-idle)"
     uci batch <<EOF
-set hd-idle.[0]=hd-idle
-set hd-idle.[0].enabled='1'
-set hd-idle.[0].idle_time='10'
-set hd-idle.[0].unit='minutes'
+set hd-idle.@hd-idle[0]=hd-idle
+set hd-idle.@hd-idle[0].enabled='1'
+set hd-idle.@hd-idle[0].idle_time='10'
+set hd-idle.@hd-idle[0].unit='minutes'
 commit hd-idle
 EOF
     /etc/init.d/hd-idle enable >/dev/null 2>&1
