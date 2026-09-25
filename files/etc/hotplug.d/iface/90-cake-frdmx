@@ -17,6 +17,24 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
 
     if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
         
+        if echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet|utun|tun'; then
+            if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ]; then
+                if [ -f "/proc/sys/net/netfilter/nf_conntrack_flush" ]; then
+                    echo 1 > /proc/sys/net/netfilter/nf_conntrack_flush
+                    LOCAL_FLUSH=" (Conntrack Flushed)"
+                fi
+                
+                if [ -f "/root/cake-autorate/launcher.sh" ]; then
+                    /bin/bash /root/cake-autorate/launcher.sh &
+                fi
+                
+                logger -t "Frdmx-Optimizer" "Modem/Tunnel Aktif di $REAL_DEV. Optimasi dialihkan ke Engine Cake-Autorate${LOCAL_FLUSH:-}."
+                exit 0
+            else
+                exit 0
+            fi
+        fi
+
         CURRENT_QDISC=$(tc qdisc show dev $REAL_DEV 2>/dev/null | head -n1 | awk '{print $2}')
         
         if [ "$CURRENT_QDISC" = "cake" ] && [ "$ACTION" != "ifup" ] && [ "$ACTION" != "update" ] && [ "$ACTION" != "bind" ]; then
