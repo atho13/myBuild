@@ -20,8 +20,12 @@ for file in \
     /sbin/yess \
     /etc/rc.local \
     /etc/custom_service/start_service.sh \
+    /etc/init.d/cake-autorate \
     /etc/init.d/todong \
     /etc/init.d/modem-lock \
+    /root/cake-autorate/cake-autorate.sh \
+    /root/cake-autorate/config.primary.sh \
+    /root/cake-autorate/launcher.sh \
     /www/vnstati/vnstati.sh \
     /www/cgi-bin/traffic \
     /etc/hotplug.d/usb/10-frdmx-modem-inject \
