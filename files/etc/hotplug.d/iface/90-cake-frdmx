@@ -17,7 +17,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
 
     if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
         
-        if echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet|utun|tun'; then
+        if echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet|wlan|utun|tun'; then
             if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ]; then
                 if [ -f "/proc/sys/net/netfilter/nf_conntrack_flush" ]; then
                     echo 1 > /proc/sys/net/netfilter/nf_conntrack_flush
@@ -25,10 +25,10 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
                 fi
                 
                 if [ -f "/root/cake-autorate/launcher.sh" ]; then
-                    /bin/bash /root/cake-autorate/launcher.sh &
+                    /bin/bash /root/cake-autorate/launcher.sh
                 fi
                 
-                logger -t "Frdmx-Optimizer" "Modem/Tunnel Aktif di $REAL_DEV. Optimasi dialihkan ke Engine Cake-Autorate${LOCAL_FLUSH:-}."
+                logger -t "Frdmx-Optimizer" "Modem/Wireless Aktif di $REAL_DEV. Optimasi via Engine Cake-Autorate${LOCAL_FLUSH:-}."
                 exit 0
             else
                 exit 0
@@ -43,11 +43,9 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
 
         IS_VALID_INTERFACE=$(uci -q get network.$INTERFACE)
         
-        if [ -n "$IS_VALID_INTERFACE" ] || echo "$REAL_DEV" | grep -qE 'br-lan|usb|eth|wwan|rmnet|rndis'; then
+        if [ -n "$IS_VALID_INTERFACE" ] || echo "$REAL_DEV" | grep -qE 'br-lan|eth'; then
             
-            ARCH_X86=$(uname -m | grep -qE 'x86_64|i386|i686' && echo 1 || echo 0)
             IS_MIPS=$(uname -m | grep -q 'mips' && echo 1 || echo 0)
-            
             BW_LIMIT="1000mbit"
             CHECK_DEV="$REAL_DEV"
             
@@ -67,9 +65,8 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
                 BW_LIMIT="250mbit"
             fi
 
-            if echo "$INTERFACE" | grep -q 'wan' || echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet'; then
+            if echo "$INTERFACE" | grep -q 'wan'; then
                 BW_LIMIT="0"
-                
                 if [ -f "/proc/sys/net/netfilter/nf_conntrack_flush" ]; then
                     echo 1 > /proc/sys/net/netfilter/nf_conntrack_flush
                     FLUSH_LOG=" (Conntrack Flushed)"
@@ -78,7 +75,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
 
             if [ "$BW_LIMIT" = "0" ]; then
                 tc qdisc replace dev $REAL_DEV root cake diffserv3 triple-isolate nat wash rtt 100ms >/dev/null 2>&1
-                BW_LOG="Unlimited (GSM Optimized)"
+                BW_LOG="Unlimited (LAN/ISP Optimized)"
             else
                 tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate rtt 100ms >/dev/null 2>&1
                 BW_LOG="$BW_LIMIT"
@@ -87,7 +84,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
             sysctl -w vm.dirty_background_ratio=5 >/dev/null 2>&1
             sysctl -w vm.dirty_ratio=10 >/dev/null 2>&1
             
-            logger -t "Frdmx-Optimizer" "Sukses menerapkan CAKE ($BW_LOG), TCP BBR${FLUSH_LOG:-} pada $REAL_DEV"
+            logger -t "Frdmx-Optimizer" "Sukses menerapkan CAKE ($BW_LOG) pada LAN/WAN Interface $REAL_DEV${FLUSH_LOG:-}"
         fi
     fi
 fi
