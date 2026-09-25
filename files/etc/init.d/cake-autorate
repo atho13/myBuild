@@ -1,0 +1,36 @@
+#!/bin/sh /etc/rc.common
+# For Frdmx-Wrt Community
+
+START=99
+STOP=10
+
+start() {
+        if [ -f "/root/cake-autorate/launcher.sh" ]; then
+                logger -t "Frdmx-Service" "Memulai pembatasan dinamis via Smart Launcher..."
+                /bin/bash /root/cake-autorate/launcher.sh &
+        fi
+}
+
+stop() {
+        logger -t "Frdmx-Service" "Menghentikan seluruh engine pembatasan dan membersihkan RAM..."
+        
+        killall -9 cake-autorate.sh fping launcher.sh 2>/dev/null
+        pkill -9 -f cake-autorate.sh 2>/dev/null
+        pkill -9 -f launcher.sh 2>/dev/null
+        pkill -9 fping 2>/dev/null
+        
+        rm -rf /var/run/cake-autorate/* 2>/dev/null
+        
+        ALL_WANS=$(ip -o link show | awk -F': ' '{print $2}' | grep -E 'usb|rndis|wwan|rmnet|utun|tun|wan|eth|enp' | sort -u)
+        for DEV in $ALL_WANS; do
+                if [ -d "/sys/class/net/$DEV" ]; then
+                        tc qdisc replace dev "$DEV" root cake diffserv3 triple-isolate nat wash rtt 100ms >/dev/null 2>&1
+                fi
+        done
+}
+
+restart() {
+        stop
+        sleep 1
+        start
+}
