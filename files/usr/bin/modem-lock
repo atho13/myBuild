@@ -8,6 +8,15 @@ modprobe cdc_mbim 2>/dev/null
 modprobe qmi_wwan 2>/dev/null
 sleep 2
 
+if [ -f "/sys/module/usbcore/parameters/autosuspend" ]; then
+    echo -1 > /sys/module/usbcore/parameters/autosuspend 2>/dev/null
+    
+fi
+
+for frdmx_usb in /sys/bus/usb/devices/*/power/control; do
+    [ -f "$frdmx_usb" ] && echo "on" > "$frdmx_usb" 2>/dev/null
+done
+
 if [ -d /sys/bus/usb-serial/drivers/option1 ]; then
     if ! grep -q "1bc7.*1900" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
         echo "0x1bc7 0x1900" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
