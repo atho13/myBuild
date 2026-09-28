@@ -22,7 +22,6 @@ done
 
 ALL_WANS=$(echo "$ALL_WANS" | tr ' ' '\n' | sort -u | tr '\n' ' ')
 
-
 for running_conf in /var/run/cake-autorate/config.run.*.sh; do
     [ -e "$running_conf" ] || continue
     current_dev=$(basename "$running_conf" | cut -d'.' -f3)
@@ -38,9 +37,7 @@ if [ -z "$ALL_WANS" ]; then
     exit 0
 fi
 
-
 for WAN_DEV in $ALL_WANS; do
-
     if echo "$WAN_DEV" | grep -qE 'lo|br-|tun|wireguard|wg'; then continue; fi
     
     if pgrep -f "config.run.$WAN_DEV.sh" > /dev/null; then
@@ -50,20 +47,22 @@ for WAN_DEV in $ALL_WANS; do
     LOGICAL_WAN=$(uci -q show network | grep ".device='$WAN_DEV'" | cut -d'.' -f2 | head -n1)
     [ -z "$LOGICAL_WAN" ] && LOGICAL_WAN="wan"
 
-    logger -t "Frdmx-Engine" "[START] Menyalakan CAKE-Autorate Dinamis pada $WAN_DEV (${LOGICAL_WAN^^})."
+    logger -t "Frdmx-Engine" "[MWAN3-READY] Menyalakan CAKE-Autorate Dinamis pada $WAN_DEV (${LOGICAL_WAN^^})."
     
     CONFIG_RAM="/var/run/cake-autorate/config.run.$WAN_DEV.sh"
     cp /root/cake-autorate/config.primary.sh "$CONFIG_RAM"
     
+
     sed -i "s/ul_if=\"TEMPLATE_WAN\"/ul_if=\"$WAN_DEV\"/" "$CONFIG_RAM"
+    
     sed -i "s/dl_if=\"lo\"/dl_if=\"br-lan\"/" "$CONFIG_RAM"
+    sed -i "s/adjust_dl_shaper_rate=1/adjust_dl_shaper_rate=0/" "$CONFIG_RAM"
     
     bash /root/cake-autorate/cake-autorate.sh "$CONFIG_RAM" >/dev/null 2>&1 &
     
     if echo "$WAN_DEV" | grep -q '^eth'; then
         (
             sleep 2
-
             if ! tc qdisc show dev "$WAN_DEV" | grep -q "cake"; then
                 logger -t "Frdmx-Bypass" "Mengunci ulang otoritas CAKE pada interface $WAN_DEV..."
                 tc qdisc replace dev "$WAN_DEV" root cake diffserv3 triple-isolate nat wash rtt 100ms >/dev/null 2>&1
