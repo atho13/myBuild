@@ -85,20 +85,14 @@ fi
 mapfile -t valid_config_entries < <(grep -E '^[^(#| )].*=' "${SCRIPT_PREFIX}/defaults.sh" | sed -e 's/[\t ]*\#.*//g' -e 's/=.*//g')
 
 # =====================================================================
-# Frdmx - Security
+# Frdmx - Security (Optimized for Community FW)
 # =====================================================================
 if [ -n "${1:-}" ] && [ -f "$1" ]; then
     . "$1"
 fi
 
-if echo "${ul_if:-}" | grep -qE '^(eth|enp)'; then
-    logger -t "Frdmx-Security" "[SAFE-MODE] Interface Gigabit terdeteksi di cake-autorate. Menerapkan CAKE statis."
-    tc qdisc replace dev "$ul_if" root cake diffserv3 triple-isolate nat wash rtt 100ms >/dev/null 2>&1
-    exit 0
-fi
-
 if [ "${max_dl_shaper_rate_kbps:-0}" -gt 1100000 ]; then
-    logger -t "Frdmx-Security" "[SAFE-MODE] Bandwidth > 1.1 Gbps terdeteksi. Menonaktifkan autorate dinamis."
+    logger -t "Frdmx-Security" "[SAFE-MODE] Bandwidth > 1.1 Gbps terdeteksi pada ${ul_if:-wan}. Menggunakan CAKE Statis untuk efisiensi CPU."
     tc qdisc replace dev "${ul_if:-wan}" root cake diffserv3 triple-isolate nat wash rtt 100ms >/dev/null 2>&1
     exit 0
 fi
