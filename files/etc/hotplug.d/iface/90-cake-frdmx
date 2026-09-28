@@ -1,7 +1,8 @@
 #!/bin/sh
 # For Frdmx-Wrt Community..
 
-if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ]; then
+if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
+
     REAL_DEV=""
     if [ -n "${DEVICE:-}" ]; then
         REAL_DEV="$DEVICE"
@@ -17,74 +18,65 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ] || [ "$ACTION" = "update" ];
 
     if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && [ -d "/sys/class/net/$REAL_DEV" ]; then
         
-        if echo "$REAL_DEV" | grep -qE 'usb|rndis|wwan|rmnet|wlan|utun|tun'; then
-            if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "bind" ]; then
+        WAN_ZONE_INDEX=$(uci show firewall | grep -E "\.name='wan'" | cut -d'[' -f2 | cut -d']' -f1)
+        IS_IN_WAN_ZONE=0
+        
+        if [ -n "$WAN_ZONE_INDEX" ]; then
+            WAN_NETWORKS=$(uci -q get firewall.@zone["$WAN_ZONE_INDEX"].network)
+            for net in $WAN_NETWORKS; do
+                if [ "$net" = "$INTERFACE" ]; then
+                    IS_IN_WAN_ZONE=1
+                    break
+                fi
+            done
+        fi
+
+        if [ "$IS_IN_WAN_ZONE" -eq 1 ]; then
+            if [ "$ACTION" = "ifup" ]; then
                 if [ -f "/proc/sys/net/netfilter/nf_conntrack_flush" ]; then
                     echo 1 > /proc/sys/net/netfilter/nf_conntrack_flush
                     LOCAL_FLUSH=" (Conntrack Flushed)"
                 fi
                 
                 if [ -f "/root/cake-autorate/launcher.sh" ]; then
-                    /bin/bash /root/cake-autorate/launcher.sh
+                    /bin/bash /root/cake-autorate/launcher.sh &
                 fi
                 
-                logger -t "Frdmx-Optimizer" "Modem/Wireless Aktif di $REAL_DEV. Optimasi via Engine Cake-Autorate${LOCAL_FLUSH:-}."
-                exit 0
-            else
-                exit 0
+                logger -t "Frdmx-Optimizer" "Jalur WAN Aktif di $REAL_DEV ($INTERFACE). Optimasi via Smart Launcher${LOCAL_FLUSH:-}."
             fi
-        fi
-
-        CURRENT_QDISC=$(tc qdisc show dev $REAL_DEV 2>/dev/null | head -n1 | awk '{print $2}')
-        
-        if [ "$CURRENT_QDISC" = "cake" ] && [ "$ACTION" != "ifup" ] && [ "$ACTION" != "update" ] && [ "$ACTION" != "bind" ]; then
             exit 0
         fi
 
-        IS_VALID_INTERFACE=$(uci -q get network.$INTERFACE)
-        
-        if [ -n "$IS_VALID_INTERFACE" ] || echo "$REAL_DEV" | grep -qE 'br-lan|eth'; then
-            
-            IS_MIPS=$(uname -m | grep -q 'mips' && echo 1 || echo 0)
-            BW_LIMIT="1000mbit"
-            CHECK_DEV="$REAL_DEV"
-            
-            if echo "$REAL_DEV" | grep -q '^br'; then
-                FIRST_PORT=$(ls -1 "/sys/class/net/$REAL_DEV/brif/" 2>/dev/null | head -n 1)
-                [ -n "$FIRST_PORT" ] && CHECK_DEV="$FIRST_PORT"
-            fi
-            
-            if [ -f "/sys/class/net/$CHECK_DEV/speed" ]; then
-                INTERFACE_SPEED=$(cat "/sys/class/net/$CHECK_DEV/speed" 2>/dev/null)
-                if echo "$INTERFACE_SPEED" | grep -q '^[0-9]\+$' && [ "$INTERFACE_SPEED" -gt 0 ]; then
-                    BW_LIMIT="${INTERFACE_SPEED}mbit"
-                fi
-            fi
-            
-            if [ "$IS_MIPS" = "1" ] && [ "$BW_LIMIT" = "1000mbit" ]; then
-                BW_LIMIT="250mbit"
-            fi
-
-            if echo "$INTERFACE" | grep -q 'wan'; then
-                BW_LIMIT="0"
-                if [ -f "/proc/sys/net/netfilter/nf_conntrack_flush" ]; then
-                    echo 1 > /proc/sys/net/netfilter/nf_conntrack_flush
-                    FLUSH_LOG=" (Conntrack Flushed)"
-                fi
-            fi
-
-            if [ "$BW_LIMIT" = "0" ]; then
-                tc qdisc replace dev $REAL_DEV root cake diffserv3 triple-isolate nat wash rtt 100ms >/dev/null 2>&1
-                BW_LOG="Unlimited (LAN/ISP Optimized)"
-            else
-                tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate rtt 100ms >/dev/null 2>&1
-                BW_LOG="$BW_LIMIT"
-            fi
-            
-            sysctl -w vm.dirty_background_ratio=5 >/dev/null 2>&1
-            sysctl -w vm.dirty_ratio=10 >/dev/null 2>&1
-            
-            logger -t "Frdmx-Optimizer" "Sukses menerapkan CAKE ($BW_LOG) pada LAN/WAN Interface $REAL_DEV${FLUSH_LOG:-}"
+        CURRENT_QDISC=$(tc qdisc show dev $REAL_DEV 2>/dev/null | head -n1 | awk '{print $2}')
+        if [ "$CURRENT_QDISC" = "cake" ] && [ "$ACTION" != "ifup" ]; then
+            exit 0
         fi
+
+        IS_MIPS=$(uname -m | grep -q 'mips' && echo 1 || echo 0)
+        BW_LIMIT="1000mbit"
+        CHECK_DEV="$REAL_DEV"
+        
+        if echo "$REAL_DEV" | grep -q '^br'; then
+            FIRST_PORT=$(ls -1 "/sys/class/net/$REAL_DEV/brif/" 2>/dev/null | head -n 1)
+            [ -n "$FIRST_PORT" ] && CHECK_DEV="$FIRST_PORT"
+        fi
+        
+        if [ -f "/sys/class/net/$CHECK_DEV/speed" ]; then
+            INTERFACE_SPEED=$(cat "/sys/class/net/$CHECK_DEV/speed" 2>/dev/null)
+            if echo "$INTERFACE_SPEED" | grep -q '^[0-9]\+$' && [ "$INTERFACE_SPEED" -gt 0 ]; then
+                BW_LIMIT="${INTERFACE_SPEED}mbit"
+            fi
+        fi
+        
+        if [ "$IS_MIPS" = "1" ] && [ "$BW_LIMIT" = "1000mbit" ]; then
+            BW_LIMIT="250mbit"
+        fi
+
+        tc qdisc replace dev $REAL_DEV root cake bandwidth $BW_LIMIT diffserv3 triple-isolate rtt 100ms >/dev/null 2>&1
+        
+        sysctl -w vm.dirty_background_ratio=5 >/dev/null 2>&1
+        sysctl -w vm.dirty_ratio=10 >/dev/null 2>&1
+        
+        logger -t "Frdmx-Optimizer" "Sukses menerapkan CAKE ($BW_LIMIT) pada Distribusi Interface Lokal $REAL_DEV"
     fi
 fi
