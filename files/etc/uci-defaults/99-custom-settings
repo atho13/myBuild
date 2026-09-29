@@ -20,7 +20,6 @@ for file in \
     /sbin/yess \
     /etc/rc.local \
     /etc/custom_service/start_service.sh \
-    /etc/init.d/cake-autorate \
     /etc/init.d/todong \
     /etc/init.d/modem-lock \
     /www/vnstati/vnstati.sh \
