@@ -1,5 +1,5 @@
 #!/bin/sh
-# Built-in System Core Optimizer
+# For Frdmx-Wrt Community...
 
 if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
 
@@ -22,7 +22,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
 
     if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && ! echo "$REAL_DEV" | grep -qE '^ifb|^teql|^tun|^veth'; then
         
-        # DETEKSI UNIVERSAL WAN
+        # 🔍 DETEKSI UNIVERSAL WAN
         IS_IN_WAN_ZONE=0
         if ip route show dev "$REAL_DEV" 2>/dev/null | grep -q "default"; then
             IS_IN_WAN_ZONE=1
@@ -41,15 +41,19 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
             done
         fi
 
-        # OPTIMASI KERNEL & OFFLOADING
+        # ⚡ OPTIMASI OFFLOADING & KERNEL 
         if [ "$ACTION" = "ifup" ] && echo "$REAL_DEV" | grep -qE 'br-lan|eth0'; then
-            echo 1 > /sys/module/xt_FLOWOFFLOAD/parameters/enable 2>/dev/null
+            uci set firewall.@defaults.flow_offloading='1'
+            uci set firewall.@defaults.flow_offloading_hw='0'
+            uci commit firewall
+            /etc/init.d/firewall reload >/dev/null 2>&1
             sysctl -w net.core.default_qdisc=cake >/dev/null 2>&1
             sysctl -w net.ipv4.tcp_congestion_control=bbr >/dev/null 2>&1
         fi
 
-        # DETEKSI PLATFORM HARDWARE
+        # 🧠 DETEKSI PLATFORM HARDWARE
         ARCH_TYPE=$(uname -m)
+        
         if [ "$ARCH_TYPE" = "x86_64" ]; then
             MEM_LIMIT="8M"
             sysctl -w net.core.netdev_max_backlog=16384 >/dev/null 2>&1
@@ -62,10 +66,10 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
             sysctl -w vm.dirty_ratio=10 >/dev/null 2>&1
         fi
 
-        # CORE BASE ENGINE
+        # 💡 FRDMX BOOSTER ACTIVE
         CAKE_BASE="bandwidth unlimited besteffort nat wash rtt 100ms memlimit $MEM_LIMIT"
 
-        # EKSEKUSI JALUR WAN
+        # 🌐 JALUR WAN (Isolasi Upload Aktual)
         if [ "$IS_IN_WAN_ZONE" -eq 1 ]; then
             if [ "$ACTION" = "ifup" ]; then
                 [ -f "/proc/sys/net/netfilter/nf_conntrack_flush" ] && echo 1 > /proc/sys/net/netfilter/nf_conntrack_flush
@@ -82,19 +86,23 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
                 if [ -f "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" ] && [ "$ARCH_TYPE" != "x86_64" ]; then
                     echo "f" > "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" 2>/dev/null
                 fi
+                logger -t "Frdmx-Engine" "[WAN-UNLIMITED] CAKE & Anti-Spike Aktif di $REAL_DEV"
             fi
             exit 0
         fi
 
-        # EKSEKUSI JALUR LAN / WIFI AP
+        # 🏠 JALUR LAN / WIFI AP
         if echo "$REAL_DEV" | grep -qE 'br-lan|^wlan'; then
             if [ "$ACTION" = "ifup" ]; then
+                
                 tc qdisc replace dev "$REAL_DEV" root cake $CAKE_BASE autorate-ingress dual-dsthost >/dev/null 2>&1
+                
                 [ -f "/sys/class/net/$REAL_DEV/tx_queue_len" ] && echo 1000 > "/sys/class/net/$REAL_DEV/tx_queue_len"
                 
                 if [ -f "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" ] && [ "$ARCH_TYPE" != "x86_64" ]; then
                     echo "f" > "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" 2>/dev/null
                 fi
+                logger -t "Frdmx-Optimizer" "[LAN-UNLIMITED] CAKE berjalan pada kecepatan aktual di LAN: $REAL_DEV"
             fi
         fi
     fi
