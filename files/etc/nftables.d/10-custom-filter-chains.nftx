@@ -42,3 +42,13 @@ chain mangle_postrouting_ttl65 {
   ip ttl set 65
   ip6 hoplimit set 65
 }
+chain game_booster_prerouting {
+  type filter hook prerouting priority mangle; policy accept;
+  # GAME ONLINE
+  meta l4proto udp udp length < 256 ip dscp set cs5 counter comment "Boost Game Lite cs5"
+  udp dport { 3074, 5000-5500, 9000-20000, 49152-65535 } ip dscp set cs5 counter comment "Boost Port Game UDP cs5"
+  tcp dport { 7770-7790, 9330-9340, 27015-27030, 27036-27037 } ip dscp set cs5 counter comment "Boost Port Game TCP cs5"
+  # VIDEO CONFERENCE
+  udp dport { 3478, 3479, 5060, 5061, 8801-8802, 19302-19309 } ip dscp set cs5 counter comment "Boost VideoConf UDP cs5"
+  tcp dport { 8801-8802 } ip dscp set cs5 counter comment "Boost VideoConf TCP cs5"
+}
