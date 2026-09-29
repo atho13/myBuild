@@ -22,7 +22,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
 
     if [ -n "$REAL_DEV" ] && [ "$REAL_DEV" != "lo" ] && ! echo "$REAL_DEV" | grep -qE '^ifb|^teql|^tun|^veth'; then
         
-        # 🔍 DETEKSI UNIVERSAL WAN
+        # DETEKSI UNIVERSAL WAN
         IS_IN_WAN_ZONE=0
         if ip route show dev "$REAL_DEV" 2>/dev/null | grep -q "default"; then
             IS_IN_WAN_ZONE=1
