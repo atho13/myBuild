@@ -1,5 +1,5 @@
 #!/bin/sh
-# For Frdmx-Wrt Community...
+# For Frdmx-Wrt Community
 
 if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
 
@@ -41,7 +41,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
             done
         fi
 
-        # ⚡ OPTIMASI OFFLOADING & KERNEL 
+        # OPTIMASI OFFLOADING & KERNEL 
         if [ "$ACTION" = "ifup" ] && echo "$REAL_DEV" | grep -qE 'br-lan|eth0'; then
             uci set firewall.@defaults.flow_offloading='1'
             uci set firewall.@defaults.flow_offloading_hw='0'
@@ -51,7 +51,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
             sysctl -w net.ipv4.tcp_congestion_control=bbr >/dev/null 2>&1
         fi
 
-        # 🧠 DETEKSI PLATFORM HARDWARE
+        # DETEKSI PLATFORM HARDWARE
         ARCH_TYPE=$(uname -m)
         
         if [ "$ARCH_TYPE" = "x86_64" ]; then
@@ -66,10 +66,10 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
             sysctl -w vm.dirty_ratio=10 >/dev/null 2>&1
         fi
 
-        # 💡 FRDMX BOOSTER ACTIVE
+        # FORMULA CAKE UTAMA
         CAKE_BASE="bandwidth unlimited besteffort nat wash rtt 100ms memlimit $MEM_LIMIT"
 
-        # 🌐 JALUR WAN (Isolasi Upload Aktual)
+        # JALUR WAN
         if [ "$IS_IN_WAN_ZONE" -eq 1 ]; then
             if [ "$ACTION" = "ifup" ]; then
                 [ -f "/proc/sys/net/netfilter/nf_conntrack_flush" ] && echo 1 > /proc/sys/net/netfilter/nf_conntrack_flush
@@ -91,7 +91,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
             exit 0
         fi
 
-        # 🏠 JALUR LAN / WIFI AP
+        # JALUR LAN / WIFI AP
         if echo "$REAL_DEV" | grep -qE 'br-lan|^wlan'; then
             if [ "$ACTION" = "ifup" ]; then
                 
