@@ -86,7 +86,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
                 if [ -f "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" ] && [ "$ARCH_TYPE" != "x86_64" ]; then
                     echo "f" > "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" 2>/dev/null
                 fi
-                logger -t "Frdmx-Engine" "[WAN-UNLIMITED] CAKE & Anti-Spike Aktif di $REAL_DEV"
+                logger -t "Frdmx-Engine" "Connection Booster Aktif di $REAL_DEV"
             fi
             exit 0
         fi
@@ -102,7 +102,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
                 if [ -f "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" ] && [ "$ARCH_TYPE" != "x86_64" ]; then
                     echo "f" > "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" 2>/dev/null
                 fi
-                logger -t "Frdmx-Optimizer" "[LAN-UNLIMITED] CAKE berjalan pada kecepatan aktual di LAN: $REAL_DEV"
+                logger -t "Frdmx-Engine" "Connection Booster di LAN: $REAL_DEV"
             fi
         fi
     fi
