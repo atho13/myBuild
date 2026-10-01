@@ -80,5 +80,5 @@ for usb_node in /sys/bus/usb/devices/*; do
     fi
 done
 
-logger -t "Frdmx-Hw-Mod" "[+] Akselerasi CPU, USB Power, & IRQ Affinity sukses diterapkan."
+logger -t "Frdmx-Hw-Mod" "[+] Akselerasi Firmware sukses diterapkan."
 exit 0

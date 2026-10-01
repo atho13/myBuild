@@ -1,4 +1,5 @@
 #!/bin/sh
+# Dashboard Info for Frdmx-Wrt Community
 
 [ -f /usr/share/libubox/jshn.sh ] && . /usr/share/libubox/jshn.sh
 
@@ -10,6 +11,7 @@ C_MAGENTA="\e[1;35m"
 C_GREEN="\e[1;32m"
 C_RED="\e[1;31m"
 C_WHITE="\e[1;37m"
+C_BLINK="\e[5m"
 SYMBOL="╰┈➤"
 
 hr() {
@@ -30,14 +32,38 @@ print_info() {
 
 MODEL=$(cat /tmp/sysinfo/model 2>/dev/null || echo "Generic Device")
 KERNEL=$(uname -r)
-CPU_TEMP="N/A"
-[ -f /sys/class/thermal/thermal_zone0/temp ] && CPU_TEMP=$(awk '{printf "%.1f°C", $1/1000}' /sys/class/thermal/thermal_zone0/temp)
 
-if ping -c 1 -W 1 8.8.8.8 >/dev/null 2>&1; then
-    NET_STATUS="${C_GREEN}Connected"
-else
-    NET_STATUS="${C_RED}Disconnected"
+CPU_TEMP="N/A"
+if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
+    RAW_TEMP=$(cat /sys/class/thermal/thermal_zone0/temp)
+    CPU_TEMP=$(awk -v t="$RAW_TEMP" 'BEGIN {printf "%.1f°C", t/1000}')
+elif [ -d /sys/class/hwmon ]; then
+    for hwmon in /sys/class/hwmon/hwmon*; do
+        if [ -f "$hwmon/temp1_input" ]; then
+            RAW_TEMP=$(cat "$hwmon/temp1_input")
+            CPU_TEMP=$(awk -v t="$RAW_TEMP" 'BEGIN {printf "%.1f°C", t/1000}')
+            break
+        fi
+    done
 fi
+
+if ip route 2>/dev/null | grep -q "default"; then
+    NET_STATUS="${C_GREEN}Connected"
+    /usr/sbin/led -r >/dev/null 2>&1
+else
+    NET_STATUS="${C_RED}${C_BLINK}Disconnected"
+fi
+
+eval $(awk '
+    NR > 2 {
+        clean_if = $1; gsub(/:/, "", clean_if)
+        if (clean_if != "lo" && clean_if != "") {
+            rx += $2; tx += $10
+        }
+    } 
+    END {
+        printf "TOTAL_RX=%d; TOTAL_TX=%d", rx, tx
+    }' /proc/net/dev 2>/dev/null)
 
 eval $(awk '/^MemTotal:/ {t=$2} /^MemAvailable:/ {a=$2} END {printf "MEM_T=%d; MEM_A=%d", t*1024, a*1024}' /proc/meminfo)
 eval $(df -k / | awk 'NR==2 {printf "ST_T=%d; ST_U=%d; ST_P=%s", $2*1024, $3*1024, $5}')
@@ -48,10 +74,11 @@ echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━�
 print_info "Builder"    "FRDMX-Wrt"
 print_info "Model"      "$MODEL"
 print_info "Kernel"     "$KERNEL"
-print_info "CPU Temp"   "$CPU_TEMP"
-print_info "Uptime"     "$(up_str) | $(date +'%H:%M:%S')"
-print_info "Memory"     "$(hr $((MEM_T-MEM_A))) / $(hr $MEM_T)"
-print_info "Storage"    "$(hr $ST_U) / $(hr $ST_T) ($ST_P)"
+print_info "CPU Temp"   "${C_RED}$CPU_TEMP"
+print_info "Uptime"     "${C_YELLOW}$(up_str)${C_CYAN} | ${C_WHITE}$(date +'%H:%M:%S')"
+print_info "Memory"     "${C_GREEN}$(hr $((MEM_T-MEM_A)))${C_CYAN} / ${C_WHITE}$(hr $MEM_T)"
+print_info "Storage"    "${C_GREEN}$(hr $ST_U)${C_CYAN} / ${C_WHITE}$(hr $ST_T) (${C_YELLOW}$ST_P${C_CYAN})"
+print_info "Total B/W"  "⇩  ${C_GREEN}$(hr $TOTAL_RX)${C_CYAN} | ⇧  ${C_RED}$(hr $TOTAL_TX)"
 print_info "Net Status" "$NET_STATUS"
 
 echo -e "${C_MAGENTA}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${C_RESET}"

@@ -36,9 +36,26 @@
 #     type filter hook output priority 1; policy accept;
 #     ct state new log prefix "Firewall4 accepted egress: "
 # }
+# }
 chain mangle_postrouting_ttl65 {
   type filter hook postrouting priority 300; policy accept;
   counter
   ip ttl set 65
   ip6 hoplimit set 65
+}
+chain game_booster_prerouting {
+  type filter hook prerouting priority mangle; policy accept;
+  # GAME ONLINE by Frdmx Wrt
+  meta l4proto udp udp length < 256 ip dscp set cs5 counter comment "Boost Game Lite cs5"
+  udp dport { 3074, 5000-5500, 9000-20000, 49152-65535 } ip dscp set cs5 counter comment "Boost Port Game UDP cs5"
+  tcp dport { 7770-7790, 9330-9340, 27015-27030, 27036-27037 } ip dscp set cs5 counter comment "Boost Port Game TCP cs5"
+  # VIDEO CONFERENCE by Frdmx Wrt
+  udp dport { 3478, 3479, 5060, 5061, 8801-8802, 19302-19309 } ip dscp set cs5 counter comment "Boost VideoConf UDP cs5"
+  tcp dport { 8801-8802 } ip dscp set cs5 counter comment "Boost VideoConf TCP cs5"
+  # REMOTE DESKTOP & SUPPORT by Frdmx Wrt
+  tcp dport { 2112, 5938, 6568, 7070, 21115-21119 } ip dscp set cs5 counter comment "Boost Remote TCP cs5"
+  udp dport { 5938, 21116 } ip dscp set cs5 counter comment "Boost Remote UDP cs5"
+  # VOICE OVER INTERNET / WIFI CALLING by Frdmx Wrt
+  tcp dport { 500, 4500, 5060, 5061 } ip dscp set cs5 counter comment "Boost VoIP TCP cs5"
+  udp dport { 500, 4500, 5060, 5061 } ip dscp set cs5 counter comment "Boost VoIP UDP cs5"
 }
