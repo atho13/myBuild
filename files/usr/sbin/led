@@ -13,7 +13,7 @@ SERVICE_NAME="Internet Indicator"
 function loop() {
   while true; do
     ledon -lan dis
-    if curl -X "HEAD" --connect-timeout 3 -so /dev/null "http://bing.com"; then
+    if httping -c 1 -t 3 -q -g http://google.com; then
       ledon -lan on
     else
       ledon -lan off
