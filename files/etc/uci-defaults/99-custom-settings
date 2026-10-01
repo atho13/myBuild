@@ -12,6 +12,9 @@ for file in \
     /usr/libexec/rpcd/luci-temp \
     /usr/bin/frdmx-andro \
     /usr/bin/modem-lock \
+    /usr/bin/netspeedtest.sh \
+    /usr/bin/ookla-speedtest \
+    /usr/bin/speedtest \
     /usr/sbin/led \
     /usr/sbin/ledon \
     /sbin/free.sh \
