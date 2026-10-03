@@ -36,7 +36,6 @@
 #     type filter hook output priority 1; policy accept;
 #     ct state new log prefix "Firewall4 accepted egress: "
 # }
-# }
 chain mangle_postrouting_ttl65 {
   type filter hook postrouting priority 300; policy accept;
   counter
@@ -45,10 +44,12 @@ chain mangle_postrouting_ttl65 {
 }
 chain game_booster_prerouting {
   type filter hook prerouting priority mangle; policy accept;
+  # TRAFIK LOKAL by Frdmx Wrt
+  ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept comment "Bypass Semua IP Lokal dari Boost cs5"
   # GAME ONLINE by Frdmx Wrt
   meta l4proto udp udp length < 256 ip dscp set cs5 counter comment "Boost Game Lite cs5"
-  udp dport { 3074, 5000-5500, 9000-20000, 49152-65535 } ip dscp set cs5 counter comment "Boost Port Game UDP cs5"
-  tcp dport { 7770-7790, 9330-9340, 27015-27030, 27036-27037 } ip dscp set cs5 counter comment "Boost Port Game TCP cs5"
+  udp dport { 3074, 5000-5500, 6000-20000, 7100-7300, 49152-65535 } ip dscp set cs5 counter comment "Boost Port Game UDP cs5"
+  tcp dport { 109, 143, 853, 7770-7790, 9330-9340, 27015-27030, 27036-27037 } ip dscp set cs5 counter comment "Boost Port Game TCP cs5"
   # VIDEO CONFERENCE by Frdmx Wrt
   udp dport { 3478, 3479, 5060, 5061, 8801-8802, 19302-19309 } ip dscp set cs5 counter comment "Boost VideoConf UDP cs5"
   tcp dport { 8801-8802 } ip dscp set cs5 counter comment "Boost VideoConf TCP cs5"
