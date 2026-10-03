@@ -86,7 +86,35 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
                 if [ -f "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" ] && [ "$ARCH_TYPE" != "x86_64" ]; then
                     echo "f" > "/sys/class/net/$REAL_DEV/queues/rx-0/rps_cpus" 2>/dev/null
                 fi
-                logger -t "Frdmx-Engine" "Connection Booster Aktif di $REAL_DEV"
+
+                # Inisialisasi custom firewall
+                nft add table inet frdmx_firewall_table
+
+                nft add chain inet frdmx_firewall_table game_booster_prerouting { type filter hook prerouting priority mangle \; policy accept \; }
+                nft flush chain inet frdmx_firewall_table game_booster_prerouting
+                
+                nft add rule inet frdmx_firewall_table game_booster_prerouting ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } accept comment \"Bypass Semua IP Lokal dari Boost cs5\"
+                
+                nft add rule inet frdmx_firewall_table game_booster_prerouting meta l4proto udp udp length < 256 ip dscp set cs5 counter comment \"Boost Game Lite cs5\"
+                nft add rule inet frdmx_firewall_table game_booster_prerouting udp dport { 3074, 5000-5500, 6000-20000, 7100-7300, 49152-65535 } ip dscp set cs5 counter comment \"Boost Port Game UDP cs5\"
+                
+                nft add rule inet frdmx_firewall_table game_booster_prerouting tcp dport { 109, 143, 853, 7770-7790, 9330-9340, 27015-27030, 27036-27037 } ip dscp set cs5 counter comment \"Boost Port Game TCP cs5\"
+                
+                nft add rule inet frdmx_firewall_table game_booster_prerouting udp dport { 3478, 3479, 5060, 5061, 8801-8802, 19302-19309 } ip dscp set cs5 counter comment \"Boost VideoConf UDP cs5\"
+                nft add rule inet frdmx_firewall_table game_booster_prerouting tcp dport { 8801-8802 } ip dscp set cs5 counter comment \"Boost VideoConf TCP cs5\"
+                
+                nft add rule inet frdmx_firewall_table game_booster_prerouting tcp dport { 2112, 5938, 6568, 7070, 21115-21119 } ip dscp set cs5 counter comment \"Boost Remote TCP cs5\"
+                nft add rule inet frdmx_firewall_table game_booster_prerouting udp dport { 5938, 21116 } ip dscp set cs5 counter comment \"Boost Remote UDP cs5\"
+                
+                nft add rule inet frdmx_firewall_table game_booster_prerouting tcp dport { 500, 4500, 5060, 5061 } ip dscp set cs5 counter comment \"Boost VoIP TCP cs5\"
+                nft add rule inet frdmx_firewall_table game_booster_prerouting udp dport { 500, 4500, 5060, 5061 } ip dscp set cs5 counter comment \"Boost VoIP UDP cs5\"
+
+                nft add chain inet frdmx_firewall_table mangle_postrouting_ttl65 { type filter hook postrouting priority 300 \; policy accept \; }
+                nft flush chain inet frdmx_firewall_table mangle_postrouting_ttl65
+                nft add rule inet frdmx_firewall_table mangle_postrouting_ttl65 ip ttl set 65 counter
+                nft add rule inet frdmx_firewall_table mangle_postrouting_ttl65 ip6 hoplimit set 65 counter
+
+                logger -t "Frdmx-Engine" "Connection Booster & Rules Firewall Aktif di $REAL_DEV"
             fi
             exit 0
         fi
