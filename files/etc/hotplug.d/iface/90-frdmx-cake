@@ -43,7 +43,7 @@ if [ "$ACTION" = "ifup" ] || [ "$ACTION" = "ifdown" ]; then
 
         # OPTIMASI OFFLOADING & KERNEL 
         if [ "$ACTION" = "ifup" ] && echo "$REAL_DEV" | grep -qE 'br-lan|eth0'; then
-            uci set firewall.@defaults.flow_offloading='1'
+            uci set firewall.@defaults.flow_offloading='0'
             uci set firewall.@defaults.flow_offloading_hw='0'
             uci commit firewall
             /etc/init.d/firewall reload >/dev/null 2>&1
