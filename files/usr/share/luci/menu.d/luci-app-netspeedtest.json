@@ -10,6 +10,14 @@
       "uci": { "netspeedtest": true }
     }
   },
+  "admin/control/netspeedtest/iperf3": {
+    "title": "Throughput speedtest Iperf3",
+    "order": 30,
+    "action": {
+      "type": "view",
+      "path": "netspeedtest/iperf3"
+    }
+  },
   "admin/control/netspeedtest/wanspeedtest": {
     "title": "Wan SpeedTest",
     "order": 10,
