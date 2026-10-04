@@ -6,7 +6,7 @@
 
 {% include('header') %}
 <div id="view">
-	<div class="spinning">{{ _('F R D M X…') }}</div>
+	<div class="spinning">{{ _('F R D M X') }}</div>
 </div>
 
 <script type="text/javascript">//<![CDATA[
