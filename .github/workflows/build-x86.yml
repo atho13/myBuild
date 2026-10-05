@@ -71,7 +71,7 @@ jobs:
           kmod-usb2 kmod-usb3 kmod-usb-serial-option kmod-usb-net-cdc-ether kmod-usb-wdm kmod-usb-serial-wwan usbmuxd \
           kmod-usb-net-ipheth chat kmod-usb-acm ntfs-3g kmod-fs-ntfs3 kmod-fs-exfat fdisk ntfs-3g-utils block-mount \
           kmod-usb-storage-uas smartmontools procps-ng-watch jq iperf3 ca-certificates python3-light python3-pkg-resources \
-          python3-xml python3-email python3-urllib python3-codecs python3-openssl""
+          python3-xml python3-email python3-urllib python3-codecs python3-openssl"
 
           if [ -d "${GITHUB_WORKSPACE}/file/etc/uci-defaults" ]; then
               chmod -R +x "${GITHUB_WORKSPACE}/file/etc/uci-defaults"
