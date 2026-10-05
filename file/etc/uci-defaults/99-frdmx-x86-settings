@@ -12,7 +12,6 @@ for file in \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
     /usr/bin/frdmx-andro \
-    /bin/frdmx_net \
     /sbin/free.sh \
     /sbin/yess \
     /etc/rc.local \
@@ -20,7 +19,8 @@ for file in \
     /etc/init.d/todong \
     /www/vnstati/vnstati.sh \
     /www/cgi-bin/traffic \
-    /etc/hotplug.d/usb/90-frdmx-modem \
+    /etc/hotplug.d/usb/10-frdmx-modem-inject \
+    /etc/hotplug.d/usb/40-usbmuxd \
     /etc/hotplug.d/iface/90-cake-frdmx \
     /etc/hotplug.d/iface/99-frdmx-watchdog; do
     if [ -f "$file" ]; then
@@ -50,29 +50,33 @@ set network.lan.ipaddr='192.168.1.1'
 set network.lan.netmask='255.255.255.0'
 set network.lan.ip6assign=''
 
-# 3. Konfigurasi WAN Fisik x86 (eth1)
-set network.wan=interface
-set network.wan.proto='dhcp'
-set network.wan.device='eth1'
-set network.wan.metric='5'
+uci delete network.modem 2>/dev/null
+uci set network.modem=interface
+uci set network.modem.proto='modemmanager'
+uci set network.modem.apn='internet'
+uci set network.modem.allowedauth='none'
+uci set network.modem.iptype='ipv4'
+uci set network.modem.loglevel='ERR'
+uci set network.modem.metric='5'
+uci set network.modem.defaultroute='1'
+uci set network.modem.dial_timeout='30'
 
-# 4. Konfigurasi Multi-WAN (Tethering USB & Modem)
-set network.tethering=interface
-set network.tethering.proto='dhcp'
-set network.tethering.device='usb0'
-set network.tethering.metric='10'
+uci delete network.wan 2>/dev/null
+uci set network.wan=interface
+uci set network.wan.proto='dhcp'
+uci set network.wan.device='eth1'
+uci set network.wan.metric='10'
 
-set network.modem=interface
-set network.modem.proto='modemmanager'
-set network.modem.device='wwan0'
-set network.modem.apn='internet'
-set network.modem.auth='none'
-set network.modem.metric='20'
+uci delete network.tethering 2>/dev/null
+uci set network.tethering=interface
+uci set network.tethering.proto='dhcp'
+uci set network.tethering.device='usb0'
+uci set network.tethering.metric='15'
 
-# 5. Hapus total antarmuka WAN6 IPv6
+# 3. Hapus total antarmuka WAN6 IPv6
 delete network.wan6
 
-# 6. Konfigurasi DHCP Server IPv4 Only & Matikan DHCPv6 / SLAAC
+# 4. Konfigurasi DHCP Server IPv4 Only & Matikan DHCPv6 / SLAAC
 delete dhcp.lan
 set dhcp.lan=dhcp
 set dhcp.lan.interface='lan'
@@ -84,7 +88,7 @@ set dhcp.@dnsmasq[0].dnsforwardmax='1500'
 set dhcp.@dnsmasq[0].cachesize='5000'
 set dhcp.@dnsmasq[0].min_ttl='300'
 
-# 7. Konfigurasi uhttpd (Hanya Bind ke IPv4 untuk Keamanan)
+# 5. Konfigurasi uhttpd (Hanya Bind ke IPv4 untuk Keamanan)
 delete uhttpd.main.listen_http
 delete uhttpd.main.listen_https
 add_list uhttpd.main.listen_http='0.0.0.0:80'
@@ -171,8 +175,9 @@ fi
 echo "[*] Membuat tautan simbolis (Symlinks) untuk TinyFM..."
 mkdir -p /www/tinyfm
 if [ ! -L /www/tinyfm/rootfs ]; then ln -sf / /www/tinyfm/rootfs; fi
-if [ -d /etc/openclash ]; then ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null; fi
-if [ -d /etc/nikki ]; then ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null; fi
+if [ ! -L /etc/openclash ]; then ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null; fi
+if [ ! -L /etc/nikki ]; then ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null; fi
+if [ ! -L /www/tinyfm/storage ]; then ln -sf /mnt/ /www/tinyfm/storage 2>/dev/null; fi
 
 echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
 if [ -f /etc/rc.local ]; then
