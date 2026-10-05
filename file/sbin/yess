@@ -1,7 +1,9 @@
-#!/bin/bash
-# Smart Hybrid Optimization Script for Community by Frdmx-Wrt
+#!/bin/sh
+# For Frdmx-Wrt Community..
 
-for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do 
+sleep 5
+
+for i in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
     if [ -f "$i" ]; then
         AVAILABLE_GOV=$(cat "$(dirname "$i")/scaling_available_governors" 2>/dev/null)
         if echo "$AVAILABLE_GOV" | grep -q "schedutil"; then
@@ -17,60 +19,66 @@ if [ -f /proc/sys/net/core/gro_normal_batch ]; then
 fi
 
 ARCH=$(uname -m)
+CPUS=$(nproc 2>/dev/null)
+[ -z "$CPUS" ] && CPUS=$(grep -c "^processor" /proc/cpuinfo 2>/dev/null)
+[ -z "$CPUS" ] && CPUS=2
 
-if [ "$ARCH" = "x86_64" ]; then
-    CPUS=$(nproc 2>/dev/null || echo 2)
-    RPS_MASK=$(printf '%x' $(( (1 << CPUS) - 1 )))
-    
+if [ "$ARCH" = "x86_64" ] || echo "$ARCH" | grep -qE 'i386|i686'; then
+    RPS_MASK="f"
+    if [ "$CPUS" -gt 4 ] && [ "$CPUS" -le 8 ]; then
+        RPS_MASK="ff"
+    elif [ "$CPUS" -gt 8 ]; then
+        RPS_MASK="ffff"
+    fi
+
     for dev in /sys/class/net/*; do
         IFACE=$(basename "$dev")
         [ "$IFACE" = "lo" ] && continue
-        
         if [ -d "/sys/class/net/$IFACE/queues" ]; then
-            for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do 
+            for rps in /sys/class/net/"$IFACE"/queues/rx-*/rps_cpus; do
                 [ -f "$rps" ] && echo "$RPS_MASK" > "$rps" 2>/dev/null
             done
-            for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do 
+            for xps in /sys/class/net/"$IFACE"/queues/tx-*/xps_cpus; do
                 [ -f "$xps" ] && echo "$RPS_MASK" > "$xps" 2>/dev/null
             done
         fi
     done
 
-elif [ "$ARCH" = "aarch64" ] || [ "$ARCH" = "armv7l" ]; then
-    CPUS=$(nproc 2>/dev/null || echo 4)
+elif echo "$ARCH" | grep -qE 'aarch64|arm|mips'; then
     
     ETH_MASK="2"
     [ "$CPUS" -le 1 ] && ETH_MASK="1"
-    
-    for eth_irq in $(awk -F: '/(eth|enp|eth0|dwmac|ethernet)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do
-        if [ -n "$eth_irq" ] && [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
-            echo "$ETH_MASK" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null
+    for eth_irq in $(awk -F: '/(eth|enp|eth0|dwmac|ethernet)/ {print $1}' /proc/interrupts 2>/dev/null | sed 's/ //g'); do
+        if echo "$eth_irq" | grep -q '^[0-9]\+$'; then
+            if [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
+                echo "$ETH_MASK" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null
+            fi
         fi
     done
-    
+
     if [ "$CPUS" -ge 3 ]; then
         USB_MASK="4"
     elif [ "$CPUS" -eq 2 ]; then
-        USB_MASK="2" # CPU1
+        USB_MASK="2"
     else
-        USB_MASK="1" # CPU0
+        USB_MASK="1"
     fi
-    
-    for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do 
-        if [ -n "$usb_irq" ] && [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
-            echo "$USB_MASK" > "/proc/irq/$usb_irq/smp_affinity" 2>/dev/null
+    for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | sed 's/ //g'); do
+        if echo "$usb_irq" | grep -q '^[0-9]\+$'; then
+            if [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
+                echo "$USB_MASK" > "/proc/irq/$usb_irq/smp_affinity" 2>/dev/null
+            fi
         fi
     done
 fi
 
-for usb_ctrl in /sys/bus/usb/devices/*/power/control; do 
-    [ -f "$usb_ctrl" ] && echo "on" > "$usb_ctrl" 2>/dev/null
+for usb_node in /sys/bus/usb/devices/*; do
+    if [ -d "$usb_node/power" ]; then
+        [ -f "$usb_node/power/control" ] && echo "on" > "$usb_node/power/control" 2>/dev/null
+        [ -f "$usb_node/power/autosuspend" ] && echo "-1" > "$usb_node/power/autosuspend" 2>/dev/null
+        [ -f "$usb_node/power/autosuspend_delay_ms" ] && echo "-1" > "$usb_node/power/autosuspend_delay_ms" 2>/dev/null
+    fi
 done
 
-for usb_suspend in /sys/bus/usb/devices/*/power/autosuspend; do 
-    [ -f "$usb_suspend" ] && echo "-1" > "$usb_suspend" 2>/dev/null
-done
-
-echo "1" > /proc/sys/net/ipv4/tcp_low_latency 2>/dev/null
-echo "1" > /proc/sys/net/ipv4/tcp_tw_reuse 2>/dev/null 
-echo "1" > /proc/sys/net/ipv4/tcp_sack 2>/dev/null
+logger -t "Frdmx-Hw-Mod" "[+] Akselerasi Firmware sukses diterapkan."
+exit 0
