@@ -8,7 +8,7 @@ on:
         required: true
         default: ""
       #custom_repo:
-        #description: "URL Repositori Pihak Third (Opsional, pisahkan dengan koma jika lebih dari satu)"
+        #description: "URL Repositori Pihak Ketiga (Opsional, pisahkan dengan koma jika lebih dari satu)"
         #required: false
         #default: ""
 
@@ -72,6 +72,7 @@ jobs:
         run: |
           cd \${{ env.WORKING_DIR }}
         
+          # Mengatur kapasitas default partisi rootfs komunitas (700MB)
           sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
           echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
         
@@ -125,8 +126,8 @@ jobs:
           BASE_TARGET_DIR="\${{ env.WORKING_DIR }}/bin/targets"
           
           if [ -d "\$BASE_TARGET_DIR" ]; then
-            ZST_FILE=(find BASE_TARGET_DIR -type f -name "*rootfs.tar.zst" | head -n 1)
-            GZ_FILE=(find BASE_TARGET_DIR -type f -name "*rootfs.tar.gz" | head -n 1)
+            ZST_FILE=(find "BASE_TARGET_DIR" -type f -name "*rootfs.tar.zst" | head -n 1)
+            GZ_FILE=(find "BASE_TARGET_DIR" -type f -name "*rootfs.tar.gz" | head -n 1)
             
             OUT_NAME="openwrt-allwinner-generic-rootfs.tar.gz"
             
@@ -162,4 +163,4 @@ jobs:
             - **Format Berkas**: `.tar.gz` (Universal Format)
             - **Folder Konfigurasi**: `h6` (Khusus Allwinner)
             - **Fitur**: Paket modem seluler lengkap, LuCI Material, Python3, & `luci-app-diskman`.
-            - **Nirkabel Otomatis**: Wi-Fi langsung **ON** dengan nama SSID `FRDMX-Wrt_Allwinner`.
+            - **Nirkabel Otomatis**: Wi-Fi langsung **ON** dengan nama SSID `FRDMX-Wrt`.
