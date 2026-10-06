@@ -30,17 +30,16 @@ done
 
 echo "[*] Mengonfigurasi pengaturan UCI Sistem & Waktu"
 uci batch <<EOF
-set system.@system[0].hostname='FRDMX'
-set system.@system[0].timezone='WIB-7'
-set system.@system[0].zonename='Asia/Jakarta'
-set system.@system[0].ttylogin='0'
-
-set system.@system[0].thermal_path='/sys/class/thermal/thermal_zone0/temp'
+set system.@system.hostname='FRDMX'
+set system.@system.timezone='WIB-7'
+set system.@system.zonename='Asia/Jakarta'
+set system.@system.ttylogin='0'
+set system.@system.thermal_path='/sys/class/thermal/thermal_zone0/temp'
 delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
 add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
-add_list system.ntp.server='time.google.com'
+add_list system.ntp.server='://google.com'
 EOF
 
 uci delete network.lan 2>/dev/null
@@ -96,9 +95,9 @@ set dhcp.lan.interface='lan'
 set dhcp.lan.start='100'
 set dhcp.lan.limit='150'
 set dhcp.lan.leasetime='12h'
-set dhcp.@dnsmasq[0].dnsforwardmax='1500'
-set dhcp.@dnsmasq[0].cachesize='5000'
-set dhcp.@dnsmasq[0].min_ttl='300'
+set dhcp.@dnsmasq.dnsforwardmax='1500'
+set dhcp.@dnsmasq.cachesize='5000'
+set dhcp.@dnsmasq.min_ttl='300'
 delete uhttpd.main.listen_http
 delete uhttpd.main.listen_https
 add_list uhttpd.main.listen_http='0.0.0.0:80'
@@ -123,7 +122,18 @@ commit dhcp
 commit uhttpd
 EOF
 
-# AUTOMASI DAN OPTIMALISASI STROGE
+echo "[*] Mengonfigurasi otomatisasi terminal TTYD ke Bash Login..."
+uci delete ttyd.@ttyd 2>/dev/null
+uci set ttyd.@ttyd=ttyd
+uci set ttyd.@ttyd.disabled='0'
+uci set ttyd.@ttyd.interface='br-lan'
+if [ -f /usr/bin/bash ]; then
+    uci set ttyd.@ttyd.command='/usr/bin/bash --login'
+else
+    uci set ttyd.@ttyd.command='/bin/ash --login'
+fi
+uci commit ttyd
+
 echo "[*] Mengonfigurasi otomatisasi block-mount (fstab)"
 uci batch <<EOF
 set fstab.global=global
@@ -149,10 +159,10 @@ fi
 if [ -f /etc/config/hd-idle ]; then
     echo "[*] Mengaktifkan otomatisasi standby HDD (hd-idle)"
     uci batch <<EOF
-set hd-idle.@hd-idle[0]=hd-idle
-set hd-idle.@hd-idle[0].enabled='1'
-set hd-idle.@hd-idle[0].idle_time='10'
-set hd-idle.@hd-idle[0].unit='minutes'
+set hd-idle.@hd-idle=hd-idle
+set hd-idle.@hd-idle.enabled='1'
+set hd-idle.@hd-idle.idle_time='10'
+set hd-idle.@hd-idle.unit='minutes'
 commit hd-idle
 EOF
     /etc/init.d/hd-idle enable >/dev/null 2>&1
@@ -181,7 +191,6 @@ if [ -f /etc/opkg.conf ]; then
     sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 fi
 
-# FIX TOTAL: Allwinner pada Orange Pi/papan sejenis mendeteksi kartu memori sebagai mmcblk1 atau mmcblk0
 if [ -d /sys/block/mmcblk0 ]; then echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null; fi
 if [ -d /sys/block/mmcblk1 ]; then echo bfq > /sys/block/mmcblk1/queue/scheduler 2>/dev/null; fi
 if [ -d /sys/block/sda ]; then echo bfq > /sys/block/sda/queue/scheduler 2>/dev/null; fi
@@ -201,8 +210,8 @@ if [ -f /etc/usb-mode.json ]; then
     sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json 2>/dev/null
 fi
 
-if uci -q get xmm-modem.@xmm-modem[0] >/dev/null; then
-    uci set xmm-modem.@xmm-modem[0].enable='0'
+if uci -q get xmm-modem.@xmm-modem >/dev/null; then
+    uci set xmm-modem.@xmm-modem.enable='0'
     uci commit xmm-modem
 fi
 
@@ -246,5 +255,5 @@ if [ -f "/etc/hotplug.d/iface/90-cake-frdmx" ]; then
     ACTION=ifup INTERFACE=wan sh /etc/hotplug.d/iface/90-cake-frdmx >/dev/null 2>&1
 fi
 
-echo "   Selesai! Pengaturan Full IPv4 Allwinner Sukses. "
+echo "   Selesai! Pengaturan Full IPv4 Allwinner + Fix Bash Sukses. "
 exit 0
