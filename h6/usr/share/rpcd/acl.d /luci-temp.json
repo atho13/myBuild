@@ -1,0 +1,10 @@
+{
+  "luci-temp": {
+    "description": "Allow LuCI to read temperature sensor",
+    "read": {
+      "ubus": {
+        "luci-temp": [ "get_temp", "get_cpu", "get_traffic" ]
+      }
+    }
+  }
+}
