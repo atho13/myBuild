@@ -8,7 +8,7 @@ on:
         required: true
         default: ""
       #custom_repo:
-        #description: "URL Repositori Pihak Ketiga (Opsional, pisahkan dengan koma jika lebih dari satu)"
+        #description: "URL Repositori Pihak Third (Opsional, pisahkan dengan koma jika lebih dari satu)"
         #required: false
         #default: ""
 
@@ -31,7 +31,6 @@ jobs:
         run: |
           sudo timedatectl set-timezone "\${{ env.TZ }}"
           sudo apt-get update
-          # Mengamankan python dengan symlink manual untuk menghindari error di ubuntu-24.04
           sudo apt-get install -y build-essential clang flex bison g++ gawk gettext \
           git libncurses5-dev libssl-dev rsync unzip zlib1g-dev \
           curl tar qemu-utils wget python3-setuptools python3-dev zstd xz-utils dos2unix
@@ -49,7 +48,7 @@ jobs:
 
       - name: Suntik Skrip Otomatis WiFi Langsung ON (uci-defaults)
         run: |
-          LOCAL_FILES_DIR="\${{ github.workspace }}/files/etc/uci-defaults"
+          LOCAL_FILES_DIR="\${{ github.workspace }}/h6/etc/uci-defaults"
           mkdir -p \$LOCAL_FILES_DIR
           
           cat << 'EOF' > \$LOCAL_FILES_DIR/99-custom-wifi
@@ -58,9 +57,8 @@ jobs:
           uci set wireless.radio0.disabled='0'
           uci set wireless.radio1.disabled='0' 2>/dev/null || true
           
-          # Mengubah nama SSID bawaan pemancar nirkabel ruter
-          uci set wireless.default_radio0.ssid='FRDMX-Wrt_Allwinner'
-          uci set wireless.default_radio1.ssid='FRDMX-Wrt_Allwinner_5G' 2>/dev/null || true
+          uci set wireless.default_radio0.ssid='FRDMX-Wrt'
+          uci set wireless.default_radio1.ssid='FRDMX-Wrt_5G' 2>/dev/null || true
           
           uci commit wireless
           /etc/init.d/network restart
@@ -74,29 +72,16 @@ jobs:
         run: |
           cd \${{ env.WORKING_DIR }}
         
-          # Mengatur kapasitas default partisi rootfs komunitas (700MB)
           sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
           echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
         
-          if [ -n "\${{ github.event.inputs.custom_repo }}" ]; then
-            echo "Menambahkan repositori kustom..."
-            IFS=',' read -r -a repos <<< "\${{ github.event.inputs.custom_repo }}"
-            index=1
-            for repo in "\${repos[@]}"; do
-              repo_trimmed=(echo "repo" | xargs)
-              echo "src/gz custom_repo_index repo_trimmed" >> repositories.conf
-              ((index++))
-            done
-            cat repositories.conf
-          fi
-        
-          if [ -d "\${{ github.workspace }}/files/etc/uci-defaults" ]; then
+          if [ -d "\${{ github.workspace }}/h6/etc/uci-defaults" ]; then
             echo "Memperbaiki format EOL skrip uci-defaults..."
-            dos2unix \${{ github.workspace }}/files/etc/uci-defaults/* || true
-            chmod +x \${{ github.workspace }}/files/etc/uci-defaults/* || true
+            dos2unix \${{ github.workspace }}/h6/etc/uci-defaults/* || true
+            chmod +x \${{ github.workspace }}/h6/etc/uci-defaults/* || true
             
             mkdir -p build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults
-            cp -r \${{ github.workspace }}/files/etc/uci-defaults/* build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/
+            cp -r \${{ github.workspace }}/h6/etc/uci-defaults/* build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/
             chmod +x build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/*
           fi
         
@@ -122,7 +107,7 @@ jobs:
           kmod-usb-net-ipheth chat kmod-usb-acm ntfs-3g kmod-fs-ntfs3 kmod-fs-exfat fdisk \
           ntfs-3g-utils block-mount kmod-usb-storage-uas smartmontools procps-ng-watch jq iperf3 ca-certificates \
           python3-light python3-pkg-resources python3-xml python3-email python3-urllib python3-codecs python3-openssl \
-          luci-app-diskman wpad-mesh-openssl wireless-regdb" # Menyertakan Disk Manager, Utilitas Enkripsi WPA Mesh, dan Database Regulasi Frekuensi WiFi
+          luci-app-diskman wpad-mesh-openssl wireless-regdb"
     
           CURRENT_PROFILE="generic"
           if ! make info | grep -q "Profile: \$CURRENT_PROFILE"; then
@@ -131,7 +116,7 @@ jobs:
         
           make image PROFILE="\$CURRENT_PROFILE" \
                PACKAGES="\${PACKAGES}" \
-                 FILES="\${{ github.workspace }}/h6" \
+               FILES="\${{ github.workspace }}/h6" \
                IGNORE_ERRORS=1 \
                V=s
           
@@ -175,6 +160,6 @@ jobs:
           body: |
             ## OpenWrt RootFS FRDMX - Murni Allwinner Edition (Wi-Fi ON)
             - **Format Berkas**: `.tar.gz` (Universal Format)
-            - **Fitur Khusus**: Pemuatan modul modem injek lengkap, LuCI Material, Python3, dan integrasi paket `luci-app-diskman`.
-            - **Nirkabel Otomatis**: Wi-Fi langsung **ON** pada boot pertama dengan SSID `FRDMX-Wrt_Allwinner`.
-            - **Bebas Bloatware**: Seluruh paket manajemen kmod bawaan STB Amlogic telah dibersihkan sepenuhnya.
+            - **Folder Konfigurasi**: `h6` (Khusus Allwinner)
+            - **Fitur**: Paket modem seluler lengkap, LuCI Material, Python3, & `luci-app-diskman`.
+            - **Nirkabel Otomatis**: Wi-Fi langsung **ON** dengan nama SSID `FRDMX-Wrt_Allwinner`.
