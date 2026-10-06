@@ -1,5 +1,5 @@
 #!/bin/sh
-# For Frdmx-Wrt Community (Murni Allwinner Edition)
+# For Frdmx-Wrt Community for Allwinner
 
 echo "   Memulai Konfigurasi Otomatis FRDMX-Wrt (Allwinner)"
 
