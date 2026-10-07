@@ -146,14 +146,14 @@ jobs:
           
           echo "build_tag=ALLWINNER_RootFS_\${VERSION_TAG}_\((date +\%Y\%m\%d_\%H\%M)" >> \)GITHUB_ENV
 
-      - name: Unggah Hasil ke GitHub Release
+      - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: \${{ env.build_tag }}
-          artifacts: "\${{ env.OUTPUT_DIR }}/*.tar.gz"
+          tag: ${{ env.build_tag }}
+          artifacts: "${{ env.OUTPUT_DIR }}/*.tar.gz"
           allowUpdates: true
           makeLatest: true
-          token: \${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             ## OpenWrt RootFS FRDMX - Murni Allwinner Edition (Wi-Fi ON)
             - **Format Berkas**: `.tar.gz` (Universal Format)
