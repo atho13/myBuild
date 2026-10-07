@@ -1,4 +1,4 @@
-name: Frdmx rootFS
+name: Frdmx Allwinner rootFS
 
 on:
   workflow_dispatch:
@@ -7,15 +7,11 @@ on:
         description: "URL Image Builder (.tar.xz/.tar.zst) versi 23.05, 24.10, atau 25.12"
         required: true
         default: ""
-      #custom_repo:
-        #description: "URL Repositori Pihak Ketiga (Opsional, pisahkan dengan koma jika lebih dari satu)"
-        #required: false
-        #default: ""
 
 env:
   TZ: Asia/Jakarta
   WORKING_DIR: /builder/armvirt_ib
-  OUTPUT_DIR: ${{ github.workspace }}/output
+  OUTPUT_DIR: \${{ github.workspace }}/output
 
 jobs:
   build:
@@ -24,55 +20,64 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
+      - name: Checkout Repositori
         uses: actions/checkout@v4
 
-      - name: Initialization Environment
+      - name: Inisialisasi Lingkungan & Dependensi
         run: |
-          sudo timedatectl set-timezone "${{ env.TZ }}"
+          sudo timedatectl set-timezone "\${{ env.TZ }}"
           sudo apt-get update
           sudo apt-get install -y build-essential clang flex bison g++ gawk gettext \
           git libncurses5-dev libssl-dev rsync unzip zlib1g-dev \
-          curl tar qemu-utils wget python3-setuptools python3-dev python-is-python3 zstd xz-utils
+          curl tar qemu-utils wget python3-setuptools python3-dev python-is-python3 zstd xz-utils dos2unix
           sudo mkdir -p /builder
           sudo chown runner:runner /builder
-          mkdir -p ${{ env.OUTPUT_DIR }}
+          mkdir -p \${{ env.OUTPUT_DIR }}
 
-      - name: Download Image Builder
+      - name: Unduh & Ekstrak Image Builder
         run: |
-          mkdir -p ${{ env.WORKING_DIR }}
-          curl -L "${{ github.event.inputs.custom_url }}" -o ib_archive.file
-          tar -xf ib_archive.file -C ${{ env.WORKING_DIR }} --strip-components=1
+          mkdir -p \${{ env.WORKING_DIR }}
+          curl -L "\${{ github.event.inputs.custom_url }}" -o ib_archive.file
+          tar -xf ib_archive.file -C \${{ env.WORKING_DIR }} --strip-components=1
           rm ib_archive.file
 
-      - name: Build Firmware
+      - name: Suntik Skrip Otomatis WiFi Langsung ON (uci-defaults)
         run: |
-          cd ${{ env.WORKING_DIR }}
+          LOCAL_FILES_DIR="\${{ github.workspace }}/h6/etc/uci-defaults"
+          mkdir -p \$LOCAL_FILES_DIR
+          
+          cat << 'EOF' > \$LOCAL_FILES_DIR/99-custom-wifi
+          #!/bin/sh
+          
+          uci set wireless.radio0.disabled='0'
+          uci set wireless.radio1.disabled='0' 2>/dev/null || true
+          
+          uci set wireless.default_radio0.ssid='FRDMX-Wrt'
+          uci set wireless.default_radio1.ssid='FRDMX-Wrt_5G' 2>/dev/null || true
+          
+          uci commit wireless
+          /etc/init.d/network restart
+          
+          exit 0
+          EOF
+          
+          chmod +x \$LOCAL_FILES_DIR/99-custom-wifi
+
+      - name: Membangun RootFS Allwinner
+        run: |
+          cd \${{ env.WORKING_DIR }}
         
+          # Mengatur kapasitas default partisi rootfs komunitas (700MB)
           sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
           echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
         
-          if [ -n "${{ github.event.inputs.custom_repo }}" ]; then
-            echo "Menambahkan repositori kustom..."
-            IFS=',' read -r -a repos <<< "${{ github.event.inputs.custom_repo }}"
-            index=1
-            for repo in "${repos[@]}"; do
-              repo_trimmed=$(echo "$repo" | xargs)
-              echo "src/gz custom_repo_$index $repo_trimmed" >> repositories.conf
-              ((index++))
-            done
-            echo "Isi repositories.conf terbaru:"
-            cat repositories.conf
-          fi
-        
-          if [ -d "${{ github.workspace }}/files/etc/uci-defaults" ]; then
-            echo "Memperbaiki format EOL (CRLF ke LF) dan memberikan izin eksekusi..."
-            sudo apt-get install -y dos2unix
-            dos2unix ${{ github.workspace }}/files/etc/uci-defaults/*
-            chmod +x ${{ github.workspace }}/files/etc/uci-defaults/*
+          if [ -d "\${{ github.workspace }}/h6/etc/uci-defaults" ]; then
+            echo "Memperbaiki format EOL skrip uci-defaults..."
+            dos2unix \${{ github.workspace }}/h6/etc/uci-defaults/*
+            chmod +x \${{ github.workspace }}/h6/etc/uci-defaults/*
             
             mkdir -p build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults
-            cp -r ${{ github.workspace }}/files/etc/uci-defaults/* build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/
+            cp -r \${{ github.workspace }}/h6/etc/uci-defaults/* build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/
             chmod +x build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/*
           fi
         
@@ -97,63 +102,62 @@ jobs:
           kmod-usb2 kmod-usb3 kmod-usb-serial-option kmod-usb-net-cdc-ether kmod-usb-wdm kmod-usb-serial-wwan usbmuxd \
           kmod-usb-net-ipheth chat kmod-usb-acm ntfs-3g kmod-fs-ntfs3 kmod-fs-exfat fdisk \
           ntfs-3g-utils block-mount kmod-usb-storage-uas smartmontools procps-ng-watch jq iperf3 ca-certificates \
-          python3-light python3-pkg-resources python3-xml python3-email python3-urllib python3-codecs python3-openssl"
+          python3-light python3-pkg-resources python3-xml python3-email python3-urllib python3-codecs python3-openssl \
+          luci-app-diskman wpad-mesh-openssl wireless-regdb"
     
           CURRENT_PROFILE="generic"
-          if ! make info | grep -q "Profile: $CURRENT_PROFILE"; then
-            CURRENT_PROFILE=$(make info | grep -E '^Profile:' | head -n 1 | awk '{print $2}')
-            echo "Profil 'generic' tidak ditemukan, beralih ke profil otomatis: $CURRENT_PROFILE"
+          if ! make info | grep -q "Profile: \$CURRENT_PROFILE"; then
+            CURRENT_PROFILE=\$(make info | grep -E '^Profile:' | head -n 1 | awk '{print \$2}')
           fi
         
-          make image PROFILE="$CURRENT_PROFILE" \
-               PACKAGES="${PACKAGES}" \
-                 FILES="${{ github.workspace }}/files" \
+          make image PROFILE="\$CURRENT_PROFILE" \
+               PACKAGES="\${PACKAGES}" \
+               FILES="\${{ github.workspace }}/h6" \
                IGNORE_ERRORS=1 \
                V=s
           
       - name: Kumpulkan Hasil
         run: |
-          BASE_TARGET_DIR="${{ env.WORKING_DIR }}/bin/targets"
+          BASE_TARGET_DIR="\${{ env.WORKING_DIR }}/bin/targets"
           
-          if [ -d "$BASE_TARGET_DIR" ]; then
-            ZST_FILE=$(find $BASE_TARGET_DIR -type f -name "*rootfs.tar.zst" | head -n 1)
-            GZ_FILE=$(find $BASE_TARGET_DIR -type f -name "*rootfs.tar.gz" | head -n 1)
+          if [ -d "\$BASE_TARGET_DIR" ]; then
+            ZST_FILE=(find BASE_TARGET_DIR -type f -name "*rootfs.tar.zst" | head -n 1)
+            GZ_FILE=(find BASE_TARGET_DIR -type f -name "*rootfs.tar.gz" | head -n 1)
             
-            if [ -n "$ZST_FILE" ]; then
-              echo "Menemukan berkas: $ZST_FILE"
-              echo "Mengonversi berkas .tar.zst ke .tar.gz..."
-              zstd -d -c "$ZST_FILE" | gzip > "${{ env.OUTPUT_DIR }}/openwrt-s905x-generic-rootfs.tar.gz"
-            elif [ -n "$GZ_FILE" ]; then
-              echo "Menemukan berkas: $GZ_FILE"
-              echo "Menyalin file .tar.gz asli..."
-              cp "$GZ_FILE" "${{ env.OUTPUT_DIR }}/openwrt-s905x-generic-rootfs.tar.gz"
+            OUT_NAME="openwrt-allwinner-generic-rootfs.tar.gz"
+            
+            if [ -n "\$ZST_FILE" ]; then
+              zstd -d -c "\$ZST_FILE" | gzip > "\({{ env.OUTPUT_DIR }}/\)OUT_NAME"
+            elif [ -n "\$GZ_FILE" ]; then
+              cp "\$GZ_FILE" "\({{ env.OUTPUT_DIR }}/\)OUT_NAME"
             else
-              echo "Error: Berkas RootFS (.tar.zst atau .tar.gz) tidak ditemukan!"
+              echo "Error: Berkas pembangun rootfs tidak ditemukan!"
               exit 1
             fi
           else
-            echo "Error: Direktori utama build $BASE_TARGET_DIR tidak ditemukan!"
+            echo "Error: Direktori utama build tidak ditemukan!"
             exit 1
           fi       
           
-          # Deteksi otomatis versi untuk pembuatan Tag Rilis di GitHub
-          if [[ "${{ github.event.inputs.custom_url }}" == *"25.12"* ]]; then
-            echo "build_tag=S905X_RootFS_25.12_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
-          elif [[ "${{ github.event.inputs.custom_url }}" == *"24.10"* ]]; then
-            echo "build_tag=S905X_RootFS_24.10_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          if [[ "\${{ github.event.inputs.custom_url }}" == *"25.12"* ]]; then
+            echo "build_tag=ALLWINNER_RootFS_25.12_\((date +\%Y\%m\%d_\%H\%M)" >> \)GITHUB_ENV
+          elif [[ "\${{ github.event.inputs.custom_url }}" == *"24.10"* ]]; then
+            echo "build_tag=ALLWINNER_RootFS_24.10_\((date +\%Y\%m\%d_\%H\%M)" >> \)GITHUB_ENV
           else
-            echo "build_tag=S905X_RootFS_23.05_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+            echo "build_tag=ALLWINNER_RootFS_23.05_\((date +\%Y\%m\%d_\%H\%M)" >> \)GITHUB_ENV
           fi
 
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ env.build_tag }}
-          artifacts: "${{ env.OUTPUT_DIR }}/*.tar.gz"
+          tag: \${{ env.build_tag }}
+          artifacts: "\${{ env.OUTPUT_DIR }}/*.tar.gz"
           allowUpdates: true
           makeLatest: true
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: \${{ secrets.GITHUB_TOKEN }}
           body: |
-            ## OpenWrt RootFS FRDMX S905X
-            - **Format**: .tar.gz (Universal Format)
-            - **Custom Repo**: ${{ github.event.inputs.custom_repo || 'None' }}
+            ## OpenWrt RootFS FRDMX - Murni Allwinner Edition (Wi-Fi ON)
+            - **Format Berkas**: `.tar.gz` (Universal Format)
+            - **Folder Konfigurasi**: `h6` (Khusus Allwinner)
+            - **Fitur**: Paket modem seluler lengkap, LuCI Material, Python3, & `luci-app-diskman`.
+            - **Nirkabel Otomatis**: Wi-Fi langsung **ON** dengan nama SSID `FRDMX-Wrt`.
