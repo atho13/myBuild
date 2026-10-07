@@ -9,8 +9,6 @@ on:
         default: '24.10.x'
         type: choice
         options:
-          - 21.02.x
-          - 23.05.x
           - 24.10.x
           - 25.12.x
       board_version:
