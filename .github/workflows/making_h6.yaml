@@ -57,7 +57,6 @@ on:
         default: '1024'
         type: choice
         options:
-          - 256
           - 512
           - 1024
           - 1536
@@ -69,7 +68,7 @@ on:
       kernel_repo:
         description: "Set the kernel repository (<owner>/<repo> format)"
         required: false
-        default: "atho13/kernel" # Diperbaiki ke format standar repo
+        default: "atho13/kernel_h6"
       rootfs_url:
         description: 'Input Rootfs URL (Wget Only)'
         required: true
