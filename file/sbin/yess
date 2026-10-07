@@ -24,12 +24,18 @@ CPUS=$(nproc 2>/dev/null)
 [ -z "$CPUS" ] && CPUS=2
 
 if [ "$ARCH" = "x86_64" ] || echo "$ARCH" | grep -qE 'i386|i686'; then
-    RPS_MASK="f"
-    if [ "$CPUS" -gt 4 ] && [ "$CPUS" -le 8 ]; then
-        RPS_MASK="ff"
-    elif [ "$CPUS" -gt 8 ]; then
-        RPS_MASK="ffff"
-    fi
+    
+    case "$CPUS" in
+        1) RPS_MASK="1" ;;
+        2) RPS_MASK="3" ;;  # Biner 11
+        3) RPS_MASK="7" ;;  # Biner 111
+        4) RPS_MASK="f" ;;  # Biner 1111
+        5) RPS_MASK="1f" ;; # Biner 11111
+        6) RPS_MASK="3f" ;; # Biner 111111
+        7) RPS_MASK="7f" ;; # Biner 1111111
+        8) RPS_MASK="ff" ;; # Biner 11111111
+        *) RPS_MASK="ffff" ;; # > 8 Core
+    esac
 
     for dev in /sys/class/net/*; do
         IFACE=$(basename "$dev")
@@ -48,7 +54,7 @@ elif echo "$ARCH" | grep -qE 'aarch64|arm|mips'; then
     
     ETH_MASK="2"
     [ "$CPUS" -le 1 ] && ETH_MASK="1"
-    for eth_irq in $(awk -F: '/(eth|enp|eth0|dwmac|ethernet)/ {print $1}' /proc/interrupts 2>/dev/null | sed 's/ //g'); do
+    for eth_irq in $(awk -F: '/(eth|enp|eth0|dwmac|ethernet|aml|wlan)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do
         if echo "$eth_irq" | grep -q '^[0-9]\+$'; then
             if [ -f "/proc/irq/$eth_irq/smp_affinity" ]; then
                 echo "$ETH_MASK" > "/proc/irq/$eth_irq/smp_affinity" 2>/dev/null
@@ -63,7 +69,7 @@ elif echo "$ARCH" | grep -qE 'aarch64|arm|mips'; then
     else
         USB_MASK="1"
     fi
-    for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | sed 's/ //g'); do
+    for usb_irq in $(awk -F: '/(dwc3|usb|ehci|xhci)/ {print $1}' /proc/interrupts 2>/dev/null | tr -d ' '); do
         if echo "$usb_irq" | grep -q '^[0-9]\+$'; then
             if [ -f "/proc/irq/$usb_irq/smp_affinity" ]; then
                 echo "$USB_MASK" > "/proc/irq/$usb_irq/smp_affinity" 2>/dev/null
@@ -80,5 +86,5 @@ for usb_node in /sys/bus/usb/devices/*; do
     fi
 done
 
-logger -t "Frdmx-Hw-Mod" "[+] Akselerasi Firmware sukses diterapkan."
+logger -t "Frdmx-Hw-Mod" "[+] Akselerasi Firmware sukses diterapkan"
 exit 0

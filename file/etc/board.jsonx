@@ -1,19 +1,16 @@
 {
 	"model": {
-		"id": "zte,b860h",
-		"name": "ZTE B860H"
+		"id": "openwrt-x86_64",
+		"name": "FRDMX-Firmware Community Edition"
 	},
 	"network": {
 		"lan": {
 			"ports": [
-				"eth0",
+				"br-lan",
 				"eth1",
-				"usb0",
-				"mm"
+				"usb0"
 			],
 			"protocol": "static"
 		}
-	},
-	"wlan": {
 	}
 }

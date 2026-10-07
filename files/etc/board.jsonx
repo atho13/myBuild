@@ -1,19 +1,16 @@
 {
 	"model": {
-		"id": "zte,b860h",
-		"name": "ZTE ✶ B860H"
+		"id": "openwrt-amlogic-series",
+		"name": "FRDMX-Firmware Community Edition"
 	},
 	"network": {
 		"lan": {
 			"ports": [
-				"eth0",
+				"br-lan",
 				"eth1",
-				"usb0",
-				"wwan0"
+				"usb0"
 			],
 			"protocol": "static"
 		}
-	},
-	"wlan": {
 	}
 }
