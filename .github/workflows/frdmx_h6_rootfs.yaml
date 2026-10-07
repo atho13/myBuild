@@ -63,21 +63,34 @@ jobs:
           
           chmod +x \$LOCAL_FILES_DIR/99-custom-wifi
 
-      - name: Membangun RootFS Allwinner
+      - name: Build Firmware
         run: |
-          cd \${{ env.WORKING_DIR }}
+          cd ${{ env.WORKING_DIR }}
         
-          # Mengatur kapasitas default partisi rootfs komunitas (700MB)
           sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
           echo "CONFIG_TARGET_ROOTFS_PARTSIZE=800" >> .config
         
-          if [ -d "\${{ github.workspace }}/h6/etc/uci-defaults" ]; then
-            echo "Memperbaiki format EOL skrip uci-defaults..."
-            dos2unix \${{ github.workspace }}/h6/etc/uci-defaults/* || true
-            chmod +x \${{ github.workspace }}/h6/etc/uci-defaults/* || true
+          if [ -n "${{ github.event.inputs.custom_repo }}" ]; then
+            echo "Menambahkan repositori kustom..."
+            IFS=',' read -r -a repos <<< "${{ github.event.inputs.custom_repo }}"
+            index=1
+            for repo in "${repos[@]}"; do
+              repo_trimmed=$(echo "$repo" | xargs)
+              echo "src/gz custom_repo_$index $repo_trimmed" >> repositories.conf
+              ((index++))
+            done
+            echo "Isi repositories.conf terbaru:"
+            cat repositories.conf
+          fi
+        
+          if [ -d "${{ github.workspace }}/files/etc/uci-defaults" ]; then
+            echo "Memperbaiki format EOL (CRLF ke LF) dan memberikan izin eksekusi..."
+            sudo apt-get install -y dos2unix
+            dos2unix ${{ github.workspace }}/files/etc/uci-defaults/*
+            chmod +x ${{ github.workspace }}/files/etc/uci-defaults/*
             
             mkdir -p build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults
-            cp -r \${{ github.workspace }}/h6/etc/uci-defaults/* build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/
+            cp -r ${{ github.workspace }}/files/etc/uci-defaults/* build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/
             chmod +x build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/*
           fi
         
