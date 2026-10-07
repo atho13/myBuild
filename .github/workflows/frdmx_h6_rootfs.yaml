@@ -63,7 +63,7 @@ jobs:
           
           chmod +x \$LOCAL_FILES_DIR/99-custom-wifi
 
-            - name: Build Firmware
+      - name: Build Firmware
         run: |
           cd ${{ env.WORKING_DIR }}
         
