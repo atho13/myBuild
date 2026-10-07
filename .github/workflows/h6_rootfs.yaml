@@ -113,11 +113,11 @@ jobs:
         
           make image PROFILE="\$CURRENT_PROFILE" \
                PACKAGES="\${PACKAGES}" \
-               FILES="\${{{ github.workspace }}}/h6" \
+               FILES="\${{ github.workspace }}/h6" \
                IGNORE_ERRORS=1 \
                V=s
-
-        - name: Ekstraksi dan Penamaan Hasil Akhir
+          
+      - name: Ekstraksi dan Penamaan Hasil Akhir
         run: |
           BASE_TARGET_DIR="\${{ env.WORKING_DIR }}/bin/targets"
           
@@ -158,3 +158,5 @@ jobs:
             ## OpenWrt RootFS FRDMX - Murni Allwinner Edition (Wi-Fi ON)
             - **Format Berkas**: `.tar.gz` (Universal Format)
             - **Folder Konfigurasi**: `h6` (Khusus Allwinner)
+            - **Fitur**: Paket modem seluler lengkap, LuCI Material, Python3, & `luci-app-diskman`.
+            - **Nirkabel Otomatis**: Wi-Fi langsung **ON** dengan nama SSID `FRDMX-Wrt`.
