@@ -11,7 +11,7 @@ on:
 env:
   TZ: Asia/Jakarta
   WORKING_DIR: /builder/armvirt_ib
-  OUTPUT_DIR: \${{ github.workspace }}/output
+  OUTPUT_DIR: ${{ github.workspace }}/output
 
 jobs:
   build:
