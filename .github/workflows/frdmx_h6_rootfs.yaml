@@ -149,11 +149,11 @@ jobs:
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: \${{ env.build_tag }}
+          tag: ${{ env.build_tag }}
           artifacts: "${{ env.OUTPUT_DIR }}/*.tar.gz"
           allowUpdates: true
           makeLatest: true
-          token: \${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
             ## OpenWrt RootFS FRDMX - Murni Allwinner Edition (Wi-Fi ON)
             - **Format Berkas**: `.tar.gz` (Universal Format)
