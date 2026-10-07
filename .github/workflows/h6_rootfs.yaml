@@ -158,6 +158,4 @@ jobs:
             ## OpenWrt RootFS FRDMX - Murni Allwinner Edition (Wi-Fi ON)
             - **Format Berkas**: `.tar.gz` (Universal Format)
             - **Folder Konfigurasi**: `h6` (Khusus Allwinner)
-            - **Fitur**: Paket modem seluler lengkap, LuCI Material, Python3, & `luci-app-diskman`.
-            - **Nirkabel Otomatis**: Wi-Fi langsung **ON** dengan nama SSID `FRDMX-Wrt`.
 
