@@ -8,6 +8,7 @@ passwd -d root > /dev/null 2>&1
 
 echo "[*] Mengatur izin eksekusi berkas sistem"
 for file in \
+    /usr/bin/7z \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
     /usr/bin/frdmx-andro \

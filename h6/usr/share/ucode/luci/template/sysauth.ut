@@ -1,0 +1,273 @@
+{%
+    import { getuid, getspnam } from 'luci.core';
+    const boardinfo = ubus.call('system', 'board');
+    const hostname = striptags(boardinfo?.hostname ?? '?');
+    http.prepare_content('text/html; charset=UTF-8');
+%}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>{{ hostname }} - LuCI</title>
+  <link rel="shortcut icon" href="{{ media }}/favicon.ico">
+  <meta name="color-scheme" content="light dark">
+
+  <style>
+    @property --angle {
+      syntax: '<angle>';
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Ubuntu, Cantarell, 'Noto Sans', sans-serif;
+      line-height: 1.45;
+      color: #fff;
+      min-height: 100svh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: 
+        linear-gradient(180deg, rgba(0,0,0,.60), rgba(0,0,0,.60)),
+        url('/luci-static/resources/ui.jpg') no-repeat fixed;
+      background-size: 100% 100%;
+      background-position: center;
+      padding: 16px;
+      overflow: hidden;
+    }
+
+    .login-wrapper {
+      position: relative;
+      width: clamp(280px, 92vw, 320px);
+      border-radius: 16px;
+      padding: 3px;
+      background: transparent;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      isolation: isolate;
+    }
+
+    .login-wrapper::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 16px;
+      padding: 3px;
+      background: conic-gradient(#ff007f, #7f00ff, #00bfff, #00ff7f, #ffea00, #ff007f);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+              mask-composite: exclude;
+    }
+
+    .login-wrapper::after {
+      content: '';
+    }
+
+    .login-container {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      color: #fff;
+      border-radius: 14px; 
+      padding: 22px 20px; 
+      text-align: center;
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    }
+
+    #logo-container {
+      display: block;
+      margin-bottom: 12px;
+    }
+    #logo img {
+      max-width: 140px; 
+      max-height: 70px;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+
+    h2 {
+      margin: 0 0 12px;
+      font-weight: 700;
+      font-size: clamp(18px, 2vw + 1rem, 24px);
+      text-wrap: balance;
+    }
+
+    .subtitle {
+      font-size: clamp(11px, .5vw + .6rem, 13px);
+      margin-bottom: 20px;
+      color: #ffea00; 
+      font-weight: 500;
+    }
+
+    form { margin: 0; }
+
+    .field {
+      margin: 10px 0;
+      text-align: left;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px 12px; 
+      border: 0;
+      border-radius: 10px;
+      outline: none;
+      font-size: 15px;
+      background: rgba(255, 255, 255, 0.85);
+      color: #000;
+      text-align: center; 
+      font-family: inherit;
+      transition: box-shadow .2s ease, transform .06s ease;
+    }
+    input::placeholder { color: #444; opacity: .7; text-align: center; }
+    input:focus {
+      box-shadow: 0 0 0 4px rgba(0, 191, 255, 0.4); 
+    }
+
+    .pwd-wrap { position: relative; }
+
+    .toggle {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%); 
+      border: 0;
+      background: transparent;
+      color: #2b2b2b;
+      font-size: 0.9rem;
+      padding: 6px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      opacity: .8;
+    }
+    .toggle:focus-visible { outline: 2px solid #ffea00; outline-offset: 2px; }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 11px 12px; 
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      font-family: inherit; 
+      cursor: pointer;
+      margin-top: 14px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      transition: all .2s ease;
+    }
+    button[type="submit"]:hover { 
+      filter: brightness(1.2); 
+      box-shadow: 0 6px 20px rgba(0, 191, 255, 0.3);
+    }
+    button[type="submit"]:active { transform: translateY(1px); }
+
+    .alert {
+      background: rgba(255, 77, 77, 0.2);
+      border: 1px solid rgba(255, 77, 77, 0.4);
+      color: #ffbaba;
+      border-radius: 10px;
+      padding: 8px 10px;
+      margin-bottom: 12px;
+      font-size: 13px;
+    }
+
+    .footer {
+      margin-top: 14px;
+      font-size: 11px;
+      color: #ffea00; 
+      text-align: center;
+      font-weight: 500;
+    }
+
+    @media (max-height: 560px) {
+      body { align-items: flex-start; }
+      .login-wrapper { margin-top: 16px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="login-wrapper">
+    <div class="login-container">
+      
+      <div id="logo-container">
+        <a id="logo" href="{{ ctx.authsession ? dispatcher.build_url('admin/status/overview') : '#' }}">
+          <img src="{{ media }}/brand.gif" alt="Logo">
+        </a>
+      </div>
+
+      <div class="subtitle" aria-live="polite">
+        <script>
+          document.write(new Date().toLocaleDateString("id-ID",
+            { weekday:"long", year:"numeric", month:"long", day:"numeric" }
+          ));
+        </script>
+        • <span id="jam"></span>
+      </div>
+
+      {% if (fuser): %}
+        <div class="alert" role="alert">
+          {{ _('Password Salah Bro.. Harap Ulangi Lagi !!!') }}
+        </div>
+      {% endif %}
+
+      <form method="post" novalidate>
+        <input type="hidden" name="luci_username" value="root" />
+
+        <div class="field pwd-wrap">
+          <input
+            id="password"
+            type="password"
+            name="luci_password"
+            placeholder="{{ _('Masukkan password...') }}"
+            autocomplete="current-password"
+            required
+          />
+          <button class="toggle" type="button" aria-label="Tampilkan sandi" onclick="togglePwd()">👀</button>
+        </div>
+
+        <button type="submit">{{ _('Masuk ke Dashboard') }}</button>
+      </form>
+
+      <div class="footer">
+       OpenWrt © <span id="year"></span>
+      </div>
+    </div>
+  </div>
+
+  <noscript>
+    <p style="margin-top:8px; text-align:center; color:#ffd2d2;">
+      {{ _('JavaScript is disabled. Login still works.') }}
+    </p>
+  </noscript>
+
+  <script>
+    function updateClock(){
+      const now = new Date();
+      const pad = n => String(n).padStart(2,'0');
+      const el = document.getElementById("jam");
+      if (el) el.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    }
+    setInterval(updateClock, 1000); updateClock();
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    function togglePwd(){
+      const p = document.getElementById('password');
+      const isPwd = p.type === 'password';
+      p.type = isPwd ? 'text' : 'password';
+    }
+
+    try { document.getElementById('password').focus(); } catch(e) {}
+  </script>
+</body>
+</html>
