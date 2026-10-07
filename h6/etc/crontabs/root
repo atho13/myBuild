@@ -1,0 +1,10 @@
+# ============================================================
+# PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
+# ============================================================
+# Automatic Restart your Modem Bro..
+30 3 * * 0 for iface in wan tethering modem; do ubus call network.interface.$iface down; done; sleep 5; mmcli -m any --reset >/dev/null 2>&1; sleep 45; for iface in wan tethering modem; do ubus call network.interface.$iface up; done
+
+# Automatic Maintenance Internal your System Bro..
+0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
+59 23 * * * rm -rf /tmp/luci-modulecache /tmp/luci-indexcache >/dev/null 2>&1
+*/5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1
