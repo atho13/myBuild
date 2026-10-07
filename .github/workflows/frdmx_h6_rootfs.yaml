@@ -63,34 +63,20 @@ jobs:
           
           chmod +x \$LOCAL_FILES_DIR/99-custom-wifi
 
-      - name: Build Firmware
+            - name: Build Firmware
         run: |
           cd ${{ env.WORKING_DIR }}
         
           sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
           echo "CONFIG_TARGET_ROOTFS_PARTSIZE=800" >> .config
         
-          if [ -n "${{ github.event.inputs.custom_repo }}" ]; then
-            echo "Menambahkan repositori kustom..."
-            IFS=',' read -r -a repos <<< "${{ github.event.inputs.custom_repo }}"
-            index=1
-            for repo in "${repos[@]}"; do
-              repo_trimmed=$(echo "$repo" | xargs)
-              echo "src/gz custom_repo_$index $repo_trimmed" >> repositories.conf
-              ((index++))
-            done
-            echo "Isi repositories.conf terbaru:"
-            cat repositories.conf
-          fi
-        
-          if [ -d "${{ github.workspace }}/files/etc/uci-defaults" ]; then
-            echo "Memperbaiki format EOL (CRLF ke LF) dan memberikan izin eksekusi..."
-            sudo apt-get install -y dos2unix
-            dos2unix ${{ github.workspace }}/files/etc/uci-defaults/*
-            chmod +x ${{ github.workspace }}/files/etc/uci-defaults/*
+          if [ -d "${{ github.workspace }}/h6/etc/uci-defaults" ]; then
+            echo "Memperbaiki format EOL skrip uci-defaults Allwinner..."
+            dos2unix ${{ github.workspace }}/h6/etc/uci-defaults/* || true
+            chmod +x ${{ github.workspace }}/h6/etc/uci-defaults/* || true
             
             mkdir -p build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults
-            cp -r ${{ github.workspace }}/files/etc/uci-defaults/* build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/
+            cp -r ${{ github.workspace }}/h6/etc/uci-defaults/* build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/
             chmod +x build_dir/target-aarch64_generic_musl/root-armvirt/etc/uci-defaults/*
           fi
         
@@ -119,13 +105,13 @@ jobs:
           luci-app-diskman wpad-mesh-openssl wireless-regdb"
     
           CURRENT_PROFILE="generic"
-          if ! make info | grep -q "Profile: \$CURRENT_PROFILE"; then
-            CURRENT_PROFILE=\$(make info | grep -E '^Profile:' | head -n 1 | awk '{print \$2}')
+          if ! make info | grep -q "Profile: $CURRENT_PROFILE"; then
+            CURRENT_PROFILE=$(make info | grep -E '^Profile:' | head -n 1 | awk '{print $2}')
           fi
         
-          make image PROFILE="\$CURRENT_PROFILE" \
-               PACKAGES="\${PACKAGES}" \
-               FILES="\${{ github.workspace }}/h6" \
+          make image PROFILE="$CURRENT_PROFILE" \
+               PACKAGES="${PACKAGES}" \
+               FILES="${{ github.workspace }}/h6" \
                IGNORE_ERRORS=1 \
                V=s
           
