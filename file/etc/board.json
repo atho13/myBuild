@@ -1,0 +1,16 @@
+{
+	"model": {
+		"id": "openwrt-x86_64",
+		"name": "FRDMX-Firmware Community Edition"
+	},
+	"network": {
+		"lan": {
+			"ports": [
+				"br-lan",
+				"eth1",
+				"usb0"
+			],
+			"protocol": "static"
+		}
+	}
+}

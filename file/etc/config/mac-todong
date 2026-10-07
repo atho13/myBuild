@@ -1,0 +1,2 @@
+config mac-todong
+	option enabled '0'
