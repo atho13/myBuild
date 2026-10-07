@@ -69,7 +69,7 @@ jobs:
         
           # Mengatur kapasitas default partisi rootfs komunitas (700MB)
           sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
-          echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
+          echo "CONFIG_TARGET_ROOTFS_PARTSIZE=800" >> .config
         
           if [ -d "\${{ github.workspace }}/h6/etc/uci-defaults" ]; then
             echo "Memperbaiki format EOL skrip uci-defaults..."
