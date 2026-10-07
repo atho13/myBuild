@@ -45,9 +45,6 @@ on:
         default: '6.14.y'
         type: choice
         options:
-          - 6.1.y
-          - 6.6.y
-          - 6.12.y
           - 6.14.y
       rootfs_size:
         description: 'Select Rootfs Size'
@@ -66,7 +63,7 @@ on:
       kernel_repo:
         description: "Set the kernel repository (<owner>/<repo> format)"
         required: false
-        default: "atho13/kernel_h6"
+        default: "atho13/kernel"
       rootfs_url:
         description: 'Input Rootfs URL (Wget Only)'
         required: true
