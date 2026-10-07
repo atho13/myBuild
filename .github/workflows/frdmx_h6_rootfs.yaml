@@ -34,11 +34,11 @@ jobs:
           sudo chown runner:runner /builder
           mkdir -p ${{ env.OUTPUT_DIR }}
 
-      - name: Unduh & Ekstrak Image Builder
+      - name: Download Image Builder
         run: |
-          mkdir -p \${{ env.WORKING_DIR }}
-          curl -L "\${{ github.event.inputs.custom_url }}" -o ib_archive.file
-          tar -xf ib_archive.file -C \${{ env.WORKING_DIR }} --strip-components=1
+          mkdir -p ${{ env.WORKING_DIR }}
+          curl -L "${{ github.event.inputs.custom_url }}" -o ib_archive.file
+          tar -xf ib_archive.file -C ${{ env.WORKING_DIR }} --strip-components=1
           rm ib_archive.file
 
       - name: Suntik Skrip Otomatis WiFi Langsung ON (uci-defaults)
