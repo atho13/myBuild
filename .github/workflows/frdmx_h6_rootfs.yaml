@@ -144,7 +144,7 @@ jobs:
           if [[ "\${{ github.event.inputs.custom_url }}" == *"25.12"* ]]; then VERSION_TAG="25.12"; fi
           if [[ "\${{ github.event.inputs.custom_url }}" == *"24.10"* ]]; then VERSION_TAG="24.10"; fi
           
-          echo "build_tag=ALLWINNER_RootFS_\${VERSION_TAG}_\((date +'\%Y\%m\%d_\%H\%M')" >> \)GITHUB_ENV
+          echo "build_tag=ALLWINNER_RootFS_\${VERSION_TAG}_\((date +\%Y\%m\%d_\%H\%M)" >> \)GITHUB_ENV
 
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
