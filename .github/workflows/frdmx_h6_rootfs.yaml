@@ -20,20 +20,19 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout Repositori
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Inisialisasi Lingkungan & Dependensi
+      - name: Initialization Environment
         run: |
-          sudo timedatectl set-timezone "\${{ env.TZ }}"
+          sudo timedatectl set-timezone "${{ env.TZ }}"
           sudo apt-get update
           sudo apt-get install -y build-essential clang flex bison g++ gawk gettext \
           git libncurses5-dev libssl-dev rsync unzip zlib1g-dev \
-          curl tar qemu-utils wget python3-setuptools python3-dev zstd xz-utils dos2unix
-          sudo ln -sf /usr/bin/python3 /usr/bin/python
+          curl tar qemu-utils wget python3-setuptools python3-dev python-is-python3 zstd xz-utils
           sudo mkdir -p /builder
           sudo chown runner:runner /builder
-          mkdir -p \${{ env.OUTPUT_DIR }}
+          mkdir -p ${{ env.OUTPUT_DIR }}
 
       - name: Unduh & Ekstrak Image Builder
         run: |
