@@ -42,10 +42,10 @@ on:
       kernel_version:
         description: 'Select kernel version'
         required: true
-        default: '6.14.y'
+        default: '6.14.3'
         type: choice
         options:
-          - 6.14.y
+          - 6.14.3
       rootfs_size:
         description: 'Select Rootfs Size'
         required: true
@@ -58,7 +58,7 @@ on:
       auto_kernel:
         description: "Auto use the latest kernel"
         required: false
-        default: true
+        default: false
         type: boolean
       kernel_repo:
         description: "Set the kernel repository (<owner>/<repo> format)"
