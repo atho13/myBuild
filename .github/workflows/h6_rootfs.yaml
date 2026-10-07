@@ -117,7 +117,7 @@ jobs:
                IGNORE_ERRORS=1 \
                V=s
           
-      - name: Ekstraksi dan Penamaan Hasil Akhir
+            - name: Ekstraksi dan Penamaan Hasil Akhir
         run: |
           BASE_TARGET_DIR="\${{ env.WORKING_DIR }}/bin/targets"
           
@@ -160,3 +160,4 @@ jobs:
             - **Folder Konfigurasi**: `h6` (Khusus Allwinner)
             - **Fitur**: Paket modem seluler lengkap, LuCI Material, Python3, & `luci-app-diskman`.
             - **Nirkabel Otomatis**: Wi-Fi langsung **ON** dengan nama SSID `FRDMX-Wrt`.
+
