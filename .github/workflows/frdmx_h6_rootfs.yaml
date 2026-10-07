@@ -114,48 +114,49 @@ jobs:
                IGNORE_ERRORS=1 \
                V=s
           
-      - name: Ekstraksi dan Penamaan Hasil Akhir
+      - name: Kumpulkan Hasil
         run: |
-          BASE_TARGET_DIR="\${{ env.WORKING_DIR }}/bin/targets"
+          BASE_TARGET_DIR="${{ env.WORKING_DIR }}/bin/targets"
           
-          if [ -d "\$BASE_TARGET_DIR" ]; then
-            ZST_FILE=(find "BASE_TARGET_DIR" -type f -name "*rootfs.tar.zst" | head -n 1)
-            GZ_FILE=(find "BASE_TARGET_DIR" -type f -name "*rootfs.tar.gz" | head -n 1)
+          if [ -d "$BASE_TARGET_DIR" ]; then
+            ZST_FILE=$(find $BASE_TARGET_DIR -type f -name "*rootfs.tar.zst" | head -n 1)
+            GZ_FILE=$(find $BASE_TARGET_DIR -type f -name "*rootfs.tar.gz" | head -n 1)
             
-            OUT_NAME="openwrt-allwinner-generic-rootfs.tar.gz"
-            
-            if [ -n "\$ZST_FILE" ]; then
-              echo "Menemukan file ZST: \$ZST_FILE"
-              zstd -d -c "\$ZST_FILE" | gzip > "\({{ env.OUTPUT_DIR }}/\)OUT_NAME"
-            elif [ -n "\$GZ_FILE" ]; then
-              echo "Menemukan file GZ: \$GZ_FILE"
-              cp "\$GZ_FILE" "\({{ env.OUTPUT_DIR }}/\)OUT_NAME"
+            if [ -n "$ZST_FILE" ]; then
+              echo "Menemukan berkas: $ZST_FILE"
+              echo "Mengonversi berkas .tar.zst ke .tar.gz..."
+              zstd -d -c "$ZST_FILE" | gzip > "${{ env.OUTPUT_DIR }}/openwrt-allwinner-generic-rootfs.tar.gz"
+            elif [ -n "$GZ_FILE" ]; then
+              echo "Menemukan berkas: $GZ_FILE"
+              echo "Menyalin file .tar.gz asli..."
+              cp "$GZ_FILE" "${{ env.OUTPUT_DIR }}/openwrt-allwinner-generic-rootfs.tar.gz"
             else
-              echo "Error: Berkas pembangun rootfs tidak ditemukan!"
+              echo "Error: Berkas RootFS (.tar.zst atau .tar.gz) tidak ditemukan!"
               exit 1
             fi
           else
-            echo "Error: Direktori utama build tidak ditemukan!"
+            echo "Error: Direktori utama build $BASE_TARGET_DIR tidak ditemukan!"
             exit 1
           fi       
           
-          VERSION_TAG="23.05"
-          if [[ "\${{ github.event.inputs.custom_url }}" == *"25.12"* ]]; then VERSION_TAG="25.12"; fi
-          if [[ "\${{ github.event.inputs.custom_url }}" == *"24.10"* ]]; then VERSION_TAG="24.10"; fi
-          
-          echo "build_tag=ALLWINNER_RootFS_\${VERSION_TAG}_\((date +\%Y\%m\%d_\%H\%M)" >> \)GITHUB_ENV
+          # Deteksi otomatis versi untuk pembuatan Tag Rilis di GitHub
+          if [[ "${{ github.event.inputs.custom_url }}" == *"25.12"* ]]; then
+            echo "build_tag=allwinner_RootFS_25.12_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          elif [[ "${{ github.event.inputs.custom_url }}" == *"24.10"* ]]; then
+            echo "build_tag=A905X_RootFS_24.10_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          else
+            echo "build_tag=Allwinner_RootFS_23.05_$(date +%Y%m%d_%H%M)" >> $GITHUB_ENV
+          fi
 
       - name: Upload to GitHub Release
         uses: ncipollo/release-action@v1
         with:
-          tag: \${{ env.build_tag }}
-          artifacts: "\${{ env.OUTPUT_DIR }}/*.tar.gz"
+          tag: ${{ env.build_tag }}
+          artifacts: "${{ env.OUTPUT_DIR }}/*.tar.gz"
           allowUpdates: true
           makeLatest: true
-          token: \${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            ## OpenWrt RootFS FRDMX - Murni Allwinner Edition (Wi-Fi ON)
+            ## OpenWrt RootFS FRDMX - Allwinner Edition (Wi-Fi ON)
             - **Format Berkas**: `.tar.gz` (Universal Format)
             - **Folder Konfigurasi**: `h6` (Khusus Allwinner)
-            - **Fitur**: Paket modem seluler lengkap, LuCI Material, Python3, & `luci-app-diskman`.
-            - **Nirkabel Otomatis**: Wi-Fi langsung **ON** dengan nama SSID `FRDMX-Wrt`.
