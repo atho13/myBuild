@@ -48,16 +48,25 @@ case "$1" in
             ;;
             get_traffic)
                 if [ -f /proc/net/dev ]; then
-                    TOTALS=$(sed 's/://g' /proc/net/dev | awk 'NR>2 {if($1 != "lo") {rx+=$2; tx+=$10}} END {print rx, tx}')
-                    
-                    RX=$(echo "$TOTALS" | awk '{print $1}')
-                    TX=$(echo "$TOTALS" | awk '{print $2}')
+                    eval $(awk '
+                        /[:]/ {
+                            if ($1 ~ /:/) {
+                                split($1, a, ":");
+                                if (a[1] !~ /lo/) { rx += $2; tx += $10 }
+                            } else {
+                                if ($1 !~ /lo/) { rx += $3; tx += $11 }
+                            }
+                        }
+                        END {
+                            print "TOTAL_RX=" (rx?rx:0) "; TOTAL_TX=" (tx?tx:0) ";"
+                        }
+                    ' /proc/net/dev)
                     
                     json_init
-                    json_add_int "rx" "${RX:-0}"
-                    json_add_int "tx" "${TX:-0}"
+                    json_add_int "rx" "$TOTAL_RX"
+                    json_add_int "tx" "$TOTAL_TX"
                     json_dump
-                fi  
+                fi
             ;;
         esac
     ;;
