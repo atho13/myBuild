@@ -5,7 +5,6 @@
 # khusus hp android - aktifkan mode debugging usb (hilangkan tanda #)
 #/usr/bin/frdmx-andro &
 
-/usr/sbin/led -r
 /sbin/yess &
 exit 0
 
