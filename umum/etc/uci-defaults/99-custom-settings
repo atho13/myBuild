@@ -36,15 +36,18 @@ add_list system.ntp.server='ntp.bmkg.go.id'
 add_list system.ntp.server='://google.com'
 EOF
 
-# FIX TOTAL BAGIAN JARINGAN (Pemisahan dari uci batch)
+# FIX TOTAL BAGIAN JARINGAN
 uci delete network.lan 2>/dev/null
 uci delete network.br_lan 2>/dev/null
+uci delete network.br-lan 2>/dev/null
 
 # 1. Konfigurasi Device Bridge br-lan
-uci set network.br_lan=device
-uci set network.br_lan.name='br-lan'
-uci set network.br_lan.type='bridge'
-uci add_list network.br_lan.ports='eth0'
+uci set network.@device[0]=device
+uci set network.@device[0].name='br-lan'
+uci set network.@device[0].type='bridge'
+uci add_list network.@device[0].ports='eth0'
+uci set network.@device[0].ipv6='0'
+uci set network.@device[0].mtu='1500'
 
 # 2. Konfigurasi Interface LAN terikat ke br-lan
 uci set network.lan=interface
