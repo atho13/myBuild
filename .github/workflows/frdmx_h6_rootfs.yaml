@@ -157,6 +157,6 @@ jobs:
           makeLatest: true
           token: ${{ secrets.GITHUB_TOKEN }}
           body: |
-            ## OpenWrt RootFS FRDMX - Allwinner Edition (Wi-Fi ON)
+            ## OpenWrt RootFS FRDMX - Allwinner
             - **Format Berkas**: `.tar.gz` (Universal Format)
-            - **Folder Konfigurasi**: `h6` (Khusus Allwinner)
+  
