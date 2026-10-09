@@ -189,9 +189,6 @@ if uci -q get xmm-modem.@xmm-modem[0] >/dev/null; then
     uci commit xmm-modem
 fi
 
-# FIX TOTAL: Memasukkan skrip pembuat symlink dinamis ke dalam rc.local.
-# Cara ini menjamin folder /www/tinyfm selalu mendapatkan symlink yang valid 
-# bahkan jika aplikasi OpenClash/Nikki baru diinstal belakangan.
 echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
 if [ -f /etc/rc.local ]; then
     sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
