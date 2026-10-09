@@ -33,7 +33,7 @@ delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
 add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
-add_list system.ntp.server='time.google.com'
+add_list system.ntp.server='://google.com'
 EOF
 
 # FIX TOTAL BAGIAN JARINGAN (Pemisahan dari uci batch)
@@ -71,7 +71,7 @@ uci set network.tethering.metric='10'
 uci delete network.wan6 2>/dev/null
 
 # BATCH LANJUTAN
-# FIX SINTAKS: Memperbaiki kelebihan tanda petik (') pada listen_http IPv6 [::]:80
+# PERBAIKAN: Menghapus kelebihan tanda petik (') pada listen_http IPv6 [::]:80
 uci batch <<EOF
 delete dhcp.lan
 set dhcp.lan=dhcp
@@ -189,17 +189,24 @@ if uci -q get xmm-modem.@xmm-modem[0] >/dev/null; then
     uci commit xmm-modem
 fi
 
-# FIX TOTAL: Memasukkan skrip pembuat symlink dinamis ke dalam rc.local.
-# Cara ini menjamin folder /www/tinyfm selalu mendapatkan symlink yang valid 
-# bahkan jika aplikasi OpenClash/Nikki baru diinstal belakangan.
+# FIX TOTAL: Eksekusi Langsung Symlink TinyFM di uci-defaults
+echo "Creating application symlinks for TinyFM (Direct Execution)..."
+# 1. Buat folder penampung symlink
+mkdir -p /www/tinyfm
+
+# 2. Paksa pembuatan folder target agar symlink tidak "broken/merah" saat firmware baru selesai flash
+mkdir -p /etc/openclash /etc/nikki
+
+# 3. Buat symlink baru dengan path bersih (tanpa tanda garing '/' di akhir path asal)
+ln -sf / /www/tinyfm/rootfs
+ln -sf /etc/openclash /www/tinyfm/openclash
+ln -sf /etc/nikki /www/tinyfm/nikki
+
+
 echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
 if [ -f /etc/rc.local ]; then
     sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
     sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
-
-    # Inject aturan pembuatan symlink ke rc.local tepat sebelum exit 0
-    sed -i '/exit 0/i \
-mkdir -p /www/tinyfm\n[ ! -d /etc/openclash ] && mkdir -p /etc/openclash\n[ ! -d /etc/nikki ] && mkdir -p /etc/nikki\nln -sf / /www/tinyfm/rootfs\nln -sf /etc/openclash /www/tinyfm/openclash\nln -sf /etc/nikki /www/tinyfm/nikki' /etc/rc.local
 
     if [ -f "/etc/custom_service/start_service.sh" ]; then
         sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
