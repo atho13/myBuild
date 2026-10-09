@@ -36,7 +36,7 @@ add_list system.ntp.server='ntp.bmkg.go.id'
 add_list system.ntp.server='://google.com'
 EOF
 
-# FIX TOTAL BAGIAN JARINGAN
+# JARINGAN
 uci delete network.lan 2>/dev/null
 uci delete network.br_lan 2>/dev/null
 uci delete network.br-lan 2>/dev/null
@@ -49,7 +49,7 @@ uci add_list network.@device[0].ports='eth0'
 uci set network.@device[0].ipv6='0'
 uci set network.@device[0].mtu='1500'
 
-# 2. Konfigurasi Interface LAN terikat ke br-lan
+# 2. Konfigurasi Interface LAN
 uci set network.lan=interface
 uci set network.lan.device='br-lan'
 uci set network.lan.proto='static'
@@ -58,7 +58,7 @@ uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.ip6assign='0'
 uci set network.lan.multipath='off'
 
-# 4. Konfigurasi Interface Tambahan (WAN & Tethering HP)
+# 4. Konfigurasi Interface
 uci delete network.wan 2>/dev/null
 uci set network.wan=interface
 uci set network.wan.proto='dhcp'
@@ -74,7 +74,6 @@ uci set network.tethering.metric='10'
 uci delete network.wan6 2>/dev/null
 
 # BATCH LANJUTAN
-# PERBAIKAN: Menghapus kelebihan tanda petik (') pada listen_http IPv6 [::]:80
 uci batch <<EOF
 delete dhcp.lan
 set dhcp.lan=dhcp
@@ -194,13 +193,11 @@ fi
 
 # FIX TOTAL: Eksekusi Langsung Symlink TinyFM di uci-defaults
 echo "Creating application symlinks for TinyFM (Direct Execution)..."
-# 1. Buat folder penampung symlink
+# 1. penampung symlink
 mkdir -p /www/tinyfm
-
-# 2. Paksa pembuatan folder target agar symlink tidak "broken/merah" saat firmware baru selesai flash
 mkdir -p /etc/openclash /etc/nikki
 
-# 3. Buat symlink baru dengan path bersih (tanpa tanda garing '/' di akhir path asal)
+# 2. symlink 
 ln -sf / /www/tinyfm/rootfs
 ln -sf /etc/openclash /www/tinyfm/openclash
 ln -sf /etc/nikki /www/tinyfm/nikki
