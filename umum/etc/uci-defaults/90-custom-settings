@@ -36,12 +36,12 @@ add_list system.ntp.server='ntp.bmkg.go.id'
 add_list system.ntp.server='://google.com'
 EOF
 
-# FIX TOTAL BAGIAN JARINGAN (Pemisahan dari uci batch untuk menjamin urutan anonim)
+# JARINGAN
 uci delete network.lan 2>/dev/null
 uci delete network.br_lan 2>/dev/null
 uci delete network.br-lan 2>/dev/null
 
-# 1. Konfigurasi Device Bridge br-lan Anonim (Menghindari Duplikasi br-lan)
+# 1. Konfigurasi Device
 uci set network.@device=device
 uci set network.@device.name='br-lan'
 uci set network.@device.type='bridge'
@@ -49,7 +49,7 @@ uci add_list network.@device.ports='eth0'
 uci set network.@device.ipv6='0'
 uci set network.@device.mtu='1500'
 
-# 2. Konfigurasi Interface LAN terikat ke br-lan
+# 2. Konfigurasi Interface LA
 uci set network.lan=interface
 uci set network.lan.device='br-lan'
 uci set network.lan.proto='static'
@@ -58,7 +58,7 @@ uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.ip6assign='0'
 uci set network.lan.multipath='off'
 
-# 4. Konfigurasi Interface Tambahan (WAN & Tethering HP)
+# 4. Konfigurasi Interface
 uci delete network.wan 2>/dev/null
 uci set network.wan=interface
 uci set network.wan.proto='dhcp'
@@ -74,7 +74,6 @@ uci set network.tethering.metric='10'
 uci delete network.wan6 2>/dev/null
 
 # BATCH LANJUTAN
-# PERBAIKAN: Menghapus kelebihan tanda petik (') pada listen_http IPv6 [::]:80
 uci batch <<EOF
 delete dhcp.lan
 set dhcp.lan=dhcp
@@ -192,7 +191,6 @@ if uci -q get xmm-modem.@xmm-modem >/dev/null; then
     uci commit xmm-modem
 fi
 
-# DIRECT EXECUTION SYMLINK TINYFM (Tanpa rc.local)
 echo "Creating application symlinks for TinyFM (Direct Execution)..."
 mkdir -p /www/tinyfm
 mkdir -p /etc/openclash /etc/nikki
@@ -202,7 +200,7 @@ ln -sf /etc/openclash /www/tinyfm/openclash
 ln -sf /etc/nikki /www/tinyfm/nikki
 
 
-# OTOMASI WRITING KONTEN 30.SYSINFO.SH
+# WRITING KONTEN 30.SYSINFO.SH
 echo "[*] Menimpa dan mengganti isi file 30.sysinfo.sh..."
 cat << 'EOF' > /etc/uci-defaults/30.sysinfo.sh
 #!/bin/sh
@@ -268,7 +266,7 @@ EOF
 chmod +x /etc/uci-defaults/30.sysinfo.sh
 
 
-# MODIFIKASI PROFILE & PEMINDAHAN SYSINFO SECARA AMAN
+# MODIFIKASI PROFILE
 echo "[*] Memindahkan sysinfo dan mengonfigurasi profil terminal..."
 mkdir -p /usr/lib
 
