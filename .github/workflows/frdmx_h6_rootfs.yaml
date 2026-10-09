@@ -41,7 +41,7 @@ jobs:
           tar -xf ib_archive.file -C ${{ env.WORKING_DIR }} --strip-components=1
           rm ib_archive.file
 
-      - name: Suntik Skrip Otomatis WiFi Langsung ON (uci-defaults)
+      - name: WiFi ON
         run: |
           LOCAL_FILES_DIR="\${{ github.workspace }}/h6/etc/uci-defaults"
           mkdir -p \$LOCAL_FILES_DIR
