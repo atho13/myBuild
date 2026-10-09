@@ -5,18 +5,28 @@ passwd -d root > /dev/null 2>&1
 
 echo "Setting file permissions..."
 for file in \
+    /usr/bin/7z \
+    /usr/bin/cpustat \
     /usr/bin/huawei.py \
+    /usr/libexec/rpcd/luci-temp \
+    /usr/bin/netspeedtest.sh \
+    /usr/bin/ookla-speedtest \
+    /usr/bin/speedtest \
+    /bin/getcpu \
     /sbin/free.sh \
     /etc/rc.local \
     /etc/custom_service/start_service.sh \
-    /www/vnstati/vnstati.sh; do
+    /etc/init.d/todong \
+    /www/vnstati/vnstati.sh \
+    /www/cgi-bin/traffic \
+    /etc/hotplug.d/net/25-modemmanager-net; do
     [ -f "$file" ] && chmod +x "$file"
 done
 
 
 echo "[*] Mengonfigurasi pengaturan UCI"
 uci batch <<EOF
-set system.@system[0].hostname='FRDMX'
+set system.@system[0].hostname='OpenWrt'
 set system.@system[0].timezone='WIB-7'
 set system.@system[0].zonename='Asia/Jakarta'
 delete system.ntp.server
@@ -45,30 +55,18 @@ uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.ip6assign='0'
 uci set network.lan.multipath='off'
 
-# 3. Konfigurasi Interface Modem Rakitan
-uci delete network.modem 2>/dev/null
-uci set network.modem=interface
-uci set network.modem.proto='modemmanager'
-uci set network.modem.apn='internet'
-uci set network.modem.allowedauth='none'
-uci set network.modem.iptype='ipv4'
-uci set network.modem.loglevel='ERR'
-uci set network.modem.metric='5'
-uci set network.modem.defaultroute='1'
-uci set network.modem.dial_timeout='30'
-
 # 4. Konfigurasi Interface Tambahan (WAN & Tethering HP)
 uci delete network.wan 2>/dev/null
 uci set network.wan=interface
 uci set network.wan.proto='dhcp'
 uci set network.wan.device='eth1'
-uci set network.wan.metric='10'
+uci set network.wan.metric='5'
 
 uci delete network.tethering 2>/dev/null
 uci set network.tethering=interface
 uci set network.tethering.proto='dhcp'
 uci set network.tethering.device='usb0'
-uci set network.tethering.metric='15'
+uci set network.tethering.metric='10'
 
 uci delete network.wan6 2>/dev/null
 
@@ -86,7 +84,9 @@ set dhcp.@dnsmasq[0].min_ttl='300'
 delete uhttpd.main.listen_http
 delete uhttpd.main.listen_https
 add_list uhttpd.main.listen_http='0.0.0.0:80'
+add_list uhttpd.main.listen_http='::]:80''
 add_list uhttpd.main.listen_https='0.0.0.0:443'
+add_list uhttpd.main.listen_https='[::]:443'
 set uhttpd.main.redirect_https='0'
 set uhttpd.main.home='/www'
 set uhttpd.main.rfc1918_filter='1'
@@ -209,11 +209,11 @@ cat > /etc/crontabs/root << 'EOF'
 # PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
 # ============================================================
 # Automatic Restart your Modem Bro..
-30 3 * * 0 for iface in $(uci get firewall.@zone[1].network 2>/dev/null | tr ',' ' ' || echo "wan"); do ubus call network.interface.$iface down; done && sleep 2 && mmcli -m any --restart >/dev/null 2>&1 && sleep 45 && for iface in $(uci get firewall.@zone[1].network 2>/dev/null | tr ',' ' ' || echo "wan"); do ubus call network.interface.$iface up; done
+30 3 * * 0 for iface in wan tethering modem; do ubus call network.interface.$iface down; done; sleep 5; mmcli -m any --reset >/dev/null 2>&1; sleep 45; for iface in wan tethering modem; do ubus call network.interface.$iface up; done
 
 # Automatic Maintenance Internal your System Bro..
 0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
-59 23 * * * sync && sh -c "echo 3 > /proc/sys/vm/drop_caches" && rm -rf /tmp/luci*
+59 23 * * * rm -rf /tmp/luci-modulecache /tmp/luci-indexcache >/dev/null 2>&1
 */5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1
 EOF
 

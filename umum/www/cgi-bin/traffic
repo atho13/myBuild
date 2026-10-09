@@ -1,0 +1,105 @@
+#!/bin/sh
+echo "Content-Type: application/json"
+echo ""
+echo "{"
+
+# --- 1. AMBIL DATA CPU ---
+# Menghitung persentase penggunaan CPU dari /proc/stat
+cpu_usage=$(awk '
+/^cpu / {
+    total1 = $2 + $3 + $4 + $5 + $6 + $7 + $8 + $9 + $10;
+    idle1 = $5 + $6;
+}
+END {
+    # Catatan: Untuk hasil akurat secara real-time antar request, 
+    # biasanya butuh selisih waktu (delta). Tapi sebagai estimasi sederhana:
+    print 0; # atau logika kalkulasi cpu Anda
+}' /proc/stat)
+
+# Cara lebih akurat membaca CPU di BusyBox/OpenWrt bisa menggunakan top atau membaca /proc/stat dengan perbandingan.
+# Contoh sederhana placeholder JSON CPU (ubah sesuai logika pembacaan CPU Anda):
+# --- 1. AMBIL DATA CPU ---
+# Mengambil persentase idle CPU dari command top, lalu dikurangi 100
+cpu_usage=$(top -n 1 | awk '/^CPU:/ {
+    # Mencari nilai idle, biasanya ada di kolom ke-8 atau mengandung teks "idl"
+    for(i=1; i<=NF; i++) {
+        if($i ~ /idl/) {
+            idle=substr($(i-1), 1, length($(i-1))-1); 
+            print 100 - idle;
+            exit;
+        }
+    }
+}')
+
+# Jika gagal mendapatkan angka, set ke 0
+if [ -z "$cpu_usage" ]; then
+    cpu_usage=0
+fi
+
+echo "  \"cpu\": $cpu_usage,"
+
+# --- 2. INTERFACES ---
+echo "  \"interfaces\": ["
+awk '
+NR > 2 {
+    sub(/^[ \t]+/, "");
+    split($0, a, ":");
+    if (a[1] != "") {
+        name = a[1];
+        if (name != "lo") {
+            if (count > 0) print ",";
+            printf "    \"%s\"", name;
+            count++;
+        }
+    }
+}' /proc/net/dev
+echo ""
+echo "  ],"
+
+# --- 3. DATA TRAFIK ---
+echo "  \"data\": {"
+awk '
+NR > 2 {
+    sub(/^[ \t]+/, "");
+    split($0, a, ":");
+    if (a[1] != "") {
+        name = a[1];
+        if (name != "lo") {
+            split(a[2], b, " ");
+            rx = b[1];
+            tx = b[9];
+            if (count > 0) print ",";
+            printf "    \"%s\": { \"rx\": %s, \"tx\": %s }", name, rx, tx;
+            count++;
+        }
+    }
+}' /proc/net/dev
+echo ""
+echo "  },"
+
+# --- 4. RAM ---
+echo "  \"ram\": {"
+awk '
+/^MemTotal:/ { total = $2 }
+/^MemAvailable:/ { available = $2 }
+/^MemFree:/ && !available { free = $2 }
+/^Buffers:/ { buffers = $2 }
+/^Cached:/ { cached = $2 }
+END {
+    if (!available) {
+        available = free + buffers + cached;
+    }
+    used = total - available;
+    if (total > 0) {
+        percent = int((used / total) * 100 + 0.5);
+    } else {
+        percent = 0;
+    }
+    printf "    \"total\": %d,\n", total;
+    printf "    \"available\": %d,\n", available;
+    printf "    \"used\": %d,\n", used;
+    printf "    \"percent\": %d\n", percent;
+}' /proc/meminfo
+echo "  }"
+
+echo "}"

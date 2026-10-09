@@ -9,6 +9,7 @@ passwd -d root > /dev/null 2>&1
 echo "[*] Mengatur izin eksekusi berkas sistem"
 for file in \
     /usr/bin/7z \
+    /usr/bin/cpustat \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
     /usr/bin/frdmx-andro \
@@ -18,6 +19,7 @@ for file in \
     /usr/bin/speedtest \
     /usr/sbin/led \
     /usr/sbin/ledon \
+    /bin/getcpu \
     /sbin/free.sh \
     /sbin/yess \
     /etc/rc.local \
