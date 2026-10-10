@@ -6,5 +6,5 @@
 
 # Automatic Maintenance Internal your System Bro..
 0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
-59 23 * * * rm -rf /tmp/luci-modulecache /tmp/luci-indexcache >/dev/null 2>&1
+59 23 * * * /etc/init.d/rpcd restart && /etc/init.d/uhttpd restart >/dev/null 2>&1
 */5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1
