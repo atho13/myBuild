@@ -197,6 +197,7 @@ rm -rf /www/tinyfm/rootfs /www/tinyfm/openclash /www/tinyfm/nikki
 ln -sf / /www/tinyfm/rootfs
 ln -sf /etc/openclash /www/tinyfm/openclash
 ln -sf /etc/nikki /www/tinyfm/nikki
+ln -sf /mnt/ /www/tinyfm/storage
 
 # PROFILE
 echo "[*] Menghapus sysinfo bawaan dan mengonfigurasi profil terminal..."

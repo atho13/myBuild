@@ -39,12 +39,15 @@ EOF
 
 uci delete network.lan 2>/dev/null
 uci delete network.br_lan 2>/dev/null
+uci delete network.br-lan 2>/dev/null
 
 # 1. Konfigurasi Device Bridge br-lan
-uci set network.br_lan=device
-uci set network.br_lan.name='br-lan'
-uci set network.br_lan.type='bridge'
-uci add_list network.br_lan.ports='eth0'
+uci set network.@device=device
+uci set network.@device.name='br-lan'
+uci set network.@device.type='bridge'
+uci add_list network.@device.ports='eth0'
+uci set network.@device.ipv6='0'
+uci set network.@device.mtu='1500'
 
 # 2. Konfigurasi Interface LAN terikat ke br-lan
 uci set network.lan=interface
@@ -96,7 +99,9 @@ set dhcp.@dnsmasq.min_ttl='300'
 delete uhttpd.main.listen_http
 delete uhttpd.main.listen_https
 add_list uhttpd.main.listen_http='0.0.0.0:80'
+add_list uhttpd.main.listen_http='[::]:80'
 add_list uhttpd.main.listen_https='0.0.0.0:443'
+add_list uhttpd.main.listen_https='[::]:443'
 set uhttpd.main.redirect_https='0'
 set uhttpd.main.home='/www'
 set uhttpd.main.rfc1918_filter='1'
@@ -210,21 +215,53 @@ if uci -q get xmm-modem.@xmm-modem >/dev/null; then
     uci commit xmm-modem
 fi
 
-echo "[*] Membuat tautan simbolis (Symlinks) untuk TinyFM..."
+echo "Creating application symlinks for TinyFM (Direct Execution)..."
 mkdir -p /www/tinyfm
-if [ ! -L /www/tinyfm/rootfs ]; then ln -sf / /www/tinyfm/rootfs; fi
-if [ ! -L /etc/openclash ]; then ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null; fi
-if [ ! -L /etc/nikki ]; then ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null; fi
-if [ ! -L /www/tinyfm/storage ]; then ln -sf /mnt/ /www/tinyfm/storage 2>/dev/null; fi
+mkdir -p /etc/openclash /etc/nikki
+rm -rf /www/tinyfm/rootfs /www/tinyfm/openclash /www/tinyfm/nikki
+ln -sf / /www/tinyfm/rootfs
+ln -sf /etc/openclash /www/tinyfm/openclash
+ln -sf /etc/nikki /www/tinyfm/nikki
+ln -sf /mnt/ /www/tinyfm/storage
+
+# PROFILE
+echo "[*] Menghapus sysinfo bawaan dan mengonfigurasi profil terminal..."
+
+rm -f /etc/profile.d/30-sysinfo.sh
+
+if [ -f /usr/lib/xral ]; then
+    chmod 755 /usr/lib/xral
+fi
+
+if [ -f /etc/profile ]; then
+    sed -i '/\/usr\/lib\/xral/d' /etc/profile 2>/dev/null
+    sed -i '/30-sysinfo.sh/d' /etc/profile 2>/dev/null
+    
+    echo "" >> /etc/profile
+    echo "# Jalankan sysinfo frdmx" >> /etc/profile
+    echo "[ -x /usr/lib/xral ] && /bin/sh /usr/lib/xral" >> /etc/profile
+fi
+
+history -c 2>/dev/null
+rm -f ~/.ash_history 2>/dev/null
+
+echo "[*] Menerapkan banner komunitas kustom..."
+cat << 'EOF' > /etc/banner
+  ___                __        __    _   
+ / _ \ _ __   ___ _ _\ \      / / __| |_ 
+| | | | '_ \ / _ \ '_ \ \ /\ / / '__| __|
+| |_| | |_) |  __/ | | \ V  V /| |  | |_ 
+ \___/| .__/ \___|_| |_|\_/\_/ |_|   \__|
+      |_| F R E E D O M - I N T E R N E T
+
+EOF
+
+echo "Banner kustom sukses terpasang!"
 
 echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
 if [ -f /etc/rc.local ]; then
     sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
     sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
-
-    if [ -f "/etc/custom_service/start_service.sh" ]; then
-        sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
-    fi
 
     if [ -f "/sbin/yess" ]; then
         sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
@@ -244,10 +281,6 @@ fi
 
 if [ -f "/sbin/free.sh" ]; then
     sh /sbin/free.sh >/dev/null 2>&1
-fi
-
-if [ -f "/etc/hotplug.d/iface/90-cake-frdmx" ]; then
-    ACTION=ifup INTERFACE=wan sh /etc/hotplug.d/iface/90-cake-frdmx >/dev/null 2>&1
 fi
 
 echo "   Selesai! Pengaturan Full IPv4 Allwinner + Fix Bash Sukses. "
