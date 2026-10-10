@@ -225,6 +225,18 @@ fi
 history -c 2>/dev/null
 rm -f ~/.ash_history 2>/dev/null
 
+echo "[*] Menerapkan banner komunitas kustom..."
+cat << 'EOF' > /etc/banner
+    ___                __        __    _   
+   / _ \ _ __   ___ _ _\ \      / / __| |_ 
+  | | | | '_ \ / _ \ '_ \ \ /\ / / '__| __|
+  | |_| | |_) |  __/ | | \ V  V /| |  | |_ 
+   \___/| .__/ \___|_| |_|\_/\_/ |_|   \__|
+        |_| F R E E D O M - I N T E R N E T
+EOF
+
+echo "Banner kustom sukses terpasang!"
+
 echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
 if [ -f /etc/rc.local ]; then
     sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
