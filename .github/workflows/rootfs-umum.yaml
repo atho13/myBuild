@@ -111,7 +111,7 @@ jobs:
           ntfs-3g-utils block-mount kmod-usb-storage-uas smartmontools procps-ng-watch jq iperf3 ca-certificates \
           python3-light python3-pkg-resources python3-xml python3-email python3-urllib python3-codecs python3-openssl"
         
-          # wpad-mesh-wolfssl relayd luci-proto-relay kmod-cfg80211 kmod-mac80211 kmod-rtw88 iw iwinfo kmod-iwlwifi
+          # wpad-mesh-wolfssl luci-proto-relay kmod-cfg80211 kmod-mac80211 kmod-rtw88 iw iwinfo kmod-iwlwifi
           # iwlwifi-firmware-ax210 wireless-regdb kmod-mt7601u kmod-mt76x2u kmod-rt2800-usb
           # kmod-usb-net-ipheth usbmuxd
 
