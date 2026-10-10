@@ -26,9 +26,9 @@ done
 
 echo "[*] Mengonfigurasi pengaturan UCI"
 uci batch <<EOF
-set system.@system[0].hostname='OpenWrt'
-set system.@system[0].timezone='WIB-7'
-set system.@system[0].zonename='Asia/Jakarta'
+set system.@system.hostname='OpenWrt'
+set system.@system.timezone='WIB-7'
+set system.@system.zonename='Asia/Jakarta'
 delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
 add_list system.ntp.server='1.id.pool.ntp.org'
@@ -41,15 +41,15 @@ uci delete network.lan 2>/dev/null
 uci delete network.br_lan 2>/dev/null
 uci delete network.br-lan 2>/dev/null
 
-# 1. Konfigurasi Device Bridge br-lan
-uci set network.@device[0]=device
-uci set network.@device[0].name='br-lan'
-uci set network.@device[0].type='bridge'
-uci add_list network.@device[0].ports='eth0'
-uci set network.@device[0].ipv6='0'
-uci set network.@device[0].mtu='1500'
+# 1. Konfigurasi Device
+uci set network.@device=device
+uci set network.@device.name='br-lan'
+uci set network.@device.type='bridge'
+uci add_list network.@device.ports='eth0'
+uci set network.@device.ipv6='0'
+uci set network.@device.mtu='1500'
 
-# 2. Konfigurasi Interface LAN terikat ke br-lan
+# 2. Konfigurasi Interface LA
 uci set network.lan=interface
 uci set network.lan.device='br-lan'
 uci set network.lan.proto='static'
@@ -58,7 +58,7 @@ uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.ip6assign='0'
 uci set network.lan.multipath='off'
 
-# 4. Konfigurasi Interface Tambahan
+# 4. Konfigurasi Interface
 uci delete network.wan 2>/dev/null
 uci set network.wan=interface
 uci set network.wan.proto='dhcp'
@@ -81,9 +81,9 @@ set dhcp.lan.interface='lan'
 set dhcp.lan.start='100'
 set dhcp.lan.limit='150'
 set dhcp.lan.leasetime='12h'
-set dhcp.@dnsmasq[0].dnsforwardmax='1500'
-set dhcp.@dnsmasq[0].cachesize='5000'
-set dhcp.@dnsmasq[0].min_ttl='300'
+set dhcp.@dnsmasq.dnsforwardmax='1500'
+set dhcp.@dnsmasq.cachesize='5000'
+set dhcp.@dnsmasq.min_ttl='300'
 delete uhttpd.main.listen_http
 delete uhttpd.main.listen_https
 add_list uhttpd.main.listen_http='0.0.0.0:80'
@@ -136,10 +136,10 @@ fi
 if [ -f /etc/config/hd-idle ]; then
     echo "[*] Mengaktifkan otomatisasi standby HDD (hd-idle)"
     uci batch <<EOF
-set hd-idle.@hd-idle[0]=hd-idle
-set hd-idle.@hd-idle[0].enabled='1'
-set hd-idle.@hd-idle[0].idle_time='10'
-set hd-idle.@hd-idle[0].unit='minutes'
+set hd-idle.@hd-idle=hd-idle
+set hd-idle.@hd-idle.enabled='1'
+set hd-idle.@hd-idle.idle_time='10'
+set hd-idle.@hd-idle.unit='minutes'
 commit hd-idle
 EOF
     /etc/init.d/hd-idle enable >/dev/null 2>&1
@@ -186,20 +186,57 @@ if [ -f /etc/usb-mode.json ]; then
     sed -i -e '/12d1:15c1/,+5d' -e '/413c:81d7/,+5d' /etc/usb-mode.json 2>/dev/null
 fi
 
-if uci -q get xmm-modem.@xmm-modem[0] >/dev/null; then
-    uci set xmm-modem.@xmm-modem[0].enable='0'
+if uci -q get xmm-modem.@xmm-modem >/dev/null; then
+    uci set xmm-modem.@xmm-modem.enable='0'
     uci commit xmm-modem
 fi
 
-# Symlink TinyFM di uci-defaults
 echo "Creating application symlinks for TinyFM (Direct Execution)..."
 mkdir -p /www/tinyfm
 mkdir -p /etc/openclash /etc/nikki
-
+rm -rf /www/tinyfm/rootfs /www/tinyfm/openclash /www/tinyfm/nikki
 ln -sf / /www/tinyfm/rootfs
 ln -sf /etc/openclash /www/tinyfm/openclash
 ln -sf /etc/nikki /www/tinyfm/nikki
 
+# MODIFIKASI PROFILE TERMINAL
+echo "[*] Menghapus sysinfo bawaan dan mengonfigurasi profil terminal..."
+
+# 1. Hapus paksa file sysinfo bawaan asli OpenWrt agar tidak dieksekusi double
+rm -f /etc/profile.d/30-sysinfo.sh
+
+# 2. Pastikan file kustom xral Anda yang sudah tertanam di /usr/lib mendapatkan izin eksekusi penuh
+if [ -f /usr/lib/xral ]; then
+    chmod 755 /usr/lib/xral
+fi
+
+# 3. Daftarkan pemanggil skrip kustom Anda ke profile utama OpenWrt
+if [ -f /etc/profile ]; then
+    # Bersihkan entri lama/bawaan agar tidak terjadi duplikasi teks saat booting
+    sed -i '/\/usr\/lib\/xral/d' /etc/profile 2>/dev/null
+    sed -i '/30-sysinfo.sh/d' /etc/profile 2>/dev/null
+    
+    # Tambahkan perintah eksekusi otomatis ke baris paling akhir berkas /etc/profile
+    echo "" >> /etc/profile
+    echo "# Jalankan sysinfo frdmx" >> /etc/profile
+    echo "[ -x /usr/lib/xral ] && /bin/sh /usr/lib/xral" >> /etc/profile
+fi
+
+history -c 2>/dev/null
+rm -f ~/.ash_history 2>/dev/null
+
+echo "[*] Menerapkan banner komunitas kustom..."
+cat << 'EOF' > /etc/banner
+  ___                __        __    _   
+ / _ \ _ __   ___ _ _\ \      / / __| |_ 
+| | | | '_ \ / _ \ '_ \ \ /\ / / '__| __|
+| |_| | |_) |  __/ | | \ V  V /| |  | |_ 
+ \___/| .__/ \___|_| |_|\_/\_/ |_|   \__|
+      |_| F R E E D O M - I N T E R N E T
+
+EOF
+
+echo "Banner kustom sukses terpasang!"
 
 echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
 if [ -f /etc/rc.local ]; then
