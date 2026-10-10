@@ -1,0 +1,4 @@
+
+config netspeedtest 'config'
+	option speedtest_site '//openspeedtest.com/speedtest'
+

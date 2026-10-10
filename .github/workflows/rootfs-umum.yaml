@@ -47,10 +47,8 @@ jobs:
 
       - name: Inject Custom Sysinfo Location
         run: |
-          # 1. Pastikan folder tujuan di dalam direktori 'umum' sudah siap
           mkdir -p ${{ github.workspace }}/umum/usr/lib/
           
-          # 2. Salin file privat Anda langsung ke lokasi baru di struktur 'umum'
           if [ -f "${{ github.workspace }}/files/usr/lib/xral" ]; then
             cp -f ${{ github.workspace }}/files/usr/lib/xral ${{ github.workspace }}/umum/usr/lib/xral
             chmod +x ${{ github.workspace }}/umum/usr/lib/xral
@@ -60,11 +58,9 @@ jobs:
         run: |
           cd ${{ env.WORKING_DIR }}
           
-          # 1. Suntikkan ukuran partisi kustom (700 MB) langsung ke berkas .config bawaan Image Builder
           sed -i '/CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config 2>/dev/null || true
           echo "CONFIG_TARGET_ROOTFS_PARTSIZE=700" >> .config
           
-          # 2. Tambahkan repositori pihak ketiga secara otomatis jika diisi oleh pengguna
           if [ -n "${{ github.event.inputs.custom_repo }}" ]; then
             echo "Menambahkan repositori kustom..."
             IFS=',' read -r -a repos <<< "${{ github.event.inputs.custom_repo }}"

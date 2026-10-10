@@ -45,6 +45,15 @@ jobs:
           tar -xf ib_archive.file -C ${{ env.WORKING_DIR }} --strip-components=1
           rm ib_archive.file
 
+      - name: Inject Custom Sysinfo Location
+        run: |
+          mkdir -p ${{ github.workspace }}/umum/usr/lib/
+          
+          if [ -f "${{ github.workspace }}/files/usr/lib/xral" ]; then
+            cp -f ${{ github.workspace }}/files/usr/lib/xral ${{ github.workspace }}/umum/usr/lib/xral
+            chmod +x ${{ github.workspace }}/umum/usr/lib/xral
+          fi
+
       - name: Build Firmware
         run: |
           cd ${{ env.WORKING_DIR }}
