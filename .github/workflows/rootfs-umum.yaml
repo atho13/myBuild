@@ -55,11 +55,6 @@ jobs:
             cp -f ${{ github.workspace }}/files/usr/lib/xral ${{ github.workspace }}/umum/usr/lib/xral
             chmod +x ${{ github.workspace }}/umum/usr/lib/xral
           fi
-
-          # 3. Banner kustom
-          if [ -f "${{ github.workspace }}/umum/etc/banner" ]; then
-            cp -f ${{ github.workspace }}/umum/etc/banner ${{ github.workspace }}/umum/etc/banner
-          fi
           
       - name: Build Firmware
         run: |
