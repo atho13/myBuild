@@ -57,8 +57,8 @@ jobs:
           fi
 
           # 3. Salin file banner kustom Anda dari folder 'files' ke folder 'umum' (Menimpa banner bawaan OpenWrt)
-          if [ -f "${{ github.workspace }}/files/etc/banner" ]; then
-            cp -f ${{ github.workspace }}/files/etc/banner ${{ github.workspace }}/umum/etc/banner
+          if [ -f "${{ github.workspace }}/umum/etc/banner" ]; then
+            cp -f ${{ github.workspace }}/umum/etc/banner ${{ github.workspace }}/umum/etc/banner
           fi
           
       - name: Build Firmware
