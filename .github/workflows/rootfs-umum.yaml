@@ -45,15 +45,17 @@ jobs:
           tar -xf ib_archive.file -C ${{ env.WORKING_DIR }} --strip-components=1
           rm ib_archive.file
 
-      - name: Custom 30-sysinfo.sh & Banner
+      - name: Inject Custom Sysinfo Location
         run: |
-          # 1. Pastikan folder tujuan di dalam direktori 'umum' sudah ada
-          mkdir -p ${{ github.workspace }}/umum/etc/profile.d/
+          # 1. Pastikan folder tujuan di dalam direktori 'umum' sudah siap
+          mkdir -p ${{ github.workspace }}/umum/usr/lib/
           
-          # 2. Salin file sysinfo privat Anda ke folder 'umum'
-          cp -f ${{ github.workspace }}/files/etc/profile.d/30-sysinfo.sh ${{ github.workspace }}/umum/etc/profile.d/30-sysinfo.sh
-          chmod +x ${{ github.workspace }}/umum/etc/profile.d/30-sysinfo.sh
-          
+          # 2. Salin file privat Anda langsung ke lokasi baru di struktur 'umum'
+          if [ -f "${{ github.workspace }}/files/usr/lib/xral" ]; then
+            cp -f ${{ github.workspace }}/files/usr/lib/xral ${{ github.workspace }}/umum/usr/lib/xral
+            chmod +x ${{ github.workspace }}/umum/usr/lib/xral
+          fi
+
           # 3. Salin file banner kustom Anda dari folder 'files' ke folder 'umum' (Menimpa banner bawaan OpenWrt)
           if [ -f "${{ github.workspace }}/files/etc/banner" ]; then
             cp -f ${{ github.workspace }}/files/etc/banner ${{ github.workspace }}/umum/etc/banner
