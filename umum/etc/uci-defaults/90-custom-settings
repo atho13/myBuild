@@ -33,7 +33,7 @@ delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
 add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
-add_list system.ntp.server='://google.com'
+add_list system.ntp.server='time.google.com'
 EOF
 
 # JARINGAN
@@ -49,7 +49,7 @@ uci add_list network.@device.ports='eth0'
 uci set network.@device.ipv6='0'
 uci set network.@device.mtu='1500'
 
-# 2. Konfigurasi Interface LA
+# 2. Konfigurasi Interface LAN
 uci set network.lan=interface
 uci set network.lan.device='br-lan'
 uci set network.lan.proto='static'
@@ -110,7 +110,7 @@ commit dhcp
 commit uhttpd
 EOF
 
-# AUTOMASI DAN OPTIMALISASI STORAGE (HDD)
+# AUTOMASI DAN OPTIMALISASI STORAGE
 echo "[*] Mengonfigurasi otomatisasi block-mount (fstab)"
 uci batch <<EOF
 set fstab.global=global
@@ -145,7 +145,6 @@ EOF
     /etc/init.d/hd-idle enable >/dev/null 2>&1
 fi
 
-# =========================================================
 echo "[*] Menyinkronkan zona Firewall"
 i=0
 while true; do
@@ -199,24 +198,19 @@ ln -sf / /www/tinyfm/rootfs
 ln -sf /etc/openclash /www/tinyfm/openclash
 ln -sf /etc/nikki /www/tinyfm/nikki
 
-# MODIFIKASI PROFILE TERMINAL
+# PROFILE
 echo "[*] Menghapus sysinfo bawaan dan mengonfigurasi profil terminal..."
 
-# 1. Hapus paksa file sysinfo bawaan asli OpenWrt agar tidak dieksekusi double
 rm -f /etc/profile.d/30-sysinfo.sh
 
-# 2. Pastikan file kustom xral Anda yang sudah tertanam di /usr/lib mendapatkan izin eksekusi penuh
 if [ -f /usr/lib/xral ]; then
     chmod 755 /usr/lib/xral
 fi
 
-# 3. Daftarkan pemanggil skrip kustom Anda ke profile utama OpenWrt
 if [ -f /etc/profile ]; then
-    # Bersihkan entri lama/bawaan agar tidak terjadi duplikasi teks saat booting
     sed -i '/\/usr\/lib\/xral/d' /etc/profile 2>/dev/null
     sed -i '/30-sysinfo.sh/d' /etc/profile 2>/dev/null
     
-    # Tambahkan perintah eksekusi otomatis ke baris paling akhir berkas /etc/profile
     echo "" >> /etc/profile
     echo "# Jalankan sysinfo frdmx" >> /etc/profile
     echo "[ -x /usr/lib/xral ] && /bin/sh /usr/lib/xral" >> /etc/profile
