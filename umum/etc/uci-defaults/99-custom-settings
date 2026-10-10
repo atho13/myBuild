@@ -33,18 +33,21 @@ delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
 add_list system.ntp.server='1.id.pool.ntp.org'
 add_list system.ntp.server='ntp.bmkg.go.id'
-add_list system.ntp.server='time.google.com'
+add_list system.ntp.server='://google.com'
 EOF
 
-# FIX TOTAL BAGIAN JARINGAN (Pemisahan dari uci batch)
+# JARINGAN
 uci delete network.lan 2>/dev/null
 uci delete network.br_lan 2>/dev/null
+uci delete network.br-lan 2>/dev/null
 
 # 1. Konfigurasi Device Bridge br-lan
-uci set network.br_lan=device
-uci set network.br_lan.name='br-lan'
-uci set network.br_lan.type='bridge'
-uci add_list network.br_lan.ports='eth0'
+uci set network.@device[0]=device
+uci set network.@device[0].name='br-lan'
+uci set network.@device[0].type='bridge'
+uci add_list network.@device[0].ports='eth0'
+uci set network.@device[0].ipv6='0'
+uci set network.@device[0].mtu='1500'
 
 # 2. Konfigurasi Interface LAN terikat ke br-lan
 uci set network.lan=interface
@@ -55,7 +58,7 @@ uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.ip6assign='0'
 uci set network.lan.multipath='off'
 
-# 4. Konfigurasi Interface Tambahan (WAN & Tethering HP)
+# 4. Konfigurasi Interface Tambahan
 uci delete network.wan 2>/dev/null
 uci set network.wan=interface
 uci set network.wan.proto='dhcp'
@@ -84,7 +87,7 @@ set dhcp.@dnsmasq[0].min_ttl='300'
 delete uhttpd.main.listen_http
 delete uhttpd.main.listen_https
 add_list uhttpd.main.listen_http='0.0.0.0:80'
-add_list uhttpd.main.listen_http='::]:80''
+add_list uhttpd.main.listen_http='[::]:80'
 add_list uhttpd.main.listen_https='0.0.0.0:443'
 add_list uhttpd.main.listen_https='[::]:443'
 set uhttpd.main.redirect_https='0'
@@ -154,7 +157,6 @@ while true; do
         uci -q delete firewall.@zone[$i].network
         uci add_list firewall.@zone[$i].network='wan'
         uci add_list firewall.@zone[$i].network='tethering'
-        uci add_list firewall.@zone[$i].network='modem'
         uci commit firewall
         break
     fi
@@ -189,48 +191,44 @@ if uci -q get xmm-modem.@xmm-modem[0] >/dev/null; then
     uci commit xmm-modem
 fi
 
-echo "[*] Membuat tautan simbolis (Symlinks) untuk TinyFM..."
+# Symlink TinyFM di uci-defaults
+echo "Creating application symlinks for TinyFM (Direct Execution)..."
 mkdir -p /www/tinyfm
-if [ ! -L /www/tinyfm/rootfs ]; then ln -sf / /www/tinyfm/rootfs; fi
-if [ ! -L /etc/openclash ]; then ln -sf /etc/openclash/ /www/tinyfm/openclash 2>/dev/null; fi
-if [ ! -L /etc/nikki ]; then ln -sf /etc/nikki/ /www/tinyfm/nikki 2>/dev/null; fi
-if [ ! -L /www/tinyfm/storage ]; then ln -sf /mnt/ /www/tinyfm/storage 2>/dev/null; fi
+mkdir -p /etc/openclash /etc/nikki
 
-echo "Registering start_service.sh to Startup with 30s delay..."
-if [ -f "/etc/custom_service/start_service.sh" ]; then
-    sed -i '/start_service.sh/d' /etc/rc.local
-    sed -i '/exit 0/i (sleep 30 && /bin/bash /etc/custom_service/start_service.sh) &' /etc/rc.local
+ln -sf / /www/tinyfm/rootfs
+ln -sf /etc/openclash /www/tinyfm/openclash
+ln -sf /etc/nikki /www/tinyfm/nikki
+
+
+echo "[*] Mendaftarkan skrip otomatis ke Startup (rc.local)..."
+if [ -f /etc/rc.local ]; then
+    sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
+    sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
+
+    if [ -f "/etc/custom_service/start_service.sh" ]; then
+        sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
+    fi
+
+    if [ -f "/sbin/yess" ]; then
+        sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
+    fi
+else
+    echo "[!] Peringatan: /etc/rc.local tidak ditemukan."
 fi
 
-echo "Updating System Schedules (Crontab)..."
+echo "[*] Menerapkan perizinan crontabs dan eksekusi Sysctl Repo..."
+if [ -f /etc/crontabs/root ]; then
+    chmod 600 /etc/crontabs/root 2>/dev/null
+fi
 
-cat > /etc/crontabs/root << 'EOF'
-# ============================================================
-# PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
-# ============================================================
-# Automatic Restart your Modem Bro..
-30 3 * * 0 for iface in wan tethering modem; do ubus call network.interface.$iface down; done; sleep 5; mmcli -m any --reset >/dev/null 2>&1; sleep 45; for iface in wan tethering modem; do ubus call network.interface.$iface up; done
+if [ -f /etc/sysctl.conf ]; then
+    sysctl -p /etc/sysctl.conf >/dev/null 2>&1
+fi
 
-# Automatic Maintenance Internal your System Bro..
-0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
-59 23 * * * rm -rf /tmp/luci-modulecache /tmp/luci-indexcache >/dev/null 2>&1
-*/5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1
-EOF
+if [ -f "/sbin/free.sh" ]; then
+    sh /sbin/free.sh >/dev/null 2>&1
+fi
 
-/etc/init.d/cron enable
-/etc/init.d/cron restart
-
-echo "Restarting core services..."
-sysctl -p /etc/sysctl.conf >/dev/null 2>&1
-/etc/init.d/network restart
-/etc/init.d/uhttpd restart
-/etc/init.d/ttyd restart
-
-sleep 2
-/etc/init.d/modemmanager restart
-
-[ -f "/sbin/free.sh" ] && sh /sbin/free.sh
-[ -f "/etc/custom_service/free.sh" ] && sh /etc/custom_service/free.sh
-
-echo "Done! Router FRDM-X configuration finished successfully."
+echo "   Selesai!         "
 exit 0
