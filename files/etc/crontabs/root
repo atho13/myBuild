@@ -1,10 +1,13 @@
 # ============================================================
 # PROPERTY OF: [FRDMX-Wrt] - SCHEDULE & AUTOPILOT MAINTENANCE
 # ============================================================
-# Automatic Restart your Modem Bro..
-30 3 * * 0 for iface in wan tethering modem; do ubus call network.interface.$iface down; done; sleep 5; mmcli -m any --reset >/dev/null 2>&1; sleep 45; for iface in wan tethering modem; do ubus call network.interface.$iface up; done
-
 # Automatic Maintenance Internal your System Bro..
 0 * * * * [ -x /sbin/free.sh ] && /sbin/free.sh >/dev/null 2>&1
 59 23 * * * /etc/init.d/rpcd restart >/dev/null 2>&1
 */5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1
+
+# Auto Restart your Modem (tiap Hari Minggu Jam 03:30 am)
+30 3 * * 7 for iface in wan tethering modem; do ubus call network.interface.$iface down; done; sleep 5; mmcli -m any --reset >/dev/null 2>&1; echo 0 > /sys/bus/usb/devices/usb1/authorized >/dev/null 2>&1; sleep 2; echo 1 > /sys/bus/usb/devices/usb1/authorized >/dev/null 2>&1; sleep 45; for iface in wan tethering modem; do ubus call network.interface.$iface up; done
+
+# Auto Reboot System (tiap Hari Minggu Jam 04:00 am)
+0 4 * * 7 sync && echo 3 > /proc/sys/vm/drop_caches && sleep 5 && reboot
