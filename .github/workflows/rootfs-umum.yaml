@@ -56,7 +56,7 @@ jobs:
             chmod +x ${{ github.workspace }}/umum/usr/lib/xral
           fi
 
-          # 3. Salin file banner kustom Anda dari folder 'files' ke folder 'umum' (Menimpa banner bawaan OpenWrt)
+          # 3. Banner kustom
           if [ -f "${{ github.workspace }}/umum/etc/banner" ]; then
             cp -f ${{ github.workspace }}/umum/etc/banner ${{ github.workspace }}/umum/etc/banner
           fi
