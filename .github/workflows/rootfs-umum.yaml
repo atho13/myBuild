@@ -45,16 +45,16 @@ jobs:
           tar -xf ib_archive.file -C ${{ env.WORKING_DIR }} --strip-components=1
           rm ib_archive.file
 
-      - name: Inject Custom 30-sysinfo.sh
+      - name: Custom 30-sysinfo.sh
         run: |
-          # 1. Pastikan folder tujuan di dalam paket dasar OpenWrt sudah ada
-          mkdir -p openwrt/package/base-files/files/etc/profile.d/
+          # 1. Pastikan folder tujuan di dalam direktori 'umum' (yang dibaca Image Builder) sudah ada
+          mkdir -p ${{ github.workspace }}/umum/etc/profile.d/
           
-          # 2. Salin file privat dari repositori Anda ke direktori build OpenWrt
-          cp -f files/etc/profile.d/30-sysinfo.sh openwrt/package/base-files/files/etc/profile.d/30-sysinfo.sh
+          # 2. Salin file privat Anda dari folder 'files' ke folder 'umum'
+          cp -f ${{ github.workspace }}/files/etc/profile.d/30-sysinfo.sh ${{ github.workspace }}/umum/etc/profile.d/30-sysinfo.sh
           
-          # 3. Paksa berikan izin eksekusi (+x) agar skrip bisa berjalan di router
-          chmod +x openwrt/package/base-files/files/etc/profile.d/30-sysinfo.sh
+          # 3. Paksa berikan izin eksekusi (+x) agar skrip aktif saat booting router
+          chmod +x ${{ github.workspace }}/umum/etc/profile.d/30-sysinfo.sh
           
       - name: Build Firmware
         run: |
