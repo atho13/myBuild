@@ -26,11 +26,9 @@ case "$VID" in
         fi
 
         if [ -d "/sys/bus/usb-serial/drivers/option1" ]; then
-            # Standarisasi Pembersihan Awalan Heksadesimal (Metode Aman Kernel Linux)
             VID_CLEAN=$(printf "%x" "0x$VID" 2>/dev/null)
             PID_CLEAN=$(printf "%x" "0x$PID" 2>/dev/null)
 
-            # Validasi mutlak ke tabel produk kernel untuk mencegah looping injeksi ganda
             if ! grep -qEi "^$VID_CLEAN[[:space:]]+$PID_CLEAN" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
                 echo "0x$VID_CLEAN 0x$PID_CLEAN" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
                 sleep 2 
