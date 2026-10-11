@@ -43,7 +43,10 @@ chain mangle_postrouting_ttl65 {
   ip6 hoplimit set 65
 }
 chain game_booster_prerouting {
-  type filter hook prerouting priority mangle; policy accept;
+  type filter hook prerouting priority mangle; policy accept;  
+  # BYPASS INSPEKSI PORT by Frdmx Wrt
+  udp dport { 53, 2200, 5667, 6000-19999, 7300 } accept comment "Fast-path Tunnel UDP & ZIVPN Hopping"
+  tcp dport { 22, 80, 443, 8080 } accept comment "Fast-path Tunnel TCP"
   # GAME ONLINE by Frdmx Wrt
   meta l4proto udp udp length < 256 ip dscp set cs5 counter comment "Boost Game Lite cs5"
   udp dport { 3074, 5000-5500, 9000-20000, 49152-65535 } ip dscp set cs5 counter comment "Boost Port Game UDP cs5"
