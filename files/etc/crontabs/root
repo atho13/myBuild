@@ -7,7 +7,8 @@
 */5 * * * * [ -x /www/vnstati/vnstati.sh ] && /www/vnstati/vnstati.sh >/dev/null 2>&1
 
 # Auto Refresh IP & Refresh Jaringan (tiap Hari Minggu Jam 03:30 am)
-30 3 * * 7 for iface in wan tethering modem; do ubus call network.interface.$iface down; done; sleep 3; mmcli -m any --reset >/dev/null 2>&1 || (gcom -d /dev/ttyUSB2 AT+CFUN=1,1 >/dev/null 2>&1 &); sleep 20; for iface in wan tethering modem; do ubus call network.interface.$iface up; done
+30 3 * * 0 for iface in wan tethering modem; do ubus call network.interface.$iface down; done; sleep 3; mmcli -m any --reset >/dev/null 2>&1 || (gcom -d /dev/ttyUSB2 AT+CFUN=1,1 >/dev/null 2>&1 &); sleep 20; for iface in wan tethering modem; do ubus call network.interface.$iface up; done
 
 # Auto Reboot & Cleaning Cache (tiap Hari Minggu Jam 04:00 am)
-0 4 * * 7 sync && echo 3 > /proc/sys/vm/drop_caches && swapoff -a && swapon -a && sleep 5 && reboot
+0 4 * * 0 sync && echo 3 > /proc/sys/vm/drop_caches && swapoff -a && swapon -a && sleep 5 && reboot
+
