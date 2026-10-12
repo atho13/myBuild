@@ -31,7 +31,7 @@ for file in \
     /etc/hotplug.d/net/25-modemmanager-net \
     /etc/hotplug.d/usb/10-frdmx-modem-inject \
     /etc/hotplug.d/usb/40-usbmuxd \
-    /etc/hotplug.d/iface/90-cake-frdmx \
+    /etc/hotplug.d/iface/90-frdmx-cake \
     /etc/hotplug.d/iface/99-frdmx-watchdog; do
     if [ -f "$file" ]; then
         chmod +x "$file"
