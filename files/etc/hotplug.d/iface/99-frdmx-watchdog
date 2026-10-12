@@ -8,10 +8,19 @@ IS_WAN=$(uci -q get firewall.wan.network | grep -w "$INTERFACE")
 if [ -z "$IS_WAN" ]; then
     IS_WAN=$(uci -q show firewall | grep -E "\.name='wan'" | cut -d'.' -f1,2 | xargs -I {} uci -q get {}.network | grep -w "$INTERFACE")
 fi
-
 [ -z "$IS_WAN" ] && exit 0
 
+PID_FILE="/tmp/frdmx_watchdog_${INTERFACE}.pid"
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE" 2>/dev/null)
+    if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+        logger -t "Frdmx-Watchdog" "[${INTERFACE}] Sistem pengawasan sudah berjalan aktif (PID: ${OLD_PID}). Keluar."
+        exit 0
+    fi
+fi
+
 (
+    echo "$$" > "$PID_FILE"
     sleep 45
 
     TARGET_PRIMARY_1="http://1.1.1.1"
@@ -19,7 +28,7 @@ fi
     TARGET_BACKUP_1="http://biznetnetworks.com"
     TARGET_BACKUP_2="http://kompas.com"
 
-    TIMEOUT_MS=5000
+    TIMEOUT_SEC=4
     COUNT=2
     MAX_RESETS=3
     COUNTER_FILE="/tmp/frdmx_net_${INTERFACE}"
@@ -27,11 +36,11 @@ fi
     check_http() {
         local target=$1
         if command -v httping >/dev/null 2>&1; then
-            if httping -q -c "$COUNT" -t "$((TIMEOUT_MS / 1000))" -g "$target" 2>/dev/null; then
+            if httping -q -c "$COUNT" -t "$TIMEOUT_SEC" -g "$target" 2>/dev/null; then
                 return 0
             fi
         else
-            if wget -q -T "$((TIMEOUT_MS / 1000))" --spider "$target" >/dev/null 2>&1; then
+            if wget -q -T "$TIMEOUT_SEC" --tries=1 --spider "$target" >/dev/null 2>&1; then
                 return 0
             fi
         fi
@@ -50,8 +59,8 @@ fi
             kernel_driver=$(basename $(readlink /sys/class/net/${dev_name}/device/driver))
         fi
 
-        if echo "$kernel_driver" | grep -qEi 'cdc_ether|rndis_host|ppp'; then
-            logger -t "Frdmx-Watchdog" "[${INTERFACE}] Driver lawas terdeteksi (${kernel_driver}). Menjalankan trigger fast-boot..."
+        if echo "$kernel_driver" | grep -qEi 'cdc_ether|rndis_host|ppp|option|qmi_wwan|mbim'; then
+            logger -t "Frdmx-Watchdog" "[${INTERFACE}] Driver modem terdeteksi (${kernel_driver}). Meluncurkan skenario pemulihan..."
             
             local at_port=""
             for port in /dev/ttyUSB2 /dev/ttyUSB1 /dev/ttyUSB0 /dev/ttyACM0 /dev/ttyACM1; do
@@ -62,19 +71,19 @@ fi
             done
 
             if [ -n "$at_port" ]; then
-                logger -t "Frdmx-Watchdog" "[${INTERFACE}] Mengirimkan sinyal refresh jaringan ke ${at_port}..."
+                logger -t "Frdmx-Watchdog" "[${INTERFACE}] Refresh jaringan AT+CFUN ke ${at_port}..."
                 echo -e "AT+CFUN=4\r" > "$at_port" 2>/dev/null
                 sleep 2
                 echo -e "AT+CFUN=1\r" > "$at_port" 2>/dev/null
                 sleep 3
             else
                 if command -v usbreset >/dev/null 2>&1; then
-                    local usb_devs=$(lsusb | grep -iE 'midol|lte|cdcecm|rndis' | awk '{print $6}')
-                    for dev in $usb_devs; do
-                        logger -t "Frdmx-Watchdog" "[${INTERFACE}] Memaksa hardware usbreset pada perangkat lawas: ${dev}"
-                        usbreset "$dev" >/dev/null 2>&1
+                    local usb_sysname=$(basename $(readlink /sys/class/net/${dev_name}/device/../.. 2>/dev/null))
+                    if [ -n "$usb_sysname" ] && [ -d "/sys/bus/usb/devices/$usb_sysname" ]; then
+                        logger -t "Frdmx-Watchdog" "[${INTERFACE}] Pemutusan daya pada port USB: $usb_sysname"
+                        usbreset "$usb_sysname" >/dev/null 2>&1
                         sleep 4
-                    done
+                    fi
                 fi
             fi
             
@@ -82,18 +91,16 @@ fi
             sleep 3
             ubus call network.interface."$INTERFACE" up >/dev/null 2>&1
             sleep 4
-
         else
-            logger -t "Frdmx-Watchdog" "[${INTERFACE}] Driver terdeteksi sebagai ${kernel_driver:-unknown}. Melewati trigger lawas."
+            logger -t "Frdmx-Watchdog" "[${INTERFACE}] Driver terdeteksi sebagai ${kernel_driver:-unknown}. Melewati trigger."
         fi
     }
 
     logger -t "Frdmx-Watchdog" "Memulai pengawasan internet pada interface: $INTERFACE"
 
     while true; do
-
         if ! uci -q show network."$INTERFACE" >/dev/null; then
-            rm -f "$COUNTER_FILE" 2>/dev/null
+            rm -f "$COUNTER_FILE" "$PID_FILE" 2>/dev/null
             logger -t "Frdmx-Watchdog" "Antarmuka $INTERFACE dicopot, menghentikan pengawasan."
             break
         fi
@@ -133,7 +140,6 @@ fi
         fi
         
         fast_trigger_modem
-        
         ifup "$INTERFACE" 2>/dev/null
         
         local dev_name=$(uci -q get network."$INTERFACE".device)
@@ -144,6 +150,7 @@ fi
         
         sleep 45
     done
+    rm -f "$PID_FILE" 2>/dev/null
 ) &
 
 exit 0

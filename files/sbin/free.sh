@@ -1,7 +1,5 @@
 #!/bin/sh
-# ========================
 # PROPERTY OF: [FRDMX-Wrt]
-# ========================
 
 if ! swapon -s | grep -q "zram0"; then
     if [ -b "/dev/zram0" ]; then
@@ -9,32 +7,18 @@ if ! swapon -s | grep -q "zram0"; then
         swapoff /dev/zram0 >/dev/null 2>&1
         
         if [ -f "/sys/block/zram0/comp_algorithm" ]; then
-            AVAILABLE_ALGO=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null)
-            if echo "$AVAILABLE_ALGO" | grep -q "lz4"; then
-                echo "lz4" > /sys/block/zram0/comp_algorithm 2>/dev/null
-                ALGO="LZ4"
-            elif echo "$AVAILABLE_ALGO" | grep -q "zstd"; then
-                echo "zstd" > /sys/block/zram0/comp_algorithm 2>/dev/null
-                ALGO="ZSTD"
-            else
-                ALGO="Default"
-            fi
+            echo "lz4" > /sys/block/zram0/comp_algorithm 2>/dev/null
+            ALGO="LZ4"
         fi
         
         if [ -f "/sys/block/zram0/disksize" ]; then
-            TOTAL_MEM=$(awk '/MemTotal/ {print $2}' /proc/meminfo 2>/dev/null)
-            if [ -n "$TOTAL_MEM" ] && [ "$TOTAL_MEM" -gt 0 ]; then
-                ZRAM_SIZE=$((TOTAL_MEM * 1024 / 2))
-                [ "$ZRAM_SIZE" -lt 134217728 ] && ZRAM_SIZE=134217728
-            else
-                ZRAM_SIZE=268435456
-            fi
-            echo "$ZRAM_SIZE" > /sys/block/zram0/disksize 2>/dev/null
-            ZRAM_MB=$((ZRAM_SIZE / 1024 / 1024))
+            echo "262144K" > /sys/block/zram0/disksize 2>/dev/null
+            ZRAM_MB=256
         fi
         
         mkswap /dev/zram0 >/dev/null 2>&1
         swapon -p 32767 /dev/zram0 >/dev/null 2>&1
+        
         sysctl -w vm.swappiness=20 >/dev/null 2>&1
         logger -t "Frdmx-Cleaner" "[+] Sukses mengaktifkan Native ZRAM ${ZRAM_MB}MB ($ALGO) & Swappiness Mod."
     else

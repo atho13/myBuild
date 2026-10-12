@@ -1,9 +1,8 @@
 #!/bin/sh
-# ========================
 # PROPERTY OF: [FRDMX-Wrt]
-# ========================
 
 [ "$ACTION" = "add" ] || exit 0
+[ -z "$PRODUCT" ] && exit 0
 
 VID=$(echo "$PRODUCT" | cut -d'/' -f1 | tr 'A-Z' 'a-z')
 PID=$(echo "$PRODUCT" | cut -d'/' -f2 | tr 'A-Z' 'a-z')
@@ -11,7 +10,7 @@ PID=$(echo "$PRODUCT" | cut -d'/' -f2 | tr 'A-Z' 'a-z')
 case "$VID" in
     "2c7c"|"1199"|"2cb7"|"12d1"|"05c6"|"1e0e"|"413c"|"03f0"|"19d2"|"0b3c"|"1546"|"2b7c"|"0489"|"1c9e"|"1bc7")
 
-        sleep 2
+        sleep 4
         
         if [ -d "/sys/bus/usb/devices/$DEVICENAME" ]; then
             VID_FINAL=$(cat "/sys/bus/usb/devices/$DEVICENAME/idVendor" 2>/dev/null | tr 'A-Z' 'a-z')
@@ -20,31 +19,38 @@ case "$VID" in
             [ -n "$PID_FINAL" ] && PID=$PID_FINAL
         fi
 
-        if [ "$VID" = "2cb7" ] && { [ "$PID" = "0007" ] || [ "$PID" = "0001" ] || [ "$PID" = "0010" ]; }; then
-            logger -t "MODEM_RAKITAN" "[+] Terdeteksi Intel XMM Fibocom. Menyerahkan ke driver CDC_MBIM secara native."
-            exit 0
+        if [ -n "$DEVICENAME" ]; then
+            IFACE_NUM=$(echo "$DEVICENAME" | grep -oE '[0-9]+:[0-9]+\.[0-9]+$' | cut -d'.' -f2)
+            
+            if [ -n "$IFACE_NUM" ]; then
+                if [ "$IFACE_NUM" -eq 12 ] || [ "$IFACE_NUM" -eq 13 ]; then
+                    logger -t "FRDMX-ModemInject" "[*] Interface #${IFACE_NUM} terdeteksi sebagai Jalur Jaringan Tinggi. Dilepas secara native untuk QMI/MBIM/ModemManager."
+                    exit 0
+                fi
+            fi
         fi
 
         if [ -d "/sys/bus/usb-serial/drivers/option1" ]; then
-            VID_CLEAN=$(printf "%x" "0x$VID" 2>/dev/null)
-            PID_CLEAN=$(printf "%x" "0x$PID" 2>/dev/null)
+            VID_CLEAN=$(echo "$VID" | sed 's/^0x//')
+            PID_CLEAN=$(echo "$PID" | sed 's/^0x//')
 
             if ! grep -qEi "^$VID_CLEAN[[:space:]]+$PID_CLEAN" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
-                echo "0x$VID_CLEAN 0x$PID_CLEAN" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
-                sleep 2 
+                echo "$VID_CLEAN $PID_CLEAN" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
+                sleep 3 
             fi
             
             PORTS=""
             if [ -d "/sys/bus/usb/devices/$DEVICENAME" ]; then
-                PORTS=$(find "/sys/bus/usb/devices/$DEVICENAME/" -name "ttyUSB*" -o -name "cdc-wdm*" -o -name "ttyACM*" 2>/dev/null | xargs -I {} basename {} | tr '\n' ' ')
+                PORTS=$(find "/sys/bus/usb/devices/$DEVICENAME/" -name "ttyUSB*" -o -name "cdc-wdm*" -o -name "ttyACM*" 2>/dev/null | xargs -I {} basename {} | tr '\n' ' ' | sed 's/ $//')
             fi
             
-            logger -t "MODEM_RAKITAN" "[+] Sukses menyuntikkan USB VID:$VID PID:$PID ke Driver Option. Port terikat: [ ${PORTS:-Menunggu Inisialisasi} ]"
+            logger -t "FRDMX-ModemInject" "[+] Sukses menyuntikkan USB VID:$VID_CLEAN PID:$PID_CLEAN ke Driver Option. Port terikat: [ ${PORTS:-Menunggu Inisialisasi} ]"
         else
-            logger -t "MODEM_RAKITAN" "[-] Gagal mengaktifkan port serial. Modul kmod-usb-serial-option belum termuat!"
+            logger -t "FRDMX-ModemInject" "[-] Gagal mengaktifkan port serial. Modul kmod-usb-serial-option belum termuat di kernel!"
         fi
         ;;
     *)
         exit 0
         ;;
 esac
+exit 0

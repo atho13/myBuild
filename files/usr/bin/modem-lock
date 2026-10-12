@@ -1,6 +1,17 @@
 #!/bin/sh
 # For Frdmx-Wrt Community..
 
+PID_FILE="/tmp/frdmx_modem_lock.pid"
+STATUS_FILE="/tmp/frdmx_modem_none.status"
+
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE" 2>/dev/null)
+    if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+        exit 0
+    fi
+fi
+echo "$$" > "$PID_FILE"
+
 sleep 20
 
 modprobe option 2>/dev/null
@@ -19,11 +30,11 @@ done
 
 if [ -d /sys/bus/usb-serial/drivers/option1 ]; then
     if ! grep -q "1bc7.*1900" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
-        echo "0x1bc7 0x1900" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
+        echo "1bc7 1900" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
     fi
 
     if ! grep -q "1bc7.*1201" /sys/bus/usb-serial/drivers/option1/products 2>/dev/null; then
-        echo "0x1bc7 0x1201" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
+        echo "1bc7 1201" > /sys/bus/usb-serial/drivers/option1/new_id 2>/dev/null
         sleep 2
     fi
 fi
@@ -32,14 +43,12 @@ vids="2c7c|2cb7|1508|1199|12d1|1bc7|1e0e|05c6|413c|03f0|19d2|9025|8087|1e2d|2b7c
 REAL_PATH=""
 IS_INTEL_XMM=0
 
-logger -t "Modem Finder" "[*] Memulai pemindaian perangkat seluler via sysfs..."
-device_file=$(find /sys/bus/usb/devices/ -maxdepth 4 -name idVendor -exec grep -lEi "$vids" {} + 2>/dev/null | head -n 1)
+device_file=$(find /sys/bus/usb/devices/ -maxdepth 6 -name idVendor -exec grep -lEi "$vids" {} + 2>/dev/null | head -n 1)
 
 if [ -n "$device_file" ]; then
     base_dir=$(dirname "$device_file")
     REAL_PATH=$(readlink -f "$base_dir")
-    DETECTED_VID=$(cat "$device_file" 2>/dev/null)
-    logger -t "Modem Finder" "[+] Perangkat VID [$DETECTED_VID] ditemukan di path: $REAL_PATH"
+    DETECTED_VID=$(cat "$device_file" 2>/dev/null | tr 'A-Z' 'a-z' | sed 's/^0x//')
     
     if [ "$DETECTED_VID" = "2cb7" ] || [ "$DETECTED_VID" = "8087" ]; then
         IS_INTEL_XMM=1
@@ -55,8 +64,6 @@ if [ -z "$REAL_PATH" ]; then
                 if [ -n "$MM_DEVICE" ]; then
                     REAL_PATH=$(readlink -f "$MM_DEVICE")
                     if [ -n "$REAL_PATH" ] && [ -d "$REAL_PATH" ]; then
-                        logger -t "Modem Finder" "[+] Modem rakitan terdeteksi via mmcli di path: $REAL_PATH"
-                        # Validasi ulang tipe vendor via mmcli
                         if mmcli -m "$mm_idx" 2>/dev/null | grep -qEi "fibocom|intel"; then
                             IS_INTEL_XMM=1
                         fi
@@ -70,13 +77,18 @@ if [ -z "$REAL_PATH" ]; then
 fi
 
 if [ -n "$REAL_PATH" ] && [ -d "$REAL_PATH" ]; then
+    rm -f "$STATUS_FILE" 2>/dev/null
+
+    logger -t "FRDMX-ModemLock" "[*] Memulai pemindaian perangkat seluler via sysfs..."
+    logger -t "FRDMX-ModemLock" "[+] Perangkat VID [$DETECTED_VID] ditemukan di path: $REAL_PATH"
+
     if [ "$IS_INTEL_XMM" = "1" ]; then
         TARGET_DEV=$(ls /dev/cdc-wdm* 2>/dev/null | head -n 1)
         [ -z "$TARGET_DEV" ] && TARGET_DEV="cdc-wdm0"
-        logger -t "Modem Finder" "[*] Modem teridentifikasi tipe Intel XMM. Menggunakan Node Port: $TARGET_DEV"
+        logger -t "FRDMX-ModemLock" "[*] Modem teridentifikasi tipe Intel XMM. Menggunakan Node Port: $TARGET_DEV"
     else
         TARGET_DEV="$REAL_PATH"
-        logger -t "Modem Finder" "[*] Modem teridentifikasi tipe Qualcomm/Sierra. Menggunakan Sysfs Path."
+        logger -t "FRDMX-ModemLock" "[*] Modem teridentifikasi tipe Qualcomm/Sierra/Telit. Menggunakan Sysfs Path."
     fi
 
     interfaces=$(uci -q show network | grep -E "proto='modemmanager'|proto='qmi'|proto='mbim'" | cut -d'.' -f2 | cut -d'=' -f1 | uniq)
@@ -92,20 +104,25 @@ if [ -n "$REAL_PATH" ] && [ -d "$REAL_PATH" ]; then
 
     if [ "$NEED_RELOAD" = "1" ]; then
         uci commit network
-        logger -t "Modem Finder" "[+] Menyerasikan konfigurasi uci network ke parameter baru..."
+        logger -t "FRDMX-ModemLock" "[+] Menyerasikan konfigurasi uci network ke parameter baru..."
         /etc/init.d/network reload 2>/dev/null
         
-        sleep 4
+        sleep 5
         if [ -x /etc/init.d/mwan3 ]; then
             /etc/init.d/mwan3 restart >/dev/null 2>&1
-            logger -t "Modem Finder" "[+] Sinkronisasi Multi-WAN (MWAN3) sukses dilakukan."
+            logger -t "FRDMX-ModemLock" "[+] Sinkronisasi Multi-WAN (MWAN3) sukses dilakukan."
         fi
-        logger -t "Modem Finder" "[+] SUKSES: Sistem modem rakitan terkunci penuh pada parameter: $TARGET_DEV"
+        logger -t "FRDMX-ModemLock" "[+] SUKSES: Sistem modem rakitan terkunci penuh pada parameter: $TARGET_DEV"
     else
-        logger -t "Modem Finder" "[*] Info: Path modem tetap aman terikat ($TARGET_DEV). Jaringan stabil."
+        logger -t "FRDMX-ModemLock" "[*] Info: Path modem tetap aman terikat ($TARGET_DEV). Jaringan stabil."
     fi
 else
-     logger -t "Modem Finder" "[!] Peringatan: Tidak ada hardware modem cocok ditemukan. Menunggu interkoneksi..."
+    if [ ! -f "$STATUS_FILE" ]; then
+        logger -t "FRDMX-ModemLock" "[*] Memulai pemindaian perangkat seluler via sysfs..."
+        logger -t "FRDMX-ModemLock" "[!] Peringatan: Tidak ada hardware modem cocok ditemukan. Menunggu interkoneksi..."
+        echo "none" > "$STATUS_FILE"
+    fi
 fi
 
+rm -f "$PID_FILE" 2>/dev/null
 exit 0

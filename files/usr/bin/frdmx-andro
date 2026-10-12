@@ -1,8 +1,22 @@
 #!/bin/sh
 # Watchdog khusus HP Android via USB Tethering - Frdmx-Wrt Community
 
-export ADB_VENDOR_KEYS=/etc/adb
+PID_FILE="/tmp/frdmx_adb_watchdog.pid"
+if [ -f "$PID_FILE" ]; then
+    OLD_PID=$(cat "$PID_FILE" 2>/dev/null)
+    if [ -n "$OLD_PID" ] && kill -0 "$OLD_PID" 2>/dev/null; then
+        echo "[ADB-HP] Sistem pengawasan sudah berjalan aktif (PID: ${OLD_PID}). Keluar." > /dev/kmsg
+        exit 0
+    fi
+fi
+echo "$$" > "$PID_FILE"
+
 mkdir -p /etc/adb
+export ADB_VENDOR_KEYS=/etc/adb/adbkey
+if [ ! -f "/etc/adb/adbkey" ] && command -v adb >/dev/null 2>&1; then
+    echo "[ADB-HP] Kunci kriptografi baru tidak ditemukan. Men-generasikan adbkey internal..." > /dev/kmsg
+    adb keygen /etc/adb/adbkey >/dev/null 2>&1
+fi
 
 HOST1="8.8.8.8"
 HOST2="1.1.1.1"
@@ -27,8 +41,6 @@ disable_airplane_mode() {
 }
 
 get_active_wan_interface() {
-    local iface=""
-    
     for check_iface in usb0 usb1 rndis0 rndis1; do
         if ifconfig "$check_iface" >/dev/null 2>&1; then
             echo "$check_iface"
@@ -36,9 +48,8 @@ get_active_wan_interface() {
         fi
     done
 
-    # Fallback ke pencarian uci jika user menamai custom device-nya
     for uci_iface in $(uci -q show network | grep -E "\.proto='dhcp'" | cut -d'.' -f2); do
-        iface=$(uci -q get network."$uci_iface".device || uci -q get network."$uci_iface".ifname)
+        local iface=$(uci -q get network."$uci_iface".device || uci -q get network."$uci_iface".ifname)
         if echo "$iface" | grep -qE 'usb|rndis'; then
             if ifconfig "$iface" >/dev/null 2>&1; then
                 echo "$iface"
@@ -46,7 +57,6 @@ get_active_wan_interface() {
             fi
         fi
     done
-    
     echo "usb0"
 }
 
@@ -58,6 +68,7 @@ while true; do
     
     if ! ifconfig "$INTERFACE" >/dev/null 2>&1; then
         echo "[ADB-HP] Peringatan: Jalur interface $INTERFACE terputus fisik (Kabel dicopot?). Menanti..." > /dev/kmsg
+        failed_count=0
         sleep 20
         continue
     fi
@@ -75,16 +86,16 @@ while true; do
         echo "$(date +"%Y-%m-%d %H:%M:%S") - [ADB-HP] Internet drop pada jalur $INTERFACE! Percobaan kegagalan: $failed_count/$pingfail" > /dev/kmsg
         
         if [ $failed_count -ge $pingfail ]; then
-            if adb devices 2>/dev/null | grep -v "List" | grep -q "device"; then
-                echo "[ADB-HP] Amang gagal terpenuhi. Mengeksekusi penyegaran sinyal HP via ADB..." > /dev/kmsg
+            if adb devices 2>/dev/null | grep -v "List" | grep -qE '[0-9a-zA-Z]+\s+device$'; then
+                echo "[ADB-HP] Ambang gagal terpenuhi. Mengeksekusi penyegaran sinyal HP via ADB..." > /dev/kmsg
                 enable_airplane_mode
                 sleep "$WAIT_TIME"
                 disable_airplane_mode
                 
-                sleep 35
+                sleep 40
             else
-                echo "[ADB-HP] Perintah gagal dikirim! Status HP: Belum di-klik 'Izinkan Debugging USB' pada layar HP pengguna." > /dev/kmsg
-                sleep 15
+                echo "[ADB-HP] Perintah ditolak! Status HP: Belum di-klik 'Izinkan Debugging USB' pada layar HP pengguna." > /dev/kmsg
+                sleep 20
             fi
             failed_count=0
         fi
