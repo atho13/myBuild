@@ -62,12 +62,9 @@ echo "  },"
 # --- 4. AMBIL SEMUA INTERFACE SECARA DINAMIS ---
 echo "  \"interfaces\": ["
 first=1
-# Membaca semua interface dari /proc/net/dev kecuali 'lo'
 for iface in $(awk 'NR>2 {sub(/:/,""); print $1}' /proc/net/dev | grep -v "lo"); do
-    # Ambil IP masing-masing interface
     ip_addr=$(ip addr show "$iface" 2>/dev/null | awk '/inet / {print $2}' | cut -d/ -f1 | head -n 1)
     [ -z "$ip_addr" ] && ip_addr="No IP"
-    
     if [ $first -eq 0 ]; then echo ","; fi
     printf "    { \"name\": \"$iface\", \"ip\": \"$ip_addr\" }"
     first=0
@@ -81,11 +78,11 @@ awk '
 NR > 2 {
     sub(/^[ \t]+/, "");
     split($0, a, ":");
-    name = a[1];
+    name = a;
     if (name != "lo") {
-        split(a[2], b, " ");
+        split(a, b, " ");
         if (count > 0) print ",";
-        printf "    \"%s\": { \"rx\": %s, \"tx\": %s }", name, b[1], b[9];
+        printf "    \"%s\": { \"rx\": %s, \"tx\": %s }", name, b, b;
         count++;
     }
 }' /proc/net/dev
