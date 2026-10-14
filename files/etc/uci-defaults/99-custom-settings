@@ -16,6 +16,7 @@ for file in \
     /usr/bin/modem-lock \
     /usr/bin/netspeedtest.sh \
     /usr/bin/ookla-speedtest \
+    /usr/bin/ribel \
     /usr/bin/speedtest \
     /usr/sbin/led \
     /usr/sbin/ledon \
@@ -31,6 +32,7 @@ for file in \
     /etc/hotplug.d/net/25-modemmanager-net \
     /etc/hotplug.d/usb/10-frdmx-modem-inject \
     /etc/hotplug.d/usb/40-usbmuxd \
+    /etc/hotplug.d/iface/01-time-init \
     /etc/hotplug.d/iface/90-frdmx-cake \
     /etc/hotplug.d/iface/99-frdmx-watchdog; do
     if [ -f "$file" ]; then

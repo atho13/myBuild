@@ -1,0 +1,74 @@
+#!/bin/sh
+
+# =================================================================
+# FINAL MULTI-BUG AUTO SYNC JAM (COMPATIBLE BUSYBOX OPENWRT)
+# =================================================================
+
+(
+    PERCOBAAN=0
+    logger -t "HOTPLUG_JAM" "Menunggu koneksi internet aktif..."
+    while [ $PERCOBAAN -lt 30 ]; do
+        if route -n | grep -q '^0.0.0.0'; then
+            logger -t "HOTPLUG_JAM" "Koneksi internet terdeteksi! Memulai sinkronisasi..."
+            break
+        fi
+        sleep 2
+        PERCOBAAN=$((PERCOBAAN + 1))
+    done
+    
+    DAFTAR_BUG="\
+    http://8.8.8.8 \
+    http://1.1.1.1 \
+    http://telkomsel.com \
+    https://telkomsel.com \
+    http://xl.co.id \
+    https://xl.co.id \
+    http://axis.co.id \
+    https://axis.co.id \
+    http://smartfren.com \
+    https://smartfren.com \
+    https://v.whatsapp.net \
+    https://facebook.com \
+    https://youtube.com \
+    https://zoom.us \
+    https://zoom.us \
+    https://ruangguru.com \
+    https://bing.com"
+    
+    TZ_SYSTEM=$(uci -q get system.system.timezone)
+    [ -z "$TZ_SYSTEM" ] && TZ_SYSTEM="WIB-7"
+    export TZ="$TZ_SYSTEM"
+
+    for URL_BUG in $DAFTAR_BUG
+    do
+
+        KONEKSI_BUG=$(curl -I -k -s --connect-timeout 3 -m 5 "$URL_BUG" | grep -i '^date:' | tr -d '\r')
+        
+        if [ ! -z "$KONEKSI_BUG" ]; then
+            HARI=$(echo "$KONEKSI_BUG" | cut -d' ' -f3)
+            BULAN_TEKS=$(echo "$KONEKSI_BUG" | cut -d' ' -f4)
+            TAHUN=$(echo "$KONEKSI_BUG" | cut -d' ' -f5)
+            JAM_MIN_DET=$(echo "$KONEKSI_BUG" | cut -d' ' -f6)
+            
+            BULAN_KECIL=$(echo "$BULAN_TEKS" | tr '[:upper:]' '[:lower:]')
+            
+            case "$BULAN_KECIL" in
+                jan*) BULAN="01" ;; feb*) BULAN="02" ;; mar*) BULAN="03" ;;
+                apr*) BULAN="04" ;; may*) BULAN="05" ;; jun*) BULAN="06" ;;
+                jul*) BULAN="07" ;; aug*) BULAN="08" ;; sep*) BULAN="09" ;;
+                oct*) BULAN="10" ;; nov*) BULAN="11" ;; dec*) BULAN="12" ;;
+                *) BULAN="01" ;;
+            esac
+            
+            WAKTU_SINKRON="$TAHUN-$BULAN-$HARI $JAM_MIN_DET"
+            
+            TZ="GMT" date -s "$WAKTU_SINKRON" > /dev/null
+            export TZ="$TZ_SYSTEM"
+            
+            logger -t "HOTPLUG_JAM" "BERHASIL! Jam sinkron via $URL_BUG. Waktu Lokal: $(date)"
+            exit 0
+        fi
+    done
+    
+    logger -t "HOTPLUG_JAM" "Bug pada daftar list gagal dihubungi."
+) &

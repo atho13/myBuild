@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ "$ACTION" = "ifup" ]; then
+    (
+        sleep 8
+
+        ZONA_SEKARANG=$(fw4 device "$DEVICE" 2>/dev/null | grep -o 'zone "[^"]*"' | head -n1 | cut -d'"' -f2)
+
+        if [ "$ZONA_SEKARANG" = "wan" ]; then
+            logger -t "HOTPLUG_ZONA" "Interface $INTERFACE ($DEVICE) aktif di Zona WAN. Memulai script time sync..."
+            /usr/bin/ribel
+        fi
+    ) &
+fi
