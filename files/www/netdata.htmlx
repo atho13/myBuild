@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor + Vnstat</title>
+    <style>
+        body { font-family: system-ui, sans-serif; background: #121214; color: #e4e4e7; margin: 0; padding: 15px; font-size: 14px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .card { background: #1e1e24; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
+        .card div { font-size: 12px; color: #a1a1aa; margin-bottom: 4px; }
+        .card b { font-size: 16px; }
+        .bar-bg { background: #27272a; border-radius: 10px; height: 18px; position: relative; margin-bottom: 8px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 0%; transition: width 0.4s; }
+        .bar-txt { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 18px; font-weight: bold; color: #fff; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #27272a; }
+        select { background: #27272a; color: #fff; border: 1px solid #3f3f46; padding: 2px; border-radius: 4px; font-size: 11px; }
+        .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; background: #3b82f620; color: #3b82f6; }
+        
+        /* Style Tambahan untuk Grafik Vnstat */
+        .vns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 10px; }
+        .vns-card { background: #1a1a1f; padding: 8px; border-radius: 6px; border: 1px solid #27272a; text-align: center; }
+        .vns-card span { display: block; font-size: 11px; color: #a1a1aa; margin-bottom: 5px; font-weight: bold; }
+        .vns-img { width: 100%; height: auto; border-radius: 4px; background: #000; min-height: 100px; }
+    </style>
+</head>
+<body>
+
+    <!-- Info Atas -->
+    <div class="grid">
+        <div class="card" style="margin-bottom:0;"><div>Waktu / Uptime</div><b id="time">--:--:--</b></div>
+        <div class="card" style="margin-bottom:0;"><div>Internet</div><b id="net">--</b></div>
+        <div class="card" style="margin-bottom:0;"><div>Suhu CPU</div><b id="temp">-- °C</b></div>
+    </div>
+
+    <!-- Resource System -->
+    <div class="card" style="text-align:left; margin-top:15px;">
+        <div>CPU:</div>
+        <div class="bar-bg"><div id="cpu-t" class="bar-txt">0%</div><div id="cpu-b" class="bar-fill" style="background:#22c55e"></div></div>
+        <div>RAM:</div>
+        <div class="bar-bg"><div id="ram-t" class="bar-txt">0%</div><div id="ram-b" class="bar-fill" style="background:#f97316"></div></div>
+    </div>
+
+    <!-- Lajur Interface Dropdown -->
+    <div class="card" style="text-align:left;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <b>Real-time Interfaces</b>
+            <div>
+                W: <select id="s-wan" onchange="save()"></select>
+                L: <select id="s-lan" onchange="save()"></select>
+                M: <select id="s-mix" onchange="save()"></select>
+            </div>
+        </div>
+        <table>
+            <thead><tr><th>Tipe</th><th>Name</th><th>IP</th><th>RX</th><th>TX</th></tr></thead>
+            <tbody id="t-body"><tr><td colspan="5" style="text-align:center;color:#a1a1aa">Memuat...</td></tr></tbody>
+        </table>
+    </div>
+
+    <!-- BAGIAN GABUNGAN: Grafik vnstati Database -->
+    <div class="card" style="text-align:left;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b>Vnstat Traffic Monitor (Database Gambar)</b>
+            <button onclick="refreshImages()" style="background:#27272a; color:#fff; border:1px solid #3f3f46; padding:3px 8px; border-radius:4px; font-size:11px; cursor:pointer;">🔄 Refresh Grafik</button>
+        </div>
+        
+        <div class="vns-grid">
+            <div class="vns-card"><span>Grafik Jam (Hourly)</span><img id="vns-h" class="vns-img" alt="Hourly Traffic"></div>
+            <div class="vns-card"><span>Grafik Harian (Daily)</span><img id="vns-d" class="vns-img" alt="Daily Traffic"></div>
+            <div class="vns-card"><span>Grafik Bulanan (Monthly)</span><img id="vns-m" class="vns-img" alt="Monthly Traffic"></div>
+            <div class="vns-card"><span>Ringkasan (Summary)</span><img id="vns-s" class="vns-img" alt="Summary Traffic"></div>
+        </div>
+    </div>
+
+<script>
+    const url = window.location.origin + '/cgi-bin/monitor.sh', roles = ['wan', 'lan', 'mix'];
+    let init = false;
+
+    function fmt(kb) {
+        if (!kb) return '0 B';
+        const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(kb * 1024) / Math.log(k));
+        return parseFloat(((kb * 1024) / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    // Fungsi otomatis reload gambar vnstati agar tidak terkena cache browser
+    function refreshImages() {
+        const t = new Date().getTime();
+        document.getElementById('vns-h').src = `/vnstati/br-lan_vnstat_h.png?v=${t}`;
+        document.getElementById('vns-d').src = `/vnstati/br-lan_vnstat_d.png?v=${t}`;
+        document.getElementById('vns-m').src = `/vnstati/br-lan_vnstat_m.png?v=${t}`;
+        document.getElementById('vns-s').src = `/vnstati/br-lan_vnstat_s.png?v=${t}`;
+    }
+
+    function save() { 
+        roles.forEach(r => localStorage.setItem('sel_' + r, document.getElementById('s-' + r).value)); 
+        chk(); 
+    }
+
+    async function chk() {
+        try {
+            const res = await fetch(url), d = await res.json();
+            document.getElementById('time').innerText = d.system.time;
+            document.getElementById('net').innerText = d.system.internet;
+            document.getElementById('net').style.color = d.system.internet === 'Online' ? '#22c55e' : '#ef4444';
+            document.getElementById('temp').innerText = d.temperature !== 'N/A' ? d.temperature + ' °C' : '--';
+
+            document.getElementById('cpu-b').style.width = d.cpu + '%';
+            document.getElementById('cpu-t').innerText = Math.round(d.cpu) + '%';
+            document.getElementById('ram-b').style.width = d.ram.percent + '%';
+            document.getElementById('ram-t').innerText = `${d.ram.percent}% (${fmt(d.ram.used)} / ${fmt(d.ram.total)})`;
+
+            if (!init) {
+                roles.forEach(r => {
+                    const s = document.getElementById('s-' + r);
+                    s.innerHTML = '<option value="">-</option>';
+                    d.interfaces.forEach(i => s.innerHTML += `<option value="${i.name}">${i.name}</option>`);
+                    s.value = localStorage.getItem('sel_' + r) || '';
+                });
+                init = true;
+                refreshImages(); // panggil gambar saat pertama load
+            }
+
+            let h = '';
+            const labels = { wan: 'WAN', lan: 'LAN', mix: 'WAN/LAN' };
+            roles.forEach(r => {
+                const name = document.getElementById('s-' + r).value;
+                if (name) {
+                    const info = d.interfaces.find(i => i.name === name) || { ip: '-' };
+                    const trf = d.data[name] || { rx: 0, tx: 0 };
+                    h += `<tr><td><span class="badge">${labels[r]}</span></td><td><b>${name}</b></td><td>${info.ip}</td><td style="color:#22c55e">⬇️ ${fmt(trf.rx/1024)}</td><td style="color:#f97316">⬆️ ${fmt(trf.tx/1024)}</td></tr>`;
+                }
+            });
+            document.getElementById('t-body').innerHTML = h || '<tr><td colspan="5" style="text-align:center;color:#a1a1aa">Pilih interface di atas ⬆️</td></tr>';
+        } catch (e) { console.error(e); }
+    }
+
+    chk(); setInterval(chk, 2000);
+    setInterval(refreshImages, 60000); // Otomatis refresh gambar vnstati setiap 1 menit
+</script>
+</body>
+</html>
