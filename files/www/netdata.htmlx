@@ -1,79 +1,77 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Monitor + Vnstat</title>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Statistik OpenWrt</title>
     <style>
-        body { font-family: system-ui, sans-serif; background: #121214; color: #e4e4e7; margin: 0; padding: 15px; font-size: 14px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 15px; }
-        .card { background: #1e1e24; padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 15px; }
-        .card div { font-size: 12px; color: #a1a1aa; margin-bottom: 4px; }
-        .card b { font-size: 16px; }
-        .bar-bg { background: #27272a; border-radius: 10px; height: 18px; position: relative; margin-bottom: 8px; overflow: hidden; }
-        .bar-fill { height: 100%; width: 0%; transition: width 0.4s; }
-        .bar-txt { position: absolute; width: 100%; text-align: center; font-size: 11px; line-height: 18px; font-weight: bold; color: #fff; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #27272a; }
-        select { background: #27272a; color: #fff; border: 1px solid #3f3f46; padding: 2px; border-radius: 4px; font-size: 11px; }
-        .badge { padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; background: #3b82f620; color: #3b82f6; }
-        
-        /* Style Tambahan untuk Grafik Vnstat */
-        .vns-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; margin-top: 10px; }
-        .vns-card { background: #1a1a1f; padding: 8px; border-radius: 6px; border: 1px solid #27272a; text-align: center; }
-        .vns-card span { display: block; font-size: 11px; color: #a1a1aa; margin-bottom: 5px; font-weight: bold; }
-        .vns-img { width: 100%; height: auto; border-radius: 4px; background: #000; min-height: 100px; }
+        body { font-family: system-ui, sans-serif; background: #f8fafc; color: #2d3748; margin: 0; padding: 15px; font-size: 13px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 10px; }
+        .h-info { display: flex; justify-content: center; gap: 10px; font-weight: 500; color: #0369a1; margin-bottom: 15px; }
+        .box { background: #e0f2fe; padding: 4px 8px; border-radius: 6px; border: 1px solid #bae6fd; font-size: 12px; }
+        .menu { display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+        .card { background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,.05); }
+        .card h3 { font-size: 14px; margin: 0 0 10px 0; display: flex; justify-content: space-between; }
+        .val { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 5px; }
+        .track { background: #f1f5f9; border-radius: 10px; height: 10px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .fill { height: 100%; width: 0%; transition: width 0.4s, background 0.4s; }
+        select { padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600; cursor: pointer; }
+        .v-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
+        .v-card { background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }
+        .v-img { width: 100%; height: auto; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; margin-top: 5px; }
     </style>
 </head>
 <body>
+<div class="container">
+    <div class="header">
+        <h2 style="color:#0284c7; margin:0 0 5px 0;">📊 Statistik OpenWrt</h2>
+        <div class="h-info">
+            <div id="sys-time" class="box">🕐 Memuat...</div>
+            <div id="sys-net" class="box">🌍 Memuat...</div>
+            <div id="sys-temp" class="box">🌡️ Suhu: --</div>
+        </div>
+    </div>
 
-    <!-- Info Atas -->
+    <div class="menu">
+        <div>📡 WAN: <select id="s-wan" onchange="save()"></select></div>
+        <div>📡 LAN: <select id="s-lan" onchange="save()"></select></div>
+    </div>
+
     <div class="grid">
-        <div class="card" style="margin-bottom:0;"><div>Waktu / Uptime</div><b id="time">--:--:--</b></div>
-        <div class="card" style="margin-bottom:0;"><div>Internet</div><b id="net">--</b></div>
-        <div class="card" style="margin-bottom:0;"><div>Suhu CPU</div><b id="temp">-- °C</b></div>
-    </div>
-
-    <!-- Resource System -->
-    <div class="card" style="text-align:left; margin-top:15px;">
-        <div>CPU:</div>
-        <div class="bar-bg"><div id="cpu-t" class="bar-txt">0%</div><div id="cpu-b" class="bar-fill" style="background:#22c55e"></div></div>
-        <div>RAM:</div>
-        <div class="bar-bg"><div id="ram-t" class="bar-txt">0%</div><div id="ram-b" class="bar-fill" style="background:#f97316"></div></div>
-    </div>
-
-    <!-- Lajur Interface Dropdown -->
-    <div class="card" style="text-align:left;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <b>Real-time Interfaces</b>
-            <div>
-                W: <select id="s-wan" onchange="save()"></select>
-                L: <select id="s-lan" onchange="save()"></select>
-                M: <select id="s-mix" onchange="save()"></select>
-            </div>
+        <div class="card">
+            <h3><span>📡 <b id="t-wan">WAN</b></span> <span id="ip-wan" style="font-size:10px;color:#64748b"></span></h3>
+            <div id="val-wan" class="val">0 B</div>
+            <div class="track"><div id="b-wan" class="fill" style="width:100%; background:#0284c7"></div></div>
         </div>
-        <table>
-            <thead><tr><th>Tipe</th><th>Name</th><th>IP</th><th>RX</th><th>TX</th></tr></thead>
-            <tbody id="t-body"><tr><td colspan="5" style="text-align:center;color:#a1a1aa">Memuat...</td></tr></tbody>
-        </table>
-    </div>
-
-    <!-- BAGIAN GABUNGAN: Grafik vnstati Database -->
-    <div class="card" style="text-align:left;">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <b>Vnstat Traffic Monitor (Database Gambar)</b>
-            <button onclick="refreshImages()" style="background:#27272a; color:#fff; border:1px solid #3f3f46; padding:3px 8px; border-radius:4px; font-size:11px; cursor:pointer;">🔄 Refresh Grafik</button>
+        <div class="card">
+            <h3><span>📡 <b id="t-lan">LAN</b></span> <span id="ip-lan" style="font-size:10px;color:#64748b"></span></h3>
+            <div id="val-lan" class="val">0 B</div>
+            <div class="track"><div id="b-lan" class="fill" style="width:100%; background:#4f46e5"></div></div>
         </div>
-        
-        <div class="vns-grid">
-            <div class="vns-card"><span>Grafik Jam (Hourly)</span><img id="vns-h" class="vns-img" alt="Hourly Traffic"></div>
-            <div class="vns-card"><span>Grafik Harian (Daily)</span><img id="vns-d" class="vns-img" alt="Daily Traffic"></div>
-            <div class="vns-card"><span>Grafik Bulanan (Monthly)</span><img id="vns-m" class="vns-img" alt="Monthly Traffic"></div>
-            <div class="vns-card"><span>Ringkasan (Summary)</span><img id="vns-s" class="vns-img" alt="Summary Traffic"></div>
+        <div class="card">
+            <h3>⚡ CPU</h3>
+            <div id="val-cpu" class="val">0%</div>
+            <div class="track"><div id="b-cpu" class="fill"></div></div>
+        </div>
+        <div class="card">
+            <h3>💾 RAM</h3>
+            <div id="val-ram" class="val">0%</div>
+            <div class="track"><div id="b-ram" class="fill" style="background:#f59e0b"></div></div>
         </div>
     </div>
+
+    <h3 style="border-bottom:2px solid #0284c7; padding-bottom:5px; margin:25px 0 10px 0; color:#1e293b">📊 Vnstat Database (br-lan)</h3>
+    <div class="v-grid">
+        <div class="v-card"><span style="font-weight:600">Jam (Hourly)</span><img id="v-h" class="v-img"></div>
+        <div class="v-card"><span style="font-weight:600">Hari (Daily)</span><img id="v-d" class="v-img"></div>
+        <div class="v-card"><span style="font-weight:600">Bulan (Monthly)</span><img id="v-m" class="v-img"></div>
+        <div class="v-card"><span style="font-weight:600">Ringkasan (Summary)</span><img id="v-s" class="v-img"></div>
+    </div>
+</div>
 
 <script>
-    const url = window.location.origin + '/cgi-bin/monitor.sh', roles = ['wan', 'lan', 'mix'];
+    const url = window.location.origin + '/cgi-bin/monitor.sh', roles = ['wan', 'lan'];
     let init = false;
 
     function fmt(kb) {
@@ -82,60 +80,57 @@
         return parseFloat(((kb * 1024) / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
-    // Fungsi otomatis reload gambar vnstati agar tidak terkena cache browser
-    function refreshImages() {
-        const t = new Date().getTime();
-        document.getElementById('vns-h').src = `/vnstati/br-lan_vnstat_h.png?v=${t}`;
-        document.getElementById('vns-d').src = `/vnstati/br-lan_vnstat_d.png?v=${t}`;
-        document.getElementById('vns-m').src = `/vnstati/br-lan_vnstat_m.png?v=${t}`;
-        document.getElementById('vns-s').src = `/vnstati/br-lan_vnstat_s.png?v=${t}`;
+    function imgRef() {
+        const t = Date.now();
+        ['h','d','m','s'].forEach(x => document.getElementById(`v-${x}`).src = `/vnstati/br-lan_vnstat_${x}.png?v=${t}`);
     }
 
-    function save() { 
-        roles.forEach(r => localStorage.setItem('sel_' + r, document.getElementById('s-' + r).value)); 
-        chk(); 
+    function save() {
+        roles.forEach(r => localStorage.setItem('ui_' + r, document.getElementById('s-' + r).value));
+        chk();
     }
 
     async function chk() {
         try {
             const res = await fetch(url), d = await res.json();
-            document.getElementById('time').innerText = d.system.time;
-            document.getElementById('net').innerText = d.system.internet;
-            document.getElementById('net').style.color = d.system.internet === 'Online' ? '#22c55e' : '#ef4444';
-            document.getElementById('temp').innerText = d.temperature !== 'N/A' ? d.temperature + ' °C' : '--';
-
-            document.getElementById('cpu-b').style.width = d.cpu + '%';
-            document.getElementById('cpu-t').innerText = Math.round(d.cpu) + '%';
-            document.getElementById('ram-b').style.width = d.ram.percent + '%';
-            document.getElementById('ram-t').innerText = `${d.ram.percent}% (${fmt(d.ram.used)} / ${fmt(d.ram.total)})`;
+            
+            document.getElementById('sys-time').innerHTML = `🕐 ${d.system.time} (${d.system.uptime})`;
+            document.getElementById('sys-net').innerHTML = `🌍 Internet: <span style="color:${d.system.internet==='Online'?'#10b981':'#ef4444'}">${d.system.internet}</span>`;
+            document.getElementById('sys-temp').innerText = `🌡️ Suhu: ${d.temperature} °C`;
 
             if (!init) {
                 roles.forEach(r => {
                     const s = document.getElementById('s-' + r);
-                    s.innerHTML = '<option value="">-</option>';
+                    s.innerHTML = '<option value="">- Pilihan -</option>';
                     d.interfaces.forEach(i => s.innerHTML += `<option value="${i.name}">${i.name}</option>`);
-                    s.value = localStorage.getItem('sel_' + r) || '';
+                    s.value = localStorage.getItem('ui_' + r) || '';
                 });
-                init = true;
-                refreshImages(); // panggil gambar saat pertama load
+                init = true; imgRef();
             }
 
-            let h = '';
-            const labels = { wan: 'WAN', lan: 'LAN', mix: 'WAN/LAN' };
+            // CPU & RAM
+            document.getElementById('val-cpu').innerText = Math.round(d.cpu) + '%';
+            document.getElementById('b-cpu').style.width = d.cpu + '%';
+            document.getElementById('b-cpu').style.background = d.cpu > 80 ? '#ef4444' : '#10b981';
+            
+            document.getElementById('val-ram').innerText = `${d.ram.percent}%`;
+            document.getElementById('b-ram').style.width = d.ram.percent + '%';
+
+            // Dinamis Interface (WAN & LAN)
             roles.forEach(r => {
                 const name = document.getElementById('s-' + r).value;
                 if (name) {
                     const info = d.interfaces.find(i => i.name === name) || { ip: '-' };
-                    const trf = d.data[name] || { rx: 0, tx: 0 };
-                    h += `<tr><td><span class="badge">${labels[r]}</span></td><td><b>${name}</b></td><td>${info.ip}</td><td style="color:#22c55e">⬇️ ${fmt(trf.rx/1024)}</td><td style="color:#f97316">⬆️ ${fmt(trf.tx/1024)}</td></tr>`;
+                    const n = d.data[name] || { rx: 0, tx: 0 };
+                    document.getElementById(`t-${r}`).innerText = name;
+                    document.getElementById(`ip-${r}`).innerText = `(${info.ip})`;
+                    document.getElementById(`val-${r}`).innerHTML = `⬇️ ${fmt(n.rx/1024)} <span style="color:#f97316; font-size:11px; margin-left:5px;">▲ ${fmt(n.tx/1024)}</span>`;
                 }
             });
-            document.getElementById('t-body').innerHTML = h || '<tr><td colspan="5" style="text-align:center;color:#a1a1aa">Pilih interface di atas ⬆️</td></tr>';
         } catch (e) { console.error(e); }
     }
 
-    chk(); setInterval(chk, 2000);
-    setInterval(refreshImages, 60000); // Otomatis refresh gambar vnstati setiap 1 menit
+    chk(); setInterval(chk, 2000); setInterval(imgRef, 60000);
 </script>
 </body>
 </html>
