@@ -5,21 +5,22 @@
     <title>Statistik OpenWrt</title>
     <style>
         body { font-family: system-ui, sans-serif; background: #f8fafc; color: #2d3748; margin: 0; padding: 15px; font-size: 13px; }
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1100px; margin: 0 auto; }
         .header { text-align: center; margin-bottom: 10px; }
-        .h-info { display: flex; justify-content: center; gap: 10px; font-weight: 500; color: #0369a1; margin-bottom: 15px; }
+        .h-info { display: flex; justify-content: center; gap: 10px; font-weight: 500; color: #0369a1; margin-bottom: 15px; flex-wrap: wrap; }
         .box { background: #e0f2fe; padding: 4px 8px; border-radius: 6px; border: 1px solid #bae6fd; font-size: 12px; }
-        .menu { display: flex; justify-content: center; gap: 15px; margin-bottom: 15px; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
-        .card { background: #fff; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,.05); }
-        .card h3 { font-size: 14px; margin: 0 0 10px 0; display: flex; justify-content: space-between; }
-        .val { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 5px; }
-        .track { background: #f1f5f9; border-radius: 10px; height: 10px; overflow: hidden; border: 1px solid #e2e8f0; }
+        .menu { display: flex; justify-content: center; gap: 12px; margin-bottom: 15px; flex-wrap: wrap; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+        .card { background: #fff; padding: 12px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 2px 4px rgba(0,0,0,.05); }
+        .card h3 { font-size: 13px; margin: 0 0 8px 0; display: flex; justify-content: space-between; align-items: center; }
+        .val { font-size: 15px; font-weight: 700; color: #0f172a; margin-bottom: 5px; }
+        .track { background: #f1f5f9; border-radius: 10px; height: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
         .fill { height: 100%; width: 0%; transition: width 0.4s, background 0.4s; }
-        select { padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600; cursor: pointer; }
+        select { padding: 2px 4px; border-radius: 4px; border: 1px solid #cbd5e1; background: #fff; font-weight: 600; cursor: pointer; font-size: 11px; }
         .v-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 10px; }
         .v-card { background: #fff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; text-align: center; }
         .v-img { width: 100%; height: auto; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; margin-top: 5px; }
+        .badge { font-size: 9px; padding: 1px 4px; border-radius: 3px; font-weight: bold; color: #fff; }
     </style>
 </head>
 <body>
@@ -33,21 +34,29 @@
         </div>
     </div>
 
+    <!-- Dropdown Menu untuk 3 Interface Pilihan -->
     <div class="menu">
-        <div>📡 WAN: <select id="s-wan" onchange="save()"></select></div>
-        <div>📡 LAN: <select id="s-lan" onchange="save()"></select></div>
+        <div>WAN: <select id="s-wan" onchange="save()"></select></div>
+        <div>LAN: <select id="s-lan" onchange="save()"></select></div>
+        <div>WAN/LAN: <select id="s-mix" onchange="save()"></select></div>
     </div>
 
+    <!-- Grid 5 Card (3 Interface + CPU + RAM) -->
     <div class="grid">
         <div class="card">
-            <h3><span>📡 <b id="t-wan">WAN</b></span> <span id="ip-wan" style="font-size:10px;color:#64748b"></span></h3>
+            <h3><span><b class="badge" style="background:#0284c7">WAN</b> <b id="t-wan">-</b></span> <span id="ip-wan" style="font-size:10px;color:#64748b"></span></h3>
             <div id="val-wan" class="val">0 B</div>
             <div class="track"><div id="b-wan" class="fill" style="width:100%; background:#0284c7"></div></div>
         </div>
         <div class="card">
-            <h3><span>📡 <b id="t-lan">LAN</b></span> <span id="ip-lan" style="font-size:10px;color:#64748b"></span></h3>
+            <h3><span><b class="badge" style="background:#4f46e5">LAN</b> <b id="t-lan">-</b></span> <span id="ip-lan" style="font-size:10px;color:#64748b"></span></h3>
             <div id="val-lan" class="val">0 B</div>
             <div class="track"><div id="b-lan" class="fill" style="width:100%; background:#4f46e5"></div></div>
+        </div>
+        <div class="card">
+            <h3><span><b class="badge" style="background:#a855f7">MIX</b> <b id="t-mix">-</b></span> <span id="ip-mix" style="font-size:10px;color:#64748b"></span></h3>
+            <div id="val-mix" class="val">0 B</div>
+            <div class="track"><div id="b-mix" class="fill" style="width:100%; background:#a855f7"></div></div>
         </div>
         <div class="card">
             <h3>⚡ CPU</h3>
@@ -71,7 +80,7 @@
 </div>
 
 <script>
-    const url = window.location.origin + '/cgi-bin/monitor.sh', roles = ['wan', 'lan'];
+    const url = window.location.origin + '/cgi-bin/monitor.sh', roles = ['wan', 'lan', 'mix'];
     let init = false;
 
     function fmt(kb) {
@@ -101,22 +110,21 @@
             if (!init) {
                 roles.forEach(r => {
                     const s = document.getElementById('s-' + r);
-                    s.innerHTML = '<option value="">- Pilihan -</option>';
+                    s.innerHTML = '<option value="">- Kosong -</option>';
                     d.interfaces.forEach(i => s.innerHTML += `<option value="${i.name}">${i.name}</option>`);
                     s.value = localStorage.getItem('ui_' + r) || '';
                 });
                 init = true; imgRef();
             }
 
-            // CPU & RAM
+            // Status CPU & RAM
             document.getElementById('val-cpu').innerText = Math.round(d.cpu) + '%';
             document.getElementById('b-cpu').style.width = d.cpu + '%';
             document.getElementById('b-cpu').style.background = d.cpu > 80 ? '#ef4444' : '#10b981';
-            
             document.getElementById('val-ram').innerText = `${d.ram.percent}%`;
             document.getElementById('b-ram').style.width = d.ram.percent + '%';
 
-            // Dinamis Interface (WAN & LAN)
+            // Looping data otomatis untuk 3 Interface Pilihan
             roles.forEach(r => {
                 const name = document.getElementById('s-' + r).value;
                 if (name) {
@@ -124,7 +132,11 @@
                     const n = d.data[name] || { rx: 0, tx: 0 };
                     document.getElementById(`t-${r}`).innerText = name;
                     document.getElementById(`ip-${r}`).innerText = `(${info.ip})`;
-                    document.getElementById(`val-${r}`).innerHTML = `⬇️ ${fmt(n.rx/1024)} <span style="color:#f97316; font-size:11px; margin-left:5px;">▲ ${fmt(n.tx/1024)}</span>`;
+                    document.getElementById(`val-${r}`).innerHTML = `⬇️ ${fmt(n.rx/1024)} <span style="color:#f97316; font-size:10px; margin-left:3px;">▲ ${fmt(n.tx/1024)}</span>`;
+                } else {
+                    document.getElementById(`t-${r}`).innerText = '-';
+                    document.getElementById(`ip-${r}`).innerText = '';
+                    document.getElementById(`val-${r}`).innerHTML = '<span style="color:#a1a1aa; font-size:11px;">Belum dipilih</span>';
                 }
             });
         } catch (e) { console.error(e); }
