@@ -11,6 +11,7 @@ for file in \
     /usr/bin/netspeedtest.sh \
     /usr/bin/ookla-speedtest \
     /usr/bin/speedtest \
+    /sbin/cpuinfo \
     /sbin/free.sh \
     /etc/rc.local \
     /etc/init.d/todong \
