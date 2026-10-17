@@ -1,4 +1,4 @@
-name: Frdmx Allwinner rootFS
+name: Frdmx h6r rootFS
 
 on:
   workflow_dispatch:
