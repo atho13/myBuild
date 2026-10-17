@@ -1,35 +1,31 @@
 #!/bin/sh
-# For Frdmx-Wrt Community for Allwinner
 
-echo "   Memulai Konfigurasi Otomatis FRDMX-Wrt (Allwinner)"
-
-echo "[*] Menghapus password root default (Keamanan Awal)"
+echo "Clearing root password..."
 passwd -d root > /dev/null 2>&1
 
-echo "[*] Mengatur izin eksekusi berkas sistem"
+echo "Setting file permissions..."
 for file in \
     /usr/bin/7z \
     /usr/bin/huawei.py \
     /usr/libexec/rpcd/luci-temp \
+    /usr/bin/netspeedtest.sh \
+    /usr/bin/ookla-speedtest \
+    /usr/bin/speedtest \
     /sbin/free.sh \
-    /sbin/yess \
     /etc/rc.local \
     /etc/init.d/todong \
     /www/vnstati/vnstati.sh \
     /www/cgi-bin/traffic \
-    /etc/hotplug.d/net/25-modemmanager-net \
-    if [ -f "$file" ]; then
-        chmod +x "$file"
-    fi
+    /etc/hotplug.d/net/25-modemmanager-net; do
+    [ -f "$file" ] && chmod +x "$file"
 done
 
-echo "[*] Mengonfigurasi pengaturan UCI Sistem & Waktu"
+
+echo "[*] Mengonfigurasi pengaturan UCI"
 uci batch <<EOF
-set system.@system.hostname='FRDMX'
+set system.@system.hostname='OpenWrt'
 set system.@system.timezone='WIB-7'
 set system.@system.zonename='Asia/Jakarta'
-set system.@system.ttylogin='0'
-set system.@system.thermal_path='/sys/class/thermal/thermal_zone0/temp'
 delete system.ntp.server
 add_list system.ntp.server='0.id.pool.ntp.org'
 add_list system.ntp.server='1.id.pool.ntp.org'
@@ -37,11 +33,12 @@ add_list system.ntp.server='ntp.bmkg.go.id'
 add_list system.ntp.server='time.google.com'
 EOF
 
+# JARINGAN
 uci delete network.lan 2>/dev/null
 uci delete network.br_lan 2>/dev/null
 uci delete network.br-lan 2>/dev/null
 
-# 1. Konfigurasi Device Bridge br-lan
+# 1. Konfigurasi Device
 uci set network.@device=device
 uci set network.@device.name='br-lan'
 uci set network.@device.type='bridge'
@@ -49,7 +46,7 @@ uci add_list network.@device.ports='eth0'
 uci set network.@device.ipv6='0'
 uci set network.@device.mtu='1500'
 
-# 2. Konfigurasi Interface LAN terikat ke br-lan
+# 2. Konfigurasi Interface LAN
 uci set network.lan=interface
 uci set network.lan.device='br-lan'
 uci set network.lan.proto='static'
@@ -58,34 +55,22 @@ uci set network.lan.netmask='255.255.255.0'
 uci set network.lan.ip6assign='0'
 uci set network.lan.multipath='off'
 
-# 3. Konfigurasi Interface Modem Manager
-uci delete network.modem 2>/dev/null
-uci set network.modem=interface
-uci set network.modem.proto='modemmanager'
-uci set network.modem.apn='internet'
-uci set network.modem.allowedauth='none'
-uci set network.modem.iptype='ipv4'
-uci set network.modem.loglevel='ERR'
-uci set network.modem.metric='5'
-uci set network.modem.defaultroute='1'
-uci set network.modem.dial_timeout='30'
-
-# 4. Konfigurasi Interface Tambahan (WAN & Tethering HP)
+# 4. Konfigurasi Interface
 uci delete network.wan 2>/dev/null
 uci set network.wan=interface
 uci set network.wan.proto='dhcp'
 uci set network.wan.device='eth1'
-uci set network.wan.metric='10'
+uci set network.wan.metric='5'
 
 uci delete network.tethering 2>/dev/null
 uci set network.tethering=interface
 uci set network.tethering.proto='dhcp'
 uci set network.tethering.device='usb0'
-uci set network.tethering.metric='15'
+uci set network.tethering.metric='10'
 
 uci delete network.wan6 2>/dev/null
 
-# BATCH UTILLITAS LANJUTAN (DHCP & Webserver)
+# BATCH LANJUTAN
 uci batch <<EOF
 delete dhcp.lan
 set dhcp.lan=dhcp
@@ -122,18 +107,7 @@ commit dhcp
 commit uhttpd
 EOF
 
-echo "[*] Mengonfigurasi otomatisasi terminal TTYD ke Bash Login..."
-uci delete ttyd.@ttyd 2>/dev/null
-uci set ttyd.@ttyd=ttyd
-uci set ttyd.@ttyd.disabled='0'
-uci set ttyd.@ttyd.interface='br-lan'
-if [ -f /usr/bin/bash ]; then
-    uci set ttyd.@ttyd.command='/usr/bin/bash --login'
-else
-    uci set ttyd.@ttyd.command='/bin/ash --login'
-fi
-uci commit ttyd
-
+# AUTOMASI DAN OPTIMALISASI STORAGE
 echo "[*] Mengonfigurasi otomatisasi block-mount (fstab)"
 uci batch <<EOF
 set fstab.global=global
@@ -179,20 +153,18 @@ while true; do
         uci -q delete firewall.@zone[$i].network
         uci add_list firewall.@zone[$i].network='wan'
         uci add_list firewall.@zone[$i].network='tethering'
-        uci add_list firewall.@zone[$i].network='modem'
         uci commit firewall
         break
     fi
     i=$((i+1))
 done
 
-echo "[*] Menerapkan optimalisasi sistem firmware Allwinner"
+echo "[*] Menerapkan optimalisasi sistem firmware"
 if [ -f /etc/opkg.conf ]; then
     sed -i 's/^option check_signature/# option check_signature/g' /etc/opkg.conf 2>/dev/null
 fi
 
 if [ -d /sys/block/mmcblk0 ]; then echo bfq > /sys/block/mmcblk0/queue/scheduler 2>/dev/null; fi
-if [ -d /sys/block/mmcblk1 ]; then echo bfq > /sys/block/mmcblk1/queue/scheduler 2>/dev/null; fi
 if [ -d /sys/block/sda ]; then echo bfq > /sys/block/sda/queue/scheduler 2>/dev/null; fi
 if [ -d /sys/block/nvme0n1 ]; then echo bfq > /sys/block/nvme0n1/queue/scheduler 2>/dev/null; fi
 
@@ -263,6 +235,10 @@ if [ -f /etc/rc.local ]; then
     sed -i '/_service.sh/d' /etc/rc.local 2>/dev/null
     sed -i '/\/sbin\/yess/d' /etc/rc.local 2>/dev/null
 
+    if [ -f "/etc/custom_service/start_service.sh" ]; then
+        sed -i '/exit 0/i (sleep 30 && /bin/sh /etc/custom_service/start_service.sh) &' /etc/rc.local
+    fi
+
     if [ -f "/sbin/yess" ]; then
         sed -i '/exit 0/i /sbin/yess &' /etc/rc.local
     fi
@@ -283,5 +259,5 @@ if [ -f "/sbin/free.sh" ]; then
     sh /sbin/free.sh >/dev/null 2>&1
 fi
 
-echo "   Selesai! Pengaturan Full IPv4 Allwinner + Fix Bash Sukses. "
+echo "   Selesai!         "
 exit 0
